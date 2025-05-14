@@ -1,22 +1,26 @@
 import { variables } from "./config.js";
 
+let ctx = null;
+let game = null;
+let oldTime = null;
+
 export function getCtx() {
-  return variables.ctx;
+  return ctx;
 }
 export function setCtx(value) {
-  variables.ctx = value;
+  ctx = value;
 }
 export function getGame() {
-  return variables.game;
+  return game;
 }
 export function setGame(value) {
-  variables.game = value;
+  game = value;
 }
 export function getOldTime() {
-  return variables.oldTime;
+  return oldTime;
 }
 export function setOldTime(value) {
-  variables.oldTime = value;
+  oldTime = value;
 }
 
 export function boxOverlap(obj1, obj2) {
@@ -29,10 +33,6 @@ export function boxOverlap(obj1, obj2) {
 }
 
 export function drawScene(newTime) {
-  const ctx = getCtx();
-  const game = getGame();
-  let oldTime = getOldTime();
-
   if (oldTime == undefined) oldTime = newTime;
   const deltaTime = newTime - oldTime;
 

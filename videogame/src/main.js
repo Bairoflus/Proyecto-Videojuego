@@ -1,3 +1,8 @@
+/*
+ * Fausto Izquierdo
+ * 2025-04-23
+ */
+
 import { variables } from "./config.js";
 import { drawScene, setCtx, setGame } from "./draw.js";
 import { Game } from "./classes/Game.js";
