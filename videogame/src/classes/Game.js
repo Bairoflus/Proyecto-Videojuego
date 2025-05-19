@@ -15,16 +15,16 @@ export class Game {
   initObjects() {
     this.player = new Player(
       new Vec(variables.canvasWidth / 2, variables.canvasHeight / 2),
-      32,
-      32,
+      64,
+      64,
       "red",
-      10
+      13
     );
     this.player.setSprite(
-      "./assets/sprites/link_sprite_sheet.png",
-      new Rect(0, 0, 120, 130)
+      "./assets/sprites/dagger-sprite-sheet.png",
+      new Rect(0, 0, 64, 64)
     );
-    this.player.setAnimation(7, 7, false, variables.animationDelay);
+    this.player.setAnimation(130, 130, false, variables.animationDelay);
     this.actors = [];
     this.coins = this.generateCoins(10);
   }
