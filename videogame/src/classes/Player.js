@@ -29,6 +29,11 @@ export class Player extends AnimatedObject {
     if (!this.isAttacking && this.attackCooldown <= 0) {
       this.isAttacking = true;
       this.attackCooldown = playerAttack.cooldown;
+      // Store current frame and direction before attacking
+      this.preAttackFrame = this.frame;
+      this.preAttackDirection = this.currentDirection;
+      this.preAttackMinFrame = this.minFrame;
+      this.preAttackMaxFrame = this.maxFrame;
       const attackFrames = getAttackFrames(
         this.weaponType,
         this.currentDirection
@@ -49,13 +54,22 @@ export class Player extends AnimatedObject {
     }
     if (this.isAttacking && this.frame >= this.maxFrame) {
       this.isAttacking = false;
-      // Return to previous direction animation
-      const anim = playerMovement[this.currentDirection];
-      this.setAnimation(...anim.frames, anim.repeat, anim.duration);
-      this.frame = this.minFrame;
+      // Return to the exact frame and direction we were in before the attack
+      const anim = playerMovement[this.preAttackDirection];
+      this.minFrame = this.preAttackMinFrame;
+      this.maxFrame = this.preAttackMaxFrame;
+      this.frame = this.preAttackFrame;
+      this.repeat = anim.repeat;
+      this.frameDuration = anim.duration;
+      this.spriteRect.x = this.frame % this.sheetCols;
+      this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
     }
+
     this.setVelocity();
-    this.setMovementAnimation();
+    // Only update movement animation if not attacking
+    if (!this.isAttacking) {
+      this.setMovementAnimation();
+    }
     this.position = this.position.plus(this.velocity.times(deltaTime));
     this.constrainToCanvas();
     this.updateFrame(deltaTime);
@@ -84,28 +98,35 @@ export class Player extends AnimatedObject {
 
   setMovementAnimation() {
     const v = this.velocity;
-    this.currentDirection =
-      Math.abs(v.y) > Math.abs(v.x)
-        ? v.y > 0
-          ? "down"
-          : v.y < 0
-          ? "up"
-          : "idle"
-        : v.x > 0
-        ? "right"
-        : v.x < 0
-        ? "left"
-        : "idle";
+    // Only update direction if we're actually moving
+    if (v.x !== 0 || v.y !== 0) {
+      const newDirection =
+        Math.abs(v.y) > Math.abs(v.x)
+          ? v.y > 0
+            ? "down"
+            : v.y < 0
+            ? "up"
+            : this.currentDirection
+          : v.x > 0
+          ? "right"
+          : v.x < 0
+          ? "left"
+          : this.currentDirection;
 
-    if (this.currentDirection !== this.previousDirection) {
+      if (newDirection !== this.currentDirection) {
+        this.currentDirection = newDirection;
+        const anim = playerMovement[this.currentDirection];
+        this.setAnimation(...anim.frames, anim.repeat, anim.duration);
+        this.frame = this.minFrame;
+        this.previousDirection = this.currentDirection;
+      }
+    } else {
+      // When not moving, keep the current direction and set to first frame
       const anim = playerMovement[this.currentDirection];
-      this.setAnimation(...anim.frames, anim.repeat, anim.duration);
-      this.frame = this.minFrame;
-      this.previousDirection = this.currentDirection;
-    }
-
-    if (this.currentDirection !== "idle") {
-      this.previousDirection = this.currentDirection;
+      this.setAnimation(anim.frames[0], anim.frames[0], false, anim.duration);
+      this.frame = anim.frames[0];
+      this.spriteRect.x = this.frame % this.sheetCols;
+      this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
     }
   }
 }

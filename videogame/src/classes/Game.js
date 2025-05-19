@@ -2,7 +2,7 @@ import { Vec } from "./Vec.js";
 import { Rect } from "./Rect.js";
 import { Player } from "./Player.js";
 import { Coin } from "./Coin.js";
-import { variables, keyDirections } from "../config.js";
+import { variables, keyDirections, playerMovement } from "../config.js";
 import { boxOverlap } from "../utils.js";
 
 export class Game {
@@ -62,12 +62,14 @@ export class Game {
             "./assets/sprites/dagger-sprite-sheet.png",
             new Rect(0, 0, 64, 64)
           );
+          this.player.setMovementAnimation();
         } else if (e.key === "2") {
           this.player.setWeapon("slingshot");
           this.player.setSprite(
             "./assets/sprites/slingshot-sprite-sheet.png",
             new Rect(0, 0, 64, 64)
           );
+          this.player.setMovementAnimation();
         } else if (e.key === " ") {
           this.player.attack();
         } else {

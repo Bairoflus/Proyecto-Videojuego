@@ -1,7 +1,7 @@
 export const variables = {
   canvasWidth: 800,
   canvasHeight: 600,
-  animationDelay: 75,
+  animationDelay: 100,
   playerSpeed: 0.3,
   ctx: null,
   game: null,
