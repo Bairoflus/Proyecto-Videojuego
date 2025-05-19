@@ -23,7 +23,6 @@ export class Game {
       "./assets/sprites/dagger-sprite-sheet.png",
       new Rect(0, 0, 64, 64)
     );
-    this.player.setAnimation(130, 130, false, variables.animationDelay);
     this.actors = [];
     this.coins = this.generateCoins(10);
   }
@@ -63,14 +62,14 @@ export class Game {
             "./assets/sprites/dagger-sprite-sheet.png",
             new Rect(0, 0, 64, 64)
           );
-          this.player.setMovementAnimation();
         } else if (e.key === "2") {
           this.player.setWeapon("slingshot");
           this.player.setSprite(
             "./assets/sprites/slingshot-sprite-sheet.png",
             new Rect(0, 0, 64, 64)
           );
-          this.player.setMovementAnimation();
+        } else if (e.key === " ") {
+          this.player.attack();
         } else {
           this.add_key(keyDirections[e.key]);
         }

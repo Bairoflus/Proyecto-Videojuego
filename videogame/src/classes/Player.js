@@ -1,6 +1,11 @@
 import { AnimatedObject } from "./AnimatedObject.js";
 import { Vec } from "./Vec.js";
-import { variables, playerMovement } from "../config.js";
+import {
+  variables,
+  playerMovement,
+  playerAttack,
+  getAttackFrames,
+} from "../config.js";
 
 export class Player extends AnimatedObject {
   constructor(position, width, height, color, sheetCols) {
@@ -10,6 +15,8 @@ export class Player extends AnimatedObject {
     this.previousDirection = "down";
     this.currentDirection = "down";
     this.weaponType = "dagger"; // Default weapon
+    this.isAttacking = false;
+    this.attackCooldown = 0;
   }
 
   setWeapon(type) {
@@ -18,7 +25,35 @@ export class Player extends AnimatedObject {
     }
   }
 
+  attack() {
+    if (!this.isAttacking && this.attackCooldown <= 0) {
+      this.isAttacking = true;
+      this.attackCooldown = playerAttack.cooldown;
+      const attackFrames = getAttackFrames(
+        this.weaponType,
+        this.currentDirection
+      );
+      this.setAnimation(
+        attackFrames[0],
+        attackFrames[1],
+        playerAttack.repeat,
+        playerAttack.duration
+      );
+      this.frame = this.minFrame;
+    }
+  }
+
   update(deltaTime) {
+    if (this.attackCooldown > 0) {
+      this.attackCooldown -= deltaTime;
+    }
+    if (this.isAttacking && this.frame >= this.maxFrame) {
+      this.isAttacking = false;
+      // Return to previous direction animation
+      const anim = playerMovement[this.currentDirection];
+      this.setAnimation(...anim.frames, anim.repeat, anim.duration);
+      this.frame = this.minFrame;
+    }
     this.setVelocity();
     this.setMovementAnimation();
     this.position = this.position.plus(this.velocity.times(deltaTime));
@@ -66,6 +101,7 @@ export class Player extends AnimatedObject {
       const anim = playerMovement[this.currentDirection];
       this.setAnimation(...anim.frames, anim.repeat, anim.duration);
       this.frame = this.minFrame;
+      this.previousDirection = this.currentDirection;
     }
 
     if (this.currentDirection !== "idle") {
