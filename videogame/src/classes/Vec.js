@@ -1,3 +1,4 @@
+// Vec.js: Vector 2D con operaciones básicas
 export class Vec {
   constructor(x, y) {
     this.x = x;
@@ -16,7 +17,7 @@ export class Vec {
     return Math.sqrt(this.x ** 2 + this.y ** 2);
   }
   normalize() {
-    const mag = this.magnitude();
-    return mag === 0 ? new Vec(0, 0) : new Vec(this.x / mag, this.y / mag);
+    const m = this.magnitude();
+    return m === 0 ? new Vec(0, 0) : new Vec(this.x / m, this.y / m);
   }
 }
