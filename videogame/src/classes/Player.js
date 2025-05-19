@@ -9,6 +9,13 @@ export class Player extends AnimatedObject {
     this.keys = [];
     this.previousDirection = "down";
     this.currentDirection = "down";
+    this.weaponType = "dagger"; // Default weapon
+  }
+
+  setWeapon(type) {
+    if (type === "dagger" || type === "slingshot") {
+      this.weaponType = type;
+    }
   }
 
   update(deltaTime) {
@@ -33,7 +40,9 @@ export class Player extends AnimatedObject {
     this.velocity = new Vec(0, 0);
     for (const key of this.keys) {
       const move = playerMovement[key];
-      this.velocity[move.axis] += move.direction;
+      if (move && move.axis) {
+        this.velocity[move.axis] += move.direction;
+      }
     }
     this.velocity = this.velocity.normalize().times(variables.playerSpeed);
   }
@@ -59,6 +68,8 @@ export class Player extends AnimatedObject {
       this.frame = this.minFrame;
     }
 
-    this.previousDirection = this.currentDirection;
+    if (this.currentDirection !== "idle") {
+      this.previousDirection = this.currentDirection;
+    }
   }
 }

@@ -2,8 +2,7 @@ import { Vec } from "./Vec.js";
 import { Rect } from "./Rect.js";
 import { Player } from "./Player.js";
 import { Coin } from "./Coin.js";
-import { variables } from "../config.js";
-import { keyDirections } from "../config.js";
+import { variables, keyDirections } from "../config.js";
 import { boxOverlap } from "../utils.js";
 
 export class Game {
@@ -57,10 +56,30 @@ export class Game {
 
   createEventListeners() {
     window.addEventListener("keydown", (e) => {
-      if (keyDirections[e.key]) this.add_key(keyDirections[e.key]);
+      if (keyDirections[e.key]) {
+        if (e.key === "1") {
+          this.player.setWeapon("dagger");
+          this.player.setSprite(
+            "./assets/sprites/dagger-sprite-sheet.png",
+            new Rect(0, 0, 64, 64)
+          );
+          this.player.setMovementAnimation();
+        } else if (e.key === "2") {
+          this.player.setWeapon("slingshot");
+          this.player.setSprite(
+            "./assets/sprites/slingshot-sprite-sheet.png",
+            new Rect(0, 0, 64, 64)
+          );
+          this.player.setMovementAnimation();
+        } else {
+          this.add_key(keyDirections[e.key]);
+        }
+      }
     });
     window.addEventListener("keyup", (e) => {
-      if (keyDirections[e.key]) this.del_key(keyDirections[e.key]);
+      if (keyDirections[e.key] && e.key !== "1" && e.key !== "2") {
+        this.del_key(keyDirections[e.key]);
+      }
     });
   }
 
