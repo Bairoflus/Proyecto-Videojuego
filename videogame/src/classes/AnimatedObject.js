@@ -3,7 +3,7 @@ import { GameObject } from "./GameObject.js";
 
 export class AnimatedObject extends GameObject {
   constructor(position, width, height, color, type, sheetCols) {
-    // Llamada al constructor padre con posición, tamaño, color y tipo
+    // Llamada al constructor
     super(position, width, height, color, type);
     this.frame = 0;             // Frame actual de la animación
     this.minFrame = 0;          // Frame inicial del rango de animación

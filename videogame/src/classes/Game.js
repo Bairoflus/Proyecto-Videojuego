@@ -5,6 +5,7 @@ import { Player } from "./Player.js";
 import { Coin } from "./Coin.js";
 import { variables, keyDirections } from "../config.js";
 import { boxOverlap } from "../utils.js";
+
 export class Game {
   constructor() {
     this.createEventListeners();
@@ -14,7 +15,10 @@ export class Game {
   initObjects() {
     this.player = new Player(
       new Vec(variables.canvasWidth / 2, variables.canvasHeight / 2),
-      64, 64, "red", 13
+      64,
+      64,
+      "red",
+      13
     );
     this.player.setSprite("./assets/sprites/dagger-sprite-sheet.png", new Rect(0, 0, 64, 64));
     this.player.setAnimation(130, 130, false, variables.animationDelay);
@@ -49,9 +53,24 @@ export class Game {
   }
   // Eventos de teclado para movimiento
   createEventListeners() {
-    window.addEventListener("keydown", e => { if (keyDirections[e.key]) this.add_key(keyDirections[e.key]); });
-    window.addEventListener("keyup", e => { if (keyDirections[e.key]) this.del_key(keyDirections[e.key]); });
+    window.addEventListener("keydown", e => {
+      const k = e.key.toLowerCase(); // Convertir a minúsculas para evitar problemas de mayúsculas
+      if (keyDirections[k]) {
+        this.add_key(keyDirections[k]);
+      } else if (k === "shift") {
+        // Si la tecla Shift está presionada, iniciar el dash
+        this.player.startDash();
+      }
+    });
+
+    window.addEventListener("keyup", e => {
+      const k = e.key.toLowerCase();
+      if (keyDirections[k]) {
+        this.del_key(keyDirections[k]);
+      }
+    });
   }
+
   // Añade dirección de movimiento
   add_key(direction) {
     if (!this.player.keys.includes(direction)) {
