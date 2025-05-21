@@ -12,6 +12,11 @@ export class Player extends AnimatedObject {
         this.currentDirection = "down";
         this.previousPosition = new Vec(position.x, position.y);
         this.showHitbox = true; // Variable para controlar la visibilidad del hitbox
+        this.currentRoom = null;
+    }
+
+    setCurrentRoom(room) {
+        this.currentRoom = room;
     }
 
     update(deltaTime) {
@@ -20,7 +25,27 @@ export class Player extends AnimatedObject {
 
         this.setVelocity();
         this.setMovementAnimation();
-        this.position = this.position.plus(this.velocity.times(deltaTime));
+        
+        // Intentar movimiento en X
+        const newPositionX = this.position.plus(new Vec(this.velocity.x * deltaTime, 0));
+        const tempPlayerX = new Player(newPositionX, this.width, this.height, this.color, this.sheetCols);
+        
+        // Intentar movimiento en Y
+        const newPositionY = this.position.plus(new Vec(0, this.velocity.y * deltaTime));
+        const tempPlayerY = new Player(newPositionY, this.width, this.height, this.color, this.sheetCols);
+        
+        // Verificar colisiones por separado
+        const canMoveX = !this.currentRoom.checkWallCollision(tempPlayerX);
+        const canMoveY = !this.currentRoom.checkWallCollision(tempPlayerY);
+        
+        // Aplicar movimiento según las colisiones
+        if (canMoveX) {
+            this.position.x = newPositionX.x;
+        }
+        if (canMoveY) {
+            this.position.y = newPositionY.y;
+        }
+        
         this.constrainToCanvas();
         this.updateFrame(deltaTime);
     }

@@ -27,6 +27,7 @@ export class Game {
     );
     this.player.setSprite("./assets/sprites/dagger-sprite-sheet.png", new Rect(0, 0, 64, 64));
     this.player.setAnimation(130, 130, false, variables.animationDelay);
+    this.player.setCurrentRoom(this.currentRoom);
   }
   // Dibuja la sala actual y el jugador
   draw(ctx) {
@@ -45,6 +46,8 @@ export class Game {
         if (nextLayout) {
           // Crear nueva sala
           this.currentRoom = new Room(nextLayout);
+          // Actualizar referencia de sala en el jugador
+          this.player.setCurrentRoom(this.currentRoom);
           // Reposicionar jugador en el lado izquierdo de la nueva sala
           this.player.position = this.currentRoom.getPlayerStartPosition();
           // Asegurar que el jugador no pueda moverse durante la transición
