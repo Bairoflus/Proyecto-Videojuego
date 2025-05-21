@@ -11,7 +11,7 @@ export class GoblinDagger extends MeleeEnemy {
       "red", // color (temporary, will be replaced by sprite)
       4, // sheetCols
       "goblin_dagger", // type
-      variables.playerSpeed * 0.7, // movementSpeed (70% of player speed)
+      variables.playerSpeed * 5, // movementSpeed (5x player speed to compensate for normalization)
       10, // baseDamage
       20 // maxHealth
     );
