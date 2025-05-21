@@ -1,4 +1,3 @@
-// Player.js: Jugador controlable con física y animación
 import { AnimatedObject } from "./AnimatedObject.js";
 import { Vec } from "./Vec.js";
 import {
@@ -77,6 +76,7 @@ export class Player extends AnimatedObject {
       this.frame = this.minFrame;
     }
   }
+
   update(deltaTime) {
     // Update invulnerability timer
     if (this.isInvulnerable) {
@@ -111,7 +111,7 @@ export class Player extends AnimatedObject {
     this.constrainToCanvas();
     this.updateFrame(deltaTime);
   }
-  // Evita salida del canvas
+
   constrainToCanvas() {
     const w = variables.canvasWidth;
     const h = variables.canvasHeight;
@@ -121,7 +121,7 @@ export class Player extends AnimatedObject {
     if (this.position.x < 0) this.position.x = 0;
     else if (this.position.x + this.width > w) this.position.x = w - this.width;
   }
-  // Calcula velocidad normalizada según teclas presionadas
+
   setVelocity() {
     this.velocity = new Vec(0, 0);
     for (const key of this.keys) {
@@ -132,7 +132,7 @@ export class Player extends AnimatedObject {
     }
     this.velocity = this.velocity.normalize().times(variables.playerSpeed);
   }
-  // Determina dirección y ajusta animación
+
   setMovementAnimation() {
     const v = this.velocity;
     // Only update direction if we're actually moving

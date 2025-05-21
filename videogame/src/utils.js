@@ -1,4 +1,3 @@
-// Función auxiliar de detección de colisiones (idéntica a boxOverlap en draw.js)
 export function boxOverlap(obj1, obj2) {
   return (
     obj1.position.x + obj1.width > obj2.position.x &&

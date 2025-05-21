@@ -1,4 +1,3 @@
-// Game.js: Lógica principal del juego
 import { Vec } from "./Vec.js";
 import { Rect } from "./Rect.js";
 import { Player } from "./Player.js";
@@ -7,12 +6,13 @@ import { GoblinArcher } from "./enemies/floor1/GoblinArcher.js";
 import { GoblinDagger } from "./enemies/floor1/GoblinDagger.js";
 import { variables, keyDirections, playerMovement } from "../config.js";
 import { boxOverlap } from "../utils.js";
+
 export class Game {
   constructor() {
     this.createEventListeners();
     this.initObjects();
   }
-  // Crea jugador, actores y monedas
+
   initObjects() {
     this.player = new Player(
       new Vec(variables.canvasWidth / 2, variables.canvasHeight / 2),
@@ -20,6 +20,10 @@ export class Game {
       64,
       "red",
       13
+    );
+    this.player.setSprite(
+      "./assets/sprites/dagger-sprite-sheet.png",
+      new Rect(0, 0, 64, 64)
     );
     this.enemies = [
       new GoblinArcher(new Vec(100, 100)),
@@ -29,7 +33,7 @@ export class Game {
 
     variables.backgroundImage.src = "./assets/background/background.jpg";
   }
-  // Genera monedas con sprite y animación
+
   generateCoins(count) {
     const coins = [];
     for (let i = 0; i < count; i++) {
@@ -42,7 +46,7 @@ export class Game {
     }
     return coins;
   }
-  // Dibuja actores, monedas y jugador
+
   draw(ctx) {
     if (variables.backgroundImage.complete) {
       ctx.drawImage(
@@ -58,7 +62,7 @@ export class Game {
     this.coins.forEach((coin) => coin.draw(ctx));
     this.player.draw(ctx);
   }
-  // Actualiza actores, filtra monedas recogidas y jugador
+
   update(deltaTime) {
     this.enemies.forEach((enemy) => (enemy.target = this.player));
     this.enemies.forEach((enemy) => enemy.moveTo(this.player.position));
@@ -69,7 +73,7 @@ export class Game {
     this.coins.forEach((coin) => coin.update(deltaTime));
     this.player.update(deltaTime);
   }
-  // Eventos de teclado para movimiento
+
   createEventListeners() {
     window.addEventListener("keydown", (e) => {
       if (keyDirections[e.key]) {
@@ -100,13 +104,13 @@ export class Game {
       }
     });
   }
-  // Añade dirección de movimiento
+
   add_key(direction) {
     if (!this.player.keys.includes(direction)) {
       this.player.keys.push(direction);
     }
   }
-  // Elimina dirección de movimiento
+
   del_key(direction) {
     const i = this.player.keys.indexOf(direction);
     if (i !== -1) this.player.keys.splice(i, 1);
