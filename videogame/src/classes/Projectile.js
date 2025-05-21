@@ -31,7 +31,6 @@ export class Projectile {
           this.handleCollision(entity);
         }
       });
-      s;
     }
 
     // Check if projectile is out of bounds
