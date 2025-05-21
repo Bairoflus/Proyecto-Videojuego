@@ -3,7 +3,9 @@ import { Vec } from "./Vec.js";
 import { Rect } from "./Rect.js";
 import { Player } from "./Player.js";
 import { Coin } from "./Coin.js";
-import { variables, keyDirections } from "../config.js";
+import { GoblinArcher } from "./enemies/floor1/GoblinArcher.js";
+import { GoblinDagger } from "./enemies/floor1/GoblinDagger.js";
+import { variables, keyDirections, playerMovement } from "../config.js";
 import { boxOverlap } from "../utils.js";
 export class Game {
   constructor() {
@@ -14,12 +16,18 @@ export class Game {
   initObjects() {
     this.player = new Player(
       new Vec(variables.canvasWidth / 2, variables.canvasHeight / 2),
-      64, 64, "red", 13
+      64,
+      64,
+      "red",
+      13
     );
-    this.player.setSprite("./assets/sprites/dagger-sprite-sheet.png", new Rect(0, 0, 64, 64));
-    this.player.setAnimation(130, 130, false, variables.animationDelay);
-    this.actors = [];
+    this.enemies = [
+      new GoblinArcher(new Vec(100, 100)),
+      new GoblinDagger(new Vec(200, 200)),
+    ];
     this.coins = this.generateCoins(10);
+
+    variables.backgroundImage.src = "./assets/background/background.jpg";
   }
   // Genera monedas con sprite y animación
   generateCoins(count) {
@@ -36,21 +44,61 @@ export class Game {
   }
   // Dibuja actores, monedas y jugador
   draw(ctx) {
-    this.actors.forEach(actor => actor.draw(ctx));
-    this.coins.forEach(coin => coin.draw(ctx));
+    if (variables.backgroundImage.complete) {
+      ctx.drawImage(
+        variables.backgroundImage,
+        0,
+        0,
+        variables.canvasWidth,
+        variables.canvasHeight
+      );
+    }
+
+    this.enemies.forEach((enemy) => enemy.draw(ctx));
+    this.coins.forEach((coin) => coin.draw(ctx));
     this.player.draw(ctx);
   }
   // Actualiza actores, filtra monedas recogidas y jugador
   update(deltaTime) {
-    this.actors.forEach(actor => actor.update(deltaTime));
-    this.coins = this.coins.filter(coin => !boxOverlap(this.player, coin));
-    this.coins.forEach(coin => coin.update(deltaTime));
+    this.enemies.forEach((enemy) => (enemy.target = this.player));
+    this.enemies.forEach((enemy) => enemy.moveTo(this.player.position));
+    this.enemies.forEach((enemy) => enemy.attack(this.player));
+
+    this.enemies.forEach((enemy) => enemy.update(deltaTime, this.player));
+    this.coins = this.coins.filter((coin) => !boxOverlap(this.player, coin));
+    this.coins.forEach((coin) => coin.update(deltaTime));
     this.player.update(deltaTime);
   }
   // Eventos de teclado para movimiento
   createEventListeners() {
-    window.addEventListener("keydown", e => { if (keyDirections[e.key]) this.add_key(keyDirections[e.key]); });
-    window.addEventListener("keyup", e => { if (keyDirections[e.key]) this.del_key(keyDirections[e.key]); });
+    window.addEventListener("keydown", (e) => {
+      if (keyDirections[e.key]) {
+        if (e.key === "1") {
+          this.player.setWeapon("dagger");
+          this.player.setSprite(
+            "./assets/sprites/dagger-sprite-sheet.png",
+            new Rect(0, 0, 64, 64)
+          );
+          this.player.setMovementAnimation();
+        } else if (e.key === "2") {
+          this.player.setWeapon("slingshot");
+          this.player.setSprite(
+            "./assets/sprites/slingshot-sprite-sheet.png",
+            new Rect(0, 0, 64, 64)
+          );
+          this.player.setMovementAnimation();
+        } else if (e.key === " ") {
+          this.player.attack();
+        } else {
+          this.add_key(keyDirections[e.key]);
+        }
+      }
+    });
+    window.addEventListener("keyup", (e) => {
+      if (keyDirections[e.key] && e.key !== "1" && e.key !== "2") {
+        this.del_key(keyDirections[e.key]);
+      }
+    });
   }
   // Añade dirección de movimiento
   add_key(direction) {
