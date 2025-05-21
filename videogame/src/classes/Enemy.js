@@ -3,13 +3,13 @@ import { Vec } from "./Vec.js";
 import { variables } from "../config.js";
 
 export class Enemy extends AnimatedObject {
-  constructor(position, width, height, color, sheetCols, type) {
+  constructor(position, width, height, color, sheetCols, type, movementSpeed) {
     super(position, width, height, color, "enemy", sheetCols);
 
     // Core stats
     this.maxHealth = 100;
     this.health = this.maxHealth;
-    this.movementSpeed = variables.playerSpeed * 0.7;
+    this.movementSpeed = movementSpeed;
     this.baseDamage = 10;
     this.attackRange = 50;
     this.attackCooldown = 0;
