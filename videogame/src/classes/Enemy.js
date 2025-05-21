@@ -103,27 +103,29 @@ export class Enemy extends AnimatedObject {
   }
 
   draw(ctx) {
-    super.draw(ctx);
-
     // Health bar
-    const healthBarWidth = 50;
-    const healthBarHeight = 5;
+    const healthBarWidth = this.width; // Make health bar as wide as the enemy
+    const healthBarHeight = 6; //Make it short
+    const healthBarY = this.position.y - this.height / 2 - 10; // Position above enemy
+    const healthBarX = this.position.x - this.width / 2; // Center with enemy
     const healthPercentage = this.health / this.maxHealth;
 
-    ctx.fillStyle = "red";
-    ctx.fillRect(
-      this.position.x + (this.width - healthBarWidth) / 2,
-      this.position.y - 10,
-      healthBarWidth,
-      healthBarHeight
-    );
+    // Draw background (red)
+    ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; // Semi-transparent red
+    ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
 
-    ctx.fillStyle = "green";
+    // Draw current health (green)
+    ctx.fillStyle = "rgba(0, 255, 0, 0.8)"; // Semi-transparent green
     ctx.fillRect(
-      this.position.x + (this.width - healthBarWidth) / 2,
-      this.position.y - 10,
+      healthBarX,
+      healthBarY,
       healthBarWidth * healthPercentage,
       healthBarHeight
     );
+
+    // Draw border
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
   }
 }

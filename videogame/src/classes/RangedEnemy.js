@@ -84,10 +84,13 @@ export class RangedEnemy extends Enemy {
   }
 
   draw(ctx) {
-    // Always draw projectiles, even if enemy is dead
+    // Draw projectiles first
     this.projectiles.forEach((projectile) => projectile.draw(ctx));
 
     if (this.state === "dead") return;
+
+    // Call parent class draw method for health bar and sprite
+    super.draw(ctx);
 
     // Draw enemy as red rectangle
     ctx.fillStyle = "red";
