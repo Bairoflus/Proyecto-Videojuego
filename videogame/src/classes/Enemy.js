@@ -35,7 +35,11 @@ export class Enemy extends AnimatedObject {
   }
 
   takeDamage(amount) {
-    this.health -= amount;
+    if (this.state === "dead") return;
+
+    this.health = Math.max(0, this.health - amount);
+    console.log(`${this.type} health:`, this.health);
+
     if (this.health <= 0) {
       this.die();
     }
@@ -43,6 +47,7 @@ export class Enemy extends AnimatedObject {
 
   die() {
     this.state = "dead";
+    // TODO: Add death animation and effects
   }
 
   moveTo(targetPosition) {
