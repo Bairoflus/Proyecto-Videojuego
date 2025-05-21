@@ -2,6 +2,8 @@ import { Vec } from "./Vec.js";
 import { Rect } from "./Rect.js";
 import { Player } from "./Player.js";
 import { Coin } from "./Coin.js";
+import { GoblinArcher } from "./enemies/floor1/GoblinArcher.js";
+import { GoblinDagger } from "./enemies/floor1/GoblinDagger.js";
 import { variables, keyDirections, playerMovement } from "../config.js";
 import { boxOverlap } from "../utils.js";
 
@@ -23,8 +25,13 @@ export class Game {
       "./assets/sprites/dagger-sprite-sheet.png",
       new Rect(0, 0, 64, 64)
     );
-    this.actors = [];
+    this.enemies = [
+      new GoblinArcher(new Vec(100, 100)),
+      new GoblinDagger(new Vec(200, 200)),
+    ];
     this.coins = this.generateCoins(10);
+
+    variables.backgroundImage.src = "./assets/background/background.jpg";
   }
 
   generateCoins(count) {
@@ -41,13 +48,27 @@ export class Game {
   }
 
   draw(ctx) {
-    this.actors.forEach((actor) => actor.draw(ctx));
+    if (variables.backgroundImage.complete) {
+      ctx.drawImage(
+        variables.backgroundImage,
+        0,
+        0,
+        variables.canvasWidth,
+        variables.canvasHeight
+      );
+    }
+
+    this.enemies.forEach((enemy) => enemy.draw(ctx));
     this.coins.forEach((coin) => coin.draw(ctx));
     this.player.draw(ctx);
   }
 
   update(deltaTime) {
-    this.actors.forEach((actor) => actor.update(deltaTime));
+    this.enemies.forEach((enemy) => (enemy.target = this.player));
+    this.enemies.forEach((enemy) => enemy.moveTo(this.player.position));
+    this.enemies.forEach((enemy) => enemy.attack(this.player));
+
+    this.enemies.forEach((enemy) => enemy.update(deltaTime, this.player));
     this.coins = this.coins.filter((coin) => !boxOverlap(this.player, coin));
     this.coins.forEach((coin) => coin.update(deltaTime));
     this.player.update(deltaTime);

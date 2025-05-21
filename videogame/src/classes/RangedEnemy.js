@@ -39,7 +39,7 @@ export class RangedEnemy extends Enemy {
     if (this.state === "dead") return;
 
     const direction = targetPosition.minus(this.position);
-    const distance = direction.length();
+    const distance = direction.magnitude();
 
     if (distance < this.retreatDistance) {
       // Move away if too close
@@ -59,7 +59,7 @@ export class RangedEnemy extends Enemy {
     }
   }
 
-  update(deltaTime) {
+  update(deltaTime, player) {
     if (this.state === "dead") return;
 
     if (this.attackCooldown > 0) {
@@ -68,7 +68,7 @@ export class RangedEnemy extends Enemy {
 
     // Update projectiles
     this.projectiles = this.projectiles.filter((projectile) => {
-      projectile.update(deltaTime);
+      projectile.update(deltaTime, player);
       return projectile.isActive;
     });
 

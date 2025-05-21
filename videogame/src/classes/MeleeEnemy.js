@@ -35,7 +35,7 @@ export class MeleeEnemy extends Enemy {
     if (this.state === "dead") return;
 
     const direction = targetPosition.minus(this.position);
-    const distance = direction.length();
+    const distance = direction.magnitude();
 
     if (distance > this.attackRange) {
       this.state = "chasing";

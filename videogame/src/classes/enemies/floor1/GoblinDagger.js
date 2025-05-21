@@ -1,40 +1,51 @@
-import { MeleeEnemy } from "../MeleeEnemy.js";
+import { MeleeEnemy } from "../../MeleeEnemy.js";
+import { Vec } from "../../Vec.js";
+import { variables } from "../../../config.js";
 
 export class GoblinDagger extends MeleeEnemy {
   constructor(position) {
     super(
       position,
-      64, // width
-      64, // height
-      "green", // color
+      32, // width (same as player)
+      32, // height (same as player)
+      "red", // color (temporary, will be replaced by sprite)
       4, // sheetCols
       "goblin_dagger", // type
-      50, // movementSpeed
-      20, // baseDamage
-      40 // maxHealth
+      variables.playerSpeed * 0.7, // movementSpeed (70% of player speed)
+      10, // baseDamage
+      20 // maxHealth
     );
 
     // Goblin Dagger specific properties
-    this.attackRange = 40;
+    this.attackRange = 32; // Attack when touching the player
     this.attackDuration = 1000; // 1 second between attacks
-    this.bleedChance = 0.2;
+  }
+
+  moveTo(targetPosition) {
+    if (this.state === "dead") return;
+
+    const direction = targetPosition.minus(this.position);
+    const distance = direction.magnitude();
+
+    // Always chase the player
+    this.state = "chasing";
+    this.velocity = direction.normalize().times(this.movementSpeed);
+    this.position = this.position.plus(this.velocity);
+
+    // Attack if in range
+    if (distance <= this.attackRange) {
+      this.attack(this.target);
+    }
   }
 
   attack(target) {
     if (this.state === "dead" || this.attackCooldown > 0) return;
 
-    const distance = target.position.minus(this.position).length();
+    const distance = target.position.minus(this.position).magnitude();
     if (distance <= this.attackRange) {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
-
-      // Apply damage
       target.takeDamage(this.baseDamage);
-
-      // Apply bleed effect
-      if (Math.random() < this.bleedChance) {
-        // TODO: Apply bleed effect
-      }
     }
   }
 

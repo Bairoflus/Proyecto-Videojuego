@@ -1,15 +1,18 @@
-import { RangedEnemy } from "../RangedEnemy.js";
+import { RangedEnemy } from "../../RangedEnemy.js";
+import { Projectile } from "../../Projectile.js";
+import { variables } from "../../../config.js";
+import { Vec } from "../../Vec.js";
 
 export class GoblinArcher extends RangedEnemy {
   constructor(position) {
     super(
       position,
-      64, // width
-      64, // height
-      "green", // color
+      32, // width (same as player)
+      32, // height (same as player)
+      "red", // color (temporary, will be replaced by sprite)
       4, // sheetCols
       "goblin_archer", // type
-      30, // movementSpeed
+      0, // movementSpeed (0 to stay static)
       15, // baseDamage
       30 // maxHealth
     );
@@ -20,10 +23,16 @@ export class GoblinArcher extends RangedEnemy {
     this.projectileSpeed = 300;
   }
 
+  moveTo(targetPosition) {
+    // Do nothing - stay static
+    this.velocity = new Vec(0, 0);
+    this.state = "idle";
+  }
+
   attack(target) {
     if (this.state === "dead" || this.attackCooldown > 0) return;
 
-    const distance = target.position.minus(this.position).length();
+    const distance = target.position.minus(this.position).magnitude();
     if (distance <= this.attackRange) {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
@@ -32,8 +41,13 @@ export class GoblinArcher extends RangedEnemy {
   }
 
   fireProjectile(target) {
-    // TODO: Create and fire arrow projectile
-    target.takeDamage(this.baseDamage);
+    const projectile = new Projectile(
+      this.position,
+      target,
+      this.projectileSpeed,
+      this.baseDamage
+    );
+    this.projectiles.push(projectile);
   }
 
   updateAnimation() {

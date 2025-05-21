@@ -17,6 +17,35 @@ export class Player extends AnimatedObject {
     this.weaponType = "dagger"; // Default weapon
     this.isAttacking = false;
     this.attackCooldown = 0;
+
+    // Player stats
+    this.maxHealth = 100;
+    this.health = this.maxHealth;
+    this.isInvulnerable = false;
+    this.invulnerabilityDuration = 1000; // 1 second of invulnerability after taking damage
+    this.invulnerabilityTimer = 0;
+  }
+
+  takeDamage(amount) {
+    if (this.isInvulnerable) return;
+
+    this.health = Math.max(0, this.health - amount);
+    this.isInvulnerable = true;
+    this.invulnerabilityTimer = this.invulnerabilityDuration;
+
+    // Log player health after taking damage
+    console.log("Player health:", this.health);
+
+    // TODO: Add damage feedback (screen flash, sound, etc.)
+
+    if (this.health <= 0) {
+      this.die();
+    }
+  }
+
+  die() {
+    // TODO: Implement death logic
+    console.log("Player died!");
   }
 
   setWeapon(type) {
@@ -49,6 +78,14 @@ export class Player extends AnimatedObject {
   }
 
   update(deltaTime) {
+    // Update invulnerability timer
+    if (this.isInvulnerable) {
+      this.invulnerabilityTimer -= deltaTime;
+      if (this.invulnerabilityTimer <= 0) {
+        this.isInvulnerable = false;
+      }
+    }
+
     if (this.attackCooldown > 0) {
       this.attackCooldown -= deltaTime;
     }
