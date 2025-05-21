@@ -1,4 +1,3 @@
-// Rect.js: Define un rectángulo para recortes de sprite
 export class Rect {
   constructor(x, y, width, height) {
     this.x = x;

@@ -1,4 +1,3 @@
-// GameObject.js: Clase base para objetos del juego
 export class GameObject {
   constructor(position, width, height, color, type) {
     this.position = position;
@@ -7,13 +6,13 @@ export class GameObject {
     this.color = color;
     this.type = type;
   }
-  // Asigna imagen y rect de sprite
+
   setSprite(imagePath, rect) {
     this.spriteImage = new Image();
     this.spriteImage.src = imagePath;
     if (rect) this.spriteRect = rect;
   }
-  // Dibuja sprite o rect sólido
+
   draw(ctx) {
     if (this.spriteImage) {
       if (this.spriteRect) {
@@ -47,6 +46,6 @@ export class GameObject {
       );
     }
   }
-  // Placeholder para lógica de actualización
-  update() { }
+
+  update() {}
 }
