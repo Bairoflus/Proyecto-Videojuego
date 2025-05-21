@@ -5,52 +5,78 @@ import { Player } from "./Player.js";
 import { Coin } from "./Coin.js";
 import { variables, keyDirections } from "../config.js";
 import { boxOverlap } from "../utils.js";
+import { FloorGenerator } from "./FloorGenerator.js";
+import { Room } from "./Room.js";
+
 export class Game {
   constructor() {
     this.createEventListeners();
+    this.floorGenerator = new FloorGenerator();
     this.initObjects();
   }
-  // Crea jugador, actores y monedas
+  // Crea jugador y sala inicial
   initObjects() {
+    // Crear sala inicial
+    this.currentRoom = new Room(this.floorGenerator.getCurrentRoomLayout());
+    
+    // Crear jugador en la posición inicial de la sala
+    const startPos = this.currentRoom.getPlayerStartPosition();
     this.player = new Player(
-      new Vec(variables.canvasWidth / 2, variables.canvasHeight / 2),
+      startPos,
       64, 64, "red", 13
     );
     this.player.setSprite("./assets/sprites/dagger-sprite-sheet.png", new Rect(0, 0, 64, 64));
     this.player.setAnimation(130, 130, false, variables.animationDelay);
-    this.actors = [];
-    this.coins = this.generateCoins(10);
   }
-  // Genera monedas con sprite y animación
-  generateCoins(count) {
-    const coins = [];
-    for (let i = 0; i < count; i++) {
-      const x = Math.random() * (variables.canvasWidth - 32);
-      const y = Math.random() * (variables.canvasHeight - 32);
-      const coin = new Coin(new Vec(x, y), 32, 32, "yellow", 8);
-      coin.setSprite("./assets/sprites/coin_gold.png", new Rect(0, 0, 32, 32));
-      coin.setAnimation(0, 7, true, variables.animationDelay);
-      coins.push(coin);
-    }
-    return coins;
-  }
-  // Dibuja actores, monedas y jugador
+  // Dibuja la sala actual y el jugador
   draw(ctx) {
-    this.actors.forEach(actor => actor.draw(ctx));
-    this.coins.forEach(coin => coin.draw(ctx));
+    this.currentRoom.draw(ctx);
     this.player.draw(ctx);
   }
-  // Actualiza actores, filtra monedas recogidas y jugador
+  // Actualiza la lógica del juego
   update(deltaTime) {
-    this.actors.forEach(actor => actor.update(deltaTime));
-    this.coins = this.coins.filter(coin => !boxOverlap(this.player, coin));
-    this.coins.forEach(coin => coin.update(deltaTime));
+    // Actualizar sala actual
+    this.currentRoom.update(deltaTime);
+
+    // Verificar transición de sala
+    if (this.currentRoom.isPlayerAtRightEdge(this.player)) {
+      if (this.floorGenerator.nextRoom()) {
+        const nextLayout = this.floorGenerator.getCurrentRoomLayout();
+        if (nextLayout) {
+          // Crear nueva sala
+          this.currentRoom = new Room(nextLayout);
+          // Reposicionar jugador en el lado izquierdo de la nueva sala
+          this.player.position = this.currentRoom.getPlayerStartPosition();
+          // Asegurar que el jugador no pueda moverse durante la transición
+          this.player.velocity = new Vec(0, 0);
+          this.player.keys = [];
+        }
+      }
+    }
+
+    // Actualizar jugador
     this.player.update(deltaTime);
+
+    // Verificar colisiones con paredes
+    if (this.currentRoom.checkWallCollision(this.player)) {
+      // Revertir posición del jugador si colisiona con pared
+      this.player.position = this.player.previousPosition;
+    }
+
+    // Guardar posición actual para la siguiente actualización
+    this.player.previousPosition = new Vec(
+      this.player.position.x,
+      this.player.position.y
+    );
   }
   // Eventos de teclado para movimiento
   createEventListeners() {
-    window.addEventListener("keydown", e => { if (keyDirections[e.key]) this.add_key(keyDirections[e.key]); });
-    window.addEventListener("keyup", e => { if (keyDirections[e.key]) this.del_key(keyDirections[e.key]); });
+    window.addEventListener("keydown", e => { 
+      if (keyDirections[e.key]) this.add_key(keyDirections[e.key]); 
+    });
+    window.addEventListener("keyup", e => { 
+      if (keyDirections[e.key]) this.del_key(keyDirections[e.key]); 
+    });
   }
   // Añade dirección de movimiento
   add_key(direction) {

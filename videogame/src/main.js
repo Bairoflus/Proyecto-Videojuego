@@ -1,7 +1,5 @@
 /*
- * Fausto Izquierdo
- * Fecha: 2025-04-23
- * Punto de entrada de la aplicación
+Punto de entrada de la aplicación
  */
 
 // Importar módulos necesarios
