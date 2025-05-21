@@ -11,12 +11,13 @@ export class Enemy extends AnimatedObject {
     sheetCols,
     type,
     movementSpeed,
-    baseDamage
+    baseDamage,
+    maxHealth
   ) {
     super(position, width, height, color, "enemy", sheetCols);
 
     // Core stats
-    this.maxHealth = 100;
+    this.maxHealth = maxHealth;
     this.health = this.maxHealth;
     this.movementSpeed = movementSpeed;
     this.baseDamage = baseDamage;
