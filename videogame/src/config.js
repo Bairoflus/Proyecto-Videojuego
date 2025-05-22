@@ -1,8 +1,8 @@
 // Archivo de configuración de variables y direcciones de teclas
 export const variables = {
   // Dimensiones del canvas
-  canvasWidth: 800,
-  canvasHeight: 600,
+  canvasWidth: 800,  // 25 * 32
+  canvasHeight: 608, // 19 * 32
   // Retardo de animación en milisegundos
   animationDelay: 100,
   // Velocidad de movimiento del jugador
