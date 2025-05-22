@@ -12,6 +12,8 @@ export class Game {
   constructor() {
     this.createEventListeners();
     this.initObjects();
+    // Make game instance accessible to other classes
+    window.game = this;
   }
 
   initObjects() {
@@ -68,11 +70,15 @@ export class Game {
   }
 
   update(deltaTime) {
+    // Remove dead enemies
+    this.enemies = this.enemies.filter((enemy) => enemy.state !== "dead");
+
+    // Update remaining enemies
     this.enemies.forEach((enemy) => (enemy.target = this.player));
     this.enemies.forEach((enemy) => enemy.moveTo(this.player.position));
     this.enemies.forEach((enemy) => enemy.attack(this.player));
-
     this.enemies.forEach((enemy) => enemy.update(deltaTime, this.player));
+
     this.coins = this.coins.filter((coin) => !boxOverlap(this.player, coin));
     this.coins.forEach((coin) => coin.update(deltaTime));
     this.player.update(deltaTime);

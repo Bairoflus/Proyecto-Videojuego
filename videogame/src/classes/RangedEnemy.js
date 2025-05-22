@@ -60,7 +60,14 @@ export class RangedEnemy extends Enemy {
   }
 
   update(deltaTime, player) {
-    if (this.state === "dead") return;
+    if (this.state === "dead") {
+      // Keep updating existing projectiles even when dead
+      this.projectiles = this.projectiles.filter((projectile) => {
+        projectile.update(deltaTime, [player]);
+        return projectile.isActive;
+      });
+      return;
+    }
 
     if (this.attackCooldown > 0) {
       this.attackCooldown -= deltaTime;
@@ -68,7 +75,7 @@ export class RangedEnemy extends Enemy {
 
     // Update projectiles
     this.projectiles = this.projectiles.filter((projectile) => {
-      projectile.update(deltaTime, player);
+      projectile.update(deltaTime, [player]); // Wrap player in array
       return projectile.isActive;
     });
 
@@ -77,6 +84,14 @@ export class RangedEnemy extends Enemy {
   }
 
   draw(ctx) {
+    // Draw projectiles first
+    this.projectiles.forEach((projectile) => projectile.draw(ctx));
+
+    if (this.state === "dead") return;
+
+    // Call parent class draw method for health bar and sprite
+    super.draw(ctx);
+
     // Draw enemy as red rectangle
     ctx.fillStyle = "red";
     ctx.fillRect(
@@ -85,12 +100,11 @@ export class RangedEnemy extends Enemy {
       this.width,
       this.height
     );
-
-    // Draw projectiles
-    this.projectiles.forEach((projectile) => projectile.draw(ctx));
   }
 
   fireProjectile(target) {
+    if (this.state === "dead") return;
+
     const projectile = new Projectile(
       this.position,
       target,

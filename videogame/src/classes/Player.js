@@ -1,5 +1,6 @@
 import { AnimatedObject } from "./AnimatedObject.js";
 import { Vec } from "./Vec.js";
+import { Projectile } from "./Projectile.js";
 import {
   variables,
   playerMovement,
@@ -25,6 +26,9 @@ export class Player extends AnimatedObject {
     this.weaponType = "dagger"; // Default weapon
     this.isAttacking = false;
     this.attackCooldown = 0;
+    this.projectiles = []; // Array to store active projectiles
+    this.hasCreatedProjectile = false; // Flag to track if projectile was created
+    this.hasAppliedMeleeDamage = false; // Flag to track if melee damage was applied
 
     // Player stats
     this.maxHealth = 100;
@@ -32,6 +36,10 @@ export class Player extends AnimatedObject {
     this.isInvulnerable = false;
     this.invulnerabilityDuration = 1000; // 1 second of invulnerability after taking damage
     this.invulnerabilityTimer = 0;
+
+    // Hitbox (smaller than sprite)
+    this.hitboxWidth = width * 0.6; // 60% of sprite width
+    this.hitboxHeight = height * 0.6; // 60% of sprite height
   }
 
   takeDamage(amount) {
@@ -65,6 +73,8 @@ export class Player extends AnimatedObject {
   attack() {
     if (!this.isAttacking && this.attackCooldown <= 0) {
       this.isAttacking = true;
+      this.hasCreatedProjectile = false; // Reset projectile creation flag
+      this.hasAppliedMeleeDamage = false; // Reset melee damage flag
       this.attackCooldown = playerAttack.cooldown;
       // Store current frame and direction before attacking
       this.preAttackFrame = this.frame;
@@ -110,18 +120,95 @@ export class Player extends AnimatedObject {
       if (this.attackCooldown > 0) {
         this.attackCooldown -= deltaTime;
       }
-      if (this.isAttacking && this.frame >= this.maxFrame) {
-        this.isAttacking = false;
-        // Return to the exact frame and direction we were in before the attack
-        const anim = playerMovement[this.preAttackDirection];
-        this.minFrame = this.preAttackMinFrame;
-        this.maxFrame = this.preAttackMaxFrame;
-        this.frame = this.preAttackFrame;
-        this.repeat = anim.repeat;
-        this.frameDuration = anim.duration;
-        this.spriteRect.x = this.frame % this.sheetCols;
-        this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
+
+      // Handle attack animation and projectile creation
+      if (this.isAttacking) {
+        // Create projectile at the middle of the attack animation
+        if (
+          this.weaponType === "slingshot" &&
+          !this.hasCreatedProjectile &&
+          this.frame === Math.floor((this.minFrame + this.maxFrame) / 2)
+        ) {
+          const projectileSpeed = 300;
+          const projectileDamage = 15;
+
+          // Calculate spawn position at the center of the player
+          const spawnPos = new Vec(
+            this.position.x + this.width / 2,
+            this.position.y + this.height / 2
+          );
+
+          // Create a target position based on player's direction
+          let targetPos = new Vec(spawnPos.x, spawnPos.y);
+          switch (this.currentDirection) {
+            case "up":
+              targetPos.y -= 100;
+              break;
+            case "down":
+              targetPos.y += 100;
+              break;
+            case "left":
+              targetPos.x -= 100;
+              break;
+            case "right":
+              targetPos.x += 100;
+              break;
+          }
+
+          // Create a temporary target object for the projectile
+          const target = { position: targetPos };
+
+          const projectile = new Projectile(
+            spawnPos,
+            target,
+            projectileSpeed,
+            projectileDamage
+          );
+          this.projectiles.push(projectile);
+          this.hasCreatedProjectile = true; // Mark that we've created the projectile
+        }
+
+        // Apply melee damage at the middle of the attack animation
+        if (
+          this.weaponType === "dagger" &&
+          !this.hasAppliedMeleeDamage &&
+          this.frame === Math.floor((this.minFrame + this.maxFrame) / 2)
+        ) {
+          const attackRange = 50;
+          const attackDamage = 20;
+
+          // Get all enemies from the game instance
+          const enemies = window.game.enemies;
+          enemies.forEach((enemy) => {
+            const distance = enemy.position.minus(this.position).magnitude();
+            if (distance <= attackRange) {
+              enemy.takeDamage(attackDamage);
+            }
+          });
+          this.hasAppliedMeleeDamage = true;
+        }
+
+        if (this.frame >= this.maxFrame) {
+          this.isAttacking = false;
+          this.hasCreatedProjectile = false; // Reset the flag
+          this.hasAppliedMeleeDamage = false; // Reset the flag
+          // Return to the exact frame and direction we were in before the attack
+          const anim = playerMovement[this.preAttackDirection];
+          this.minFrame = this.preAttackMinFrame;
+          this.maxFrame = this.preAttackMaxFrame;
+          this.frame = this.preAttackFrame;
+          this.repeat = anim.repeat;
+          this.frameDuration = anim.duration;
+          this.spriteRect.x = this.frame % this.sheetCols;
+          this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
+        }
       }
+
+      // Update projectiles
+      this.projectiles = this.projectiles.filter((projectile) => {
+        projectile.update(deltaTime, window.game.enemies);
+        return projectile.isActive;
+      });
 
       this.setVelocity();
       this.position = this.position.plus(
@@ -135,6 +222,12 @@ export class Player extends AnimatedObject {
       this.setMovementAnimation();
     }
     this.updateFrame(deltaTime);
+  }
+
+  draw(ctx) {
+    super.draw(ctx);
+    // Draw projectiles
+    this.projectiles.forEach((projectile) => projectile.draw(ctx));
   }
 
 

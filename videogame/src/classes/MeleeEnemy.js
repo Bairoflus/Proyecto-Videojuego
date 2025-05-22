@@ -59,6 +59,9 @@ export class MeleeEnemy extends Enemy {
   }
 
   draw(ctx) {
+    // Call parent class draw method for health bar and sprite
+    super.draw(ctx);
+
     // Draw enemy as red rectangle
     ctx.fillStyle = "red";
     ctx.fillRect(

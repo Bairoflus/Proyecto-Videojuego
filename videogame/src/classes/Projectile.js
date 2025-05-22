@@ -16,15 +16,21 @@ export class Projectile {
     this.hasHit = false;
   }
 
-  update(deltaTime, player) {
+  update(deltaTime, entities) {
     if (!this.isActive) return;
 
     // Move projectile
     this.position = this.position.plus(this.velocity.times(deltaTime / 1000));
 
-    // Check collision with player
-    if (player && this.checkCollision(player)) {
-      this.handleCollision(player);
+    // Check collision with all entities
+    if (entities) {
+      // Convert single entity to array if needed
+      const entityArray = Array.isArray(entities) ? entities : [entities];
+      entityArray.forEach((entity) => {
+        if (this.checkCollision(entity)) {
+          this.handleCollision(entity);
+        }
+      });
     }
 
     // Check if projectile is out of bounds
@@ -49,20 +55,20 @@ export class Projectile {
   }
 
   checkCollision(entity) {
-    if (!this.isActive || this.hasHit) return false;
+    if (!this.isActive || this.hasHit || entity.state === "dead") return false;
 
     const distance = this.position.minus(entity.position).magnitude();
     return distance < this.radius + entity.width / 2;
   }
 
-  handleCollision(player) {
+  handleCollision(entity) {
     if (this.hasHit) return;
 
     this.hasHit = true;
     this.isActive = false;
 
-    // Apply damage to player
-    player.takeDamage(this.damage);
+    // Apply damage to entity
+    entity.takeDamage(this.damage);
 
     // TODO: Add hit effect/particles here
   }
