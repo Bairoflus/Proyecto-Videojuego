@@ -102,7 +102,7 @@ export class Player extends AnimatedObject {
         this.isInvulnerable = false;
       }
     }
-    // Reducir cooldown y tiempo de dash
+    // Reduce cooldown time
     if (this.dashCooldownTime > 0) this.dashCooldownTime -= deltaTime;
 
     if (this.dashTime > 0) {
@@ -115,7 +115,7 @@ export class Player extends AnimatedObject {
       this.dashTime -= deltaTime;
     }
     else {
-      // Movimiento normal
+      // Normal movement
       // Update invulnerability timer
       if (this.attackCooldown > 0) {
         this.attackCooldown -= deltaTime;
@@ -231,7 +231,7 @@ export class Player extends AnimatedObject {
   }
 
 
-  // startDash: inicia el dash si no está en cooldown
+  // startDash: start the dash if cooldown is over
   startDash() {
     if (this.dashCooldownTime <= 0 && this.dashTime <= 0) {
       this.dashTime = this.dashDuration;
@@ -242,7 +242,7 @@ export class Player extends AnimatedObject {
     }
   }
 
-  // Evita salida del canvas
+  // constrainToCanvas: keep the player inside the canvas
   constrainToCanvas() {
     const w = variables.canvasWidth;
 
