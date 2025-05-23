@@ -7,6 +7,7 @@ export const variables = {
   game: null,
   oldTime: null,
   backgroundImage: new Image(),
+  showHitboxes: true, // Enable hitbox visualization for debugging
 };
 variables.backgroundImage.src = "./assets/background/background.jpg";
 

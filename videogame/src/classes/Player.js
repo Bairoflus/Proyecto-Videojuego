@@ -8,6 +8,11 @@ import {
   getAttackFrames,
 } from "../config.js";
 
+// Attack range constants
+const DAGGER_ATTACK_RANGE = 30;
+const DAGGER_ATTACK_WIDTH = 20;
+const DAGGER_ATTACK_DAMAGE = 10;
+
 export class Player extends AnimatedObject {
   constructor(position, width, height, color, sheetCols) {
     super(position, width, height, color, "player", sheetCols);
@@ -78,9 +83,10 @@ export class Player extends AnimatedObject {
 
       // Apply melee damage immediately for dagger attacks
       if (this.weaponType === "dagger") {
-        const attackRange = 50;
-        const attackWidth = 40;
-        const attackDamage = 20;
+        // Using constants defined at the top of the file
+        const attackRange = DAGGER_ATTACK_RANGE;
+        const attackWidth = DAGGER_ATTACK_WIDTH;
+        const attackDamage = DAGGER_ATTACK_DAMAGE;
 
         // Calculate player center position
         const playerCenterX = this.position.x + this.width / 2;
@@ -266,6 +272,65 @@ export class Player extends AnimatedObject {
     super.draw(ctx);
     // Draw projectiles
     this.projectiles.forEach((projectile) => projectile.draw(ctx));
+
+    // Draw attack range visualization for melee attacks (dagger)
+    if (variables.showHitboxes && this.weaponType === "dagger") {
+      const attackRange = DAGGER_ATTACK_RANGE;
+      const attackWidth = DAGGER_ATTACK_WIDTH;
+
+      // Calculate player center position
+      const playerCenterX = this.position.x + this.width / 2;
+      const playerCenterY = this.position.y + this.height / 2;
+
+      // Define attack area based on direction
+      let attackArea = {
+        x: playerCenterX,
+        y: playerCenterY,
+        width: attackRange,
+        height: attackWidth,
+      };
+
+      // Position attack area based on direction
+      switch (this.currentDirection) {
+        case "right":
+          attackArea.x = playerCenterX;
+          attackArea.y = playerCenterY - attackWidth / 2;
+          break;
+        case "left":
+          attackArea.x = playerCenterX - attackRange;
+          attackArea.y = playerCenterY - attackWidth / 2;
+          break;
+        case "up":
+          attackArea.width = attackWidth;
+          attackArea.height = attackRange;
+          attackArea.x = playerCenterX - attackWidth / 2;
+          attackArea.y = playerCenterY - attackRange;
+          break;
+        case "down":
+          attackArea.width = attackWidth;
+          attackArea.height = attackRange;
+          attackArea.x = playerCenterX - attackWidth / 2;
+          attackArea.y = playerCenterY;
+          break;
+      }
+
+      // Draw the attack area
+      ctx.strokeStyle = "rgba(255, 0, 0, 0.7)";
+      ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
+      ctx.lineWidth = 2;
+      ctx.fillRect(
+        attackArea.x,
+        attackArea.y,
+        attackArea.width,
+        attackArea.height
+      );
+      ctx.strokeRect(
+        attackArea.x,
+        attackArea.y,
+        attackArea.width,
+        attackArea.height
+      );
+    }
   }
 
   // startDash: start the dash if cooldown is over
