@@ -41,7 +41,11 @@ export class Game {
 
     // Verificar transición de sala
     if (this.currentRoom.isPlayerAtRightEdge(this.player)) {
-      if (this.floorGenerator.nextRoom()) {
+      // Si es la sala del jefe, avanzar al siguiente piso
+      if (this.floorGenerator.isBossRoom()) {
+        console.log("Transitioning to next floor");
+        this.floorGenerator.nextFloor();
+        
         const nextLayout = this.floorGenerator.getCurrentRoomLayout();
         if (nextLayout) {
           // Crear nueva sala
@@ -53,6 +57,40 @@ export class Game {
           // Asegurar que el jugador no pueda moverse durante la transición
           this.player.velocity = new Vec(0, 0);
           this.player.keys = [];
+        }
+      } else {
+        // Transición normal entre salas
+        if (this.floorGenerator.nextRoom()) {
+          const nextLayout = this.floorGenerator.getCurrentRoomLayout();
+          if (nextLayout) {
+            // Crear nueva sala
+            this.currentRoom = new Room(nextLayout);
+            // Actualizar referencia de sala en el jugador
+            this.player.setCurrentRoom(this.currentRoom);
+            // Reposicionar jugador en el lado izquierdo de la nueva sala
+            this.player.position = this.currentRoom.getPlayerStartPosition();
+            // Asegurar que el jugador no pueda moverse durante la transición
+            this.player.velocity = new Vec(0, 0);
+            this.player.keys = [];
+          }
+        }
+      }
+    } else if (this.currentRoom.isPlayerAtLeftEdge(this.player)) {
+      // Verificar si podemos retroceder a la sala anterior
+      if (!this.floorGenerator.isFirstRoom()) {
+        if (this.floorGenerator.previousRoom()) {
+          const previousLayout = this.floorGenerator.getCurrentRoomLayout();
+          if (previousLayout) {
+            // Crear sala anterior
+            this.currentRoom = new Room(previousLayout);
+            // Actualizar referencia de sala en el jugador
+            this.player.setCurrentRoom(this.currentRoom);
+            // Reposicionar jugador en el lado derecho de la sala anterior
+            this.player.position = this.currentRoom.getPlayerRightEdgePosition();
+            // Asegurar que el jugador no pueda moverse durante la transición
+            this.player.velocity = new Vec(0, 0);
+            this.player.keys = [];
+          }
         }
       }
     }
@@ -89,7 +127,6 @@ export class Game {
   }
   // Elimina dirección de movimiento
   del_key(direction) {
-    const i = this.player.keys.indexOf(direction);
-    if (i !== -1) this.player.keys.splice(i, 1);
+    this.player.keys = this.player.keys.filter(key => key !== direction);
   }
 }
