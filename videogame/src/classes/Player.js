@@ -8,7 +8,6 @@ import {
   getAttackFrames,
 } from "../config.js";
 
-
 export class Player extends AnimatedObject {
   constructor(position, width, height, color, sheetCols) {
     super(position, width, height, color, "player", sheetCols);
@@ -17,12 +16,12 @@ export class Player extends AnimatedObject {
     this.previousDirection = "down";
     this.currentDirection = "down";
     // ——— DASH PROPERTIES ———
-    this.dashDuration = 100;                    // ms que dura el dash
+    this.dashDuration = 100; // ms que dura el dash
     this.dashSpeed = variables.playerSpeed * 3; // velocidad durante dash
-    this.dashTime = 0;                          // tiempo restante de dash
-    this.dashCooldown = 1000;                   // ms de cooldown entre dashes
-    this.dashCooldownTime = 0;                  // timer de cooldown
-    this.dashDirection = new Vec(0, 0);         // dirección fijada al dash
+    this.dashTime = 0; // tiempo restante de dash
+    this.dashCooldown = 1000; // ms de cooldown entre dashes
+    this.dashCooldownTime = 0; // timer de cooldown
+    this.dashDirection = new Vec(0, 0); // dirección fijada al dash
     this.weaponType = "dagger"; // Default weapon
     this.isAttacking = false;
     this.attackCooldown = 0;
@@ -76,6 +75,73 @@ export class Player extends AnimatedObject {
       this.hasCreatedProjectile = false; // Reset projectile creation flag
       this.hasAppliedMeleeDamage = false; // Reset melee damage flag
       this.attackCooldown = playerAttack.cooldown;
+
+      // Apply melee damage immediately for dagger attacks
+      if (this.weaponType === "dagger") {
+        const attackRange = 50;
+        const attackWidth = 40;
+        const attackDamage = 20;
+
+        // Calculate player center position
+        const playerCenterX = this.position.x + this.width / 2;
+        const playerCenterY = this.position.y + this.height / 2;
+
+        // Define attack area based on direction
+        let attackArea = {
+          x: playerCenterX,
+          y: playerCenterY,
+          width: attackRange,
+          height: attackWidth,
+        };
+
+        // Position attack area based on direction
+        switch (this.currentDirection) {
+          case "right":
+            attackArea.x = playerCenterX;
+            attackArea.y = playerCenterY - attackWidth / 2;
+            break;
+          case "left":
+            attackArea.x = playerCenterX - attackRange;
+            attackArea.y = playerCenterY - attackWidth / 2;
+            break;
+          case "up":
+            attackArea.width = attackWidth;
+            attackArea.height = attackRange;
+            attackArea.x = playerCenterX - attackWidth / 2;
+            attackArea.y = playerCenterY - attackRange;
+            break;
+          case "down":
+            attackArea.width = attackWidth;
+            attackArea.height = attackRange;
+            attackArea.x = playerCenterX - attackWidth / 2;
+            attackArea.y = playerCenterY;
+            break;
+        }
+
+        // Get all enemies and check for collision with attack area
+        const enemies = window.game.enemies;
+        enemies.forEach((enemy) => {
+          // Calculate enemy hitbox using full sprite size
+          const enemyHitbox = {
+            x: enemy.position.x,
+            y: enemy.position.y,
+            width: enemy.width,
+            height: enemy.height,
+          };
+
+          // Check collision between attack area and enemy hitbox
+          if (
+            attackArea.x < enemyHitbox.x + enemyHitbox.width &&
+            attackArea.x + attackArea.width > enemyHitbox.x &&
+            attackArea.y < enemyHitbox.y + enemyHitbox.height &&
+            attackArea.y + attackArea.height > enemyHitbox.y
+          ) {
+            enemy.takeDamage(attackDamage);
+          }
+        });
+        this.hasAppliedMeleeDamage = true;
+      }
+
       // Store current frame and direction before attacking
       this.preAttackFrame = this.frame;
       this.preAttackDirection = this.currentDirection;
@@ -108,13 +174,10 @@ export class Player extends AnimatedObject {
     if (this.dashTime > 0) {
       // Durante dash: mover en dashDirection
       this.position = this.position.plus(
-        this.dashDirection.times(
-          this.dashSpeed * deltaTime
-        )
+        this.dashDirection.times(this.dashSpeed * deltaTime)
       );
       this.dashTime -= deltaTime;
-    }
-    else {
+    } else {
       // Normal movement
       // Update invulnerability timer
       if (this.attackCooldown > 0) {
@@ -168,25 +231,7 @@ export class Player extends AnimatedObject {
           this.hasCreatedProjectile = true; // Mark that we've created the projectile
         }
 
-        // Apply melee damage at the middle of the attack animation
-        if (
-          this.weaponType === "dagger" &&
-          !this.hasAppliedMeleeDamage &&
-          this.frame === Math.floor((this.minFrame + this.maxFrame) / 2)
-        ) {
-          const attackRange = 50;
-          const attackDamage = 20;
-
-          // Get all enemies from the game instance
-          const enemies = window.game.enemies;
-          enemies.forEach((enemy) => {
-            const distance = enemy.position.minus(this.position).magnitude();
-            if (distance <= attackRange) {
-              enemy.takeDamage(attackDamage);
-            }
-          });
-          this.hasAppliedMeleeDamage = true;
-        }
+        // Apply melee damage is now handled in the attack() method
 
         if (this.frame >= this.maxFrame) {
           this.isAttacking = false;
@@ -211,9 +256,7 @@ export class Player extends AnimatedObject {
       });
 
       this.setVelocity();
-      this.position = this.position.plus(
-        this.velocity.times(deltaTime)
-      );
+      this.position = this.position.plus(this.velocity.times(deltaTime));
     }
 
     this.constrainToCanvas();
@@ -229,7 +272,6 @@ export class Player extends AnimatedObject {
     // Draw projectiles
     this.projectiles.forEach((projectile) => projectile.draw(ctx));
   }
-
 
   // startDash: start the dash if cooldown is over
   startDash() {
@@ -274,13 +316,13 @@ export class Player extends AnimatedObject {
           ? v.y > 0
             ? "down"
             : v.y < 0
-              ? "up"
-              : this.currentDirection
+            ? "up"
+            : this.currentDirection
           : v.x > 0
-            ? "right"
-            : v.x < 0
-              ? "left"
-              : this.currentDirection;
+          ? "right"
+          : v.x < 0
+          ? "left"
+          : this.currentDirection;
 
       if (newDirection !== this.currentDirection) {
         this.currentDirection = newDirection;

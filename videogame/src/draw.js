@@ -27,12 +27,20 @@ export function setOldTime(value) {
 function drawHitbox(ctx, obj, color = "black") {
   ctx.save();
   ctx.strokeStyle = color;
+  ctx.fillStyle = `${color}20`; // Add semi-transparent fill
   ctx.lineWidth = 2;
-  ctx.strokeRect(obj.position.x, obj.position.y, obj.width, obj.height);
+
+  // Draw hitbox using full sprite size
+  ctx.beginPath();
+  ctx.rect(obj.position.x, obj.position.y, obj.width, obj.height);
+  ctx.fill();
+  ctx.stroke();
 
   // Draw center point
   ctx.fillStyle = color;
-  ctx.fillRect(obj.position.x - 2, obj.position.y - 2, 4, 4);
+  const centerX = obj.position.x + obj.width / 2;
+  const centerY = obj.position.y + obj.height / 2;
+  ctx.fillRect(centerX - 2, centerY - 2, 4, 4);
   ctx.restore();
 }
 
@@ -45,21 +53,61 @@ function drawHitboxes(ctx, game) {
     drawHitbox(ctx, enemy, "#ffff00");
   });
 
-  // Draw attack range circle when attacking (blue)
+  // Draw attack area when attacking with dagger (blue)
   if (game.player.isAttacking && game.player.weaponType === "dagger") {
     ctx.save();
     ctx.strokeStyle = "#0000ff";
+    ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    // Draw circle with radius 50 (matches attackRange in Player.js)
-    ctx.arc(
-      game.player.position.x + game.player.width / 2,
-      game.player.position.y + game.player.height / 2,
-      50,
-      0,
-      Math.PI * 2
-    );
+
+    const centerX = game.player.position.x + game.player.width / 2;
+    const centerY = game.player.position.y + game.player.height / 2;
+    const attackRange = 50; // Same as in Player.js
+    const attackWidth = 40; // Same as in Player.js
+
+    // Define attack area based on direction
+    let attackArea = {
+      x: centerX,
+      y: centerY,
+      width: attackRange,
+      height: attackWidth,
+    };
+
+    // Position attack area based on direction - matches Player.js attack logic exactly
+    switch (game.player.currentDirection) {
+      case "right":
+        attackArea.x = centerX;
+        attackArea.y = centerY - attackWidth / 2;
+        break;
+      case "left":
+        attackArea.x = centerX - attackRange;
+        attackArea.y = centerY - attackWidth / 2;
+        break;
+      case "up":
+        attackArea.width = attackWidth;
+        attackArea.height = attackRange;
+        attackArea.x = centerX - attackWidth / 2;
+        attackArea.y = centerY - attackRange;
+        break;
+      case "down":
+        attackArea.width = attackWidth;
+        attackArea.height = attackRange;
+        attackArea.x = centerX - attackWidth / 2;
+        attackArea.y = centerY;
+        break;
+    }
+
+    ctx.rect(attackArea.x, attackArea.y, attackArea.width, attackArea.height);
+    ctx.fill();
     ctx.stroke();
+
+    // Draw center point of attack area
+    ctx.fillStyle = "#0000ff";
+    const attackCenterX = attackArea.x + attackArea.width / 2;
+    const attackCenterY = attackArea.y + attackArea.height / 2;
+    ctx.fillRect(attackCenterX - 2, attackCenterY - 2, 4, 4);
+
     ctx.restore();
   }
 }
