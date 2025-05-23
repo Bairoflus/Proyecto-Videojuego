@@ -30,16 +30,19 @@ function drawHitbox(ctx, obj, color = "black") {
   ctx.fillStyle = `${color}20`; // Add semi-transparent fill
   ctx.lineWidth = 2;
 
-  // Draw hitbox using full sprite size
+  // Get actual hitbox bounds
+  const hitbox = obj.getHitboxBounds();
+
+  // Draw hitbox
   ctx.beginPath();
-  ctx.rect(obj.position.x, obj.position.y, obj.width, obj.height);
+  ctx.rect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
   ctx.fill();
   ctx.stroke();
 
-  // Draw center point
+  // Draw center point of hitbox
   ctx.fillStyle = color;
-  const centerX = obj.position.x + obj.width / 2;
-  const centerY = obj.position.y + obj.height / 2;
+  const centerX = hitbox.x + hitbox.width / 2;
+  const centerY = hitbox.y + hitbox.height / 2;
   ctx.fillRect(centerX - 2, centerY - 2, 4, 4);
   ctx.restore();
 }
@@ -61,8 +64,10 @@ function drawHitboxes(ctx, game) {
     ctx.lineWidth = 2;
     ctx.beginPath();
 
-    const centerX = game.player.position.x + game.player.width / 2;
-    const centerY = game.player.position.y + game.player.height / 2;
+    // Get player's hitbox center as reference point
+    const playerHitbox = game.player.getHitboxBounds();
+    const centerX = playerHitbox.x + playerHitbox.width / 2;
+    const centerY = playerHitbox.y + playerHitbox.height / 2;
     const attackRange = 50; // Same as in Player.js
     const attackWidth = 40; // Same as in Player.js
 
@@ -113,11 +118,13 @@ function drawHitboxes(ctx, game) {
 }
 
 export function boxOverlap(obj1, obj2) {
+  const box1 = obj1.getHitboxBounds();
+  const box2 = obj2.getHitboxBounds();
   return (
-    obj1.position.x + obj1.width > obj2.position.x &&
-    obj1.position.x < obj2.position.x + obj2.width &&
-    obj1.position.y + obj1.height > obj2.position.y &&
-    obj1.position.y < obj2.position.y + obj2.height
+    box1.x + box1.width > box2.x &&
+    box1.x < box2.x + box2.width &&
+    box1.y + box1.height > box2.y &&
+    box1.y < box2.y + box2.height
   );
 }
 

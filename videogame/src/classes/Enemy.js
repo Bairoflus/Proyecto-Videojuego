@@ -103,15 +103,24 @@ export class Enemy extends AnimatedObject {
   }
 
   draw(ctx) {
-    // Health bar
-    const healthBarWidth = this.width; // Make health bar as wide as the enemy
-    const healthBarHeight = 6; //Make it short
-    const healthBarY = this.position.y - this.height / 2 - 10; // Position above enemy
-    const healthBarX = this.position.x - this.width / 2; // Center with enemy
+    super.draw(ctx);
+
+    // Draw hitbox if enabled
+    if (variables.showHitboxes) {
+      const hitbox = this.getHitboxBounds();
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
+    }
+
+    // Draw health bar
+    const healthBarWidth = this.width;
+    const healthBarHeight = 6;
+    const healthBarY = this.position.y - healthBarHeight - 4;
+    const healthBarX = this.position.x;
     const healthPercentage = this.health / this.maxHealth;
 
-    // Draw background (red)
-    ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; // Semi-transparent red
+    ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
     ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
 
     // Draw current health (green)

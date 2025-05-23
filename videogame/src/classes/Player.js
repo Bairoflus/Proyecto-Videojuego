@@ -121,13 +121,8 @@ export class Player extends AnimatedObject {
         // Get all enemies and check for collision with attack area
         const enemies = window.game.enemies;
         enemies.forEach((enemy) => {
-          // Calculate enemy hitbox using full sprite size
-          const enemyHitbox = {
-            x: enemy.position.x,
-            y: enemy.position.y,
-            width: enemy.width,
-            height: enemy.height,
-          };
+          // Get enemy hitbox in world coordinates
+          const enemyHitbox = enemy.getHitboxBounds();
 
           // Check collision between attack area and enemy hitbox
           if (

@@ -7,7 +7,6 @@ import { GoblinDagger } from "./enemies/floor1/GoblinDagger.js";
 import { variables, keyDirections, playerMovement } from "../config.js";
 import { boxOverlap } from "../utils.js";
 
-
 export class Game {
   constructor() {
     this.createEventListeners();
@@ -96,23 +95,19 @@ export class Game {
             new Rect(0, 0, 64, 64)
           );
           this.player.setMovementAnimation();
-        }
-        else if (k === "2") {
+        } else if (k === "2") {
           this.player.setWeapon("slingshot");
           this.player.setSprite(
             "./assets/sprites/slingshot-sprite-sheet.png",
             new Rect(0, 0, 64, 64)
           );
           this.player.setMovementAnimation();
-        }
-        else if (k === " ") {
+        } else if (k === " ") {
           this.player.attack();
-        }
-        else {
+        } else {
           this.add_key(keyDirections[k]);
         }
-      }
-      else if (k === "shift") {
+      } else if (k === "shift") {
         // Si la tecla Shift está presionada, iniciar el dash
         this.player.startDash();
       }

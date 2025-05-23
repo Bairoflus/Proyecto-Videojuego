@@ -91,15 +91,6 @@ export class RangedEnemy extends Enemy {
 
     // Call parent class draw method for health bar and sprite
     super.draw(ctx);
-
-    // Draw enemy as red rectangle
-    ctx.fillStyle = "red";
-    ctx.fillRect(
-      this.position.x - this.width / 2,
-      this.position.y - this.height / 2,
-      this.width,
-      this.height
-    );
   }
 
   fireProjectile(target) {
