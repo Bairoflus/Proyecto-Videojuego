@@ -73,7 +73,7 @@ export class Enemy extends AnimatedObject {
     
     // Log collision detection for debugging (only occasionally to avoid spam)
     if (collisionDetected && Math.random() < 0.01) {
-      console.log(`🧱 ${this.type} collision detected - movement blocked`);
+      console.log(`${this.type} collision detected - movement blocked`);
     }
     
     // Return true if we moved at all
@@ -93,7 +93,7 @@ export class Enemy extends AnimatedObject {
 
   die() {
     this.state = "dead";
-    console.log(`💀 ${this.type} died`);
+    console.log(`${this.type} died`);
     
     // EVENT-DRIVEN UPDATE: Update room state when enemy dies
     if (window.game && window.game.floorGenerator && this.currentRoom) {
@@ -101,7 +101,7 @@ export class Enemy extends AnimatedObject {
         window.game.floorGenerator.getCurrentRoomIndex(), 
         this.currentRoom
       );
-      console.log("💾 Room state updated due to enemy death");
+      console.log("Room state updated due to enemy death");
     }
     
     // TODO: Add death animation and effects

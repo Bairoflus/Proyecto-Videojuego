@@ -134,7 +134,7 @@ export class RangedEnemy extends Enemy {
     
     this.projectiles.push(projectile);
     
-    console.log(`🏹 ${this.type} fired projectile at player`);
+    console.log(`${this.type} fired projectile at player`);
   }
 
   updateAnimation() {

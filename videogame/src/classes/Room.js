@@ -213,7 +213,7 @@ export class Room {
 
     // Generates procedural enemies for combat rooms
     generateEnemies() {
-        console.log("🏹 Starting procedural enemy generation for combat room...");
+        console.log("Starting procedural enemy generation for combat room...");
         
         // Generate 6-10 enemies randomly
         const enemyCount = Math.floor(Math.random() * 5) + 6; // 6 to 10 enemies
@@ -223,7 +223,7 @@ export class Room {
         const commonCount = Math.floor(enemyCount * commonPercentage);
         const rareCount = enemyCount - commonCount;
         
-        console.log(`📊 Enemy distribution: ${enemyCount} total | ${commonCount} GoblinDagger (${Math.round(commonPercentage*100)}%) | ${rareCount} GoblinArcher (${Math.round((1-commonPercentage)*100)}%)`);
+        console.log(`Enemy distribution: ${enemyCount} total | ${commonCount} GoblinDagger (${Math.round(commonPercentage*100)}%) | ${rareCount} GoblinArcher (${Math.round((1-commonPercentage)*100)}%)`);
         
         // Safe zone definition (128x128 centered on left edge)
         const safeZone = {
@@ -233,12 +233,12 @@ export class Room {
             height: 128
         };
         
-        console.log(`🛡️ Safe zone: x=${safeZone.x}, y=${safeZone.y}, w=${safeZone.width}, h=${safeZone.height}`);
+        console.log(`Safe zone: x=${safeZone.x}, y=${safeZone.y}, w=${safeZone.width}, h=${safeZone.height}`);
         
         let successfulPlacements = 0;
         
         // Generate common enemies (left half, excluding safe zone)
-        console.log("⚔️ Generating GoblinDagger enemies (left half)...");
+        console.log("Generating GoblinDagger enemies (left half)...");
         for (let i = 0; i < commonCount; i++) {
             const position = this.getValidEnemyPosition(true, safeZone);
             if (position) {
@@ -246,14 +246,14 @@ export class Room {
                 enemy.setCurrentRoom(this); // Set room reference for collision detection
                 this.objects.enemies.push(enemy);
                 successfulPlacements++;
-                console.log(`  ✅ GoblinDagger ${i+1} placed at (${Math.round(position.x)}, ${Math.round(position.y)})`);
+                console.log(`  GoblinDagger ${i+1} placed at (${Math.round(position.x)}, ${Math.round(position.y)})`);
             } else {
-                console.warn(`  ❌ Failed to place GoblinDagger ${i+1}`);
+                console.warn(`  Failed to place GoblinDagger ${i+1}`);
             }
         }
         
         // Generate rare enemies (right half)
-        console.log("🏹 Generating GoblinArcher enemies (right half)...");
+        console.log("Generating GoblinArcher enemies (right half)...");
         for (let i = 0; i < rareCount; i++) {
             const position = this.getValidEnemyPosition(false, safeZone);
             if (position) {
@@ -261,19 +261,19 @@ export class Room {
                 enemy.setCurrentRoom(this); // Set room reference for collision detection
                 this.objects.enemies.push(enemy);
                 successfulPlacements++;
-                console.log(`  ✅ GoblinArcher ${i+1} placed at (${Math.round(position.x)}, ${Math.round(position.y)})`);
+                console.log(`  GoblinArcher ${i+1} placed at (${Math.round(position.x)}, ${Math.round(position.y)})`);
             } else {
-                console.warn(`  ❌ Failed to place GoblinArcher ${i+1}`);
+                console.warn(`  Failed to place GoblinArcher ${i+1}`);
             }
         }
         
-        console.log(`🎯 Enemy generation complete: ${successfulPlacements}/${enemyCount} enemies successfully placed`);
+        console.log(`Enemy generation complete: ${successfulPlacements}/${enemyCount} enemies successfully placed`);
         
         // Validate that all enemies are correct instances
         const goblinDaggerCount = this.objects.enemies.filter(e => e.type === "goblin_dagger").length;
         const goblinArcherCount = this.objects.enemies.filter(e => e.type === "goblin_archer").length;
         
-        console.log(`🔍 Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher instances created`);
+        console.log(`Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher instances created`);
     }
     
     // Gets a valid position for enemy placement
@@ -323,7 +323,7 @@ export class Room {
     // Checks if the room can transition (no enemies alive)
     canTransition() {
         if (!this.isCombatRoom) {
-            console.log("🚪 Transition allowed: Non-combat room");
+            console.log("Transition allowed: Non-combat room");
             return true; // Non-combat rooms can always transition
         }
         
@@ -335,10 +335,10 @@ export class Room {
         const canTransition = aliveEnemies.length === 0;
         
         if (canTransition) {
-            console.log(`🎉 Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`);
+            console.log(`Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`);
         } else {
             const aliveGoblins = aliveEnemies.map(e => e.type).join(", ");
-            console.log(`⛔ Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveGoblins})`);
+            console.log(`Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveGoblins})`);
         }
         
         return canTransition;

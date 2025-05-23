@@ -39,7 +39,7 @@ export class Projectile {
     // Check wall collision first (prioritize wall collision over entity collision)
     if (this.currentRoom && this.checkWallCollision()) {
       this.isActive = false;
-      console.log("🧱 Projectile hit wall and was destroyed");
+      console.log("Projectile hit wall and was destroyed");
       return;
     }
 
@@ -62,7 +62,7 @@ export class Projectile {
       this.position.y > variables.canvasHeight
     ) {
       this.isActive = false;
-      console.log("🚫 Projectile went out of bounds");
+      console.log("Projectile went out of bounds");
     }
   }
 
@@ -113,7 +113,7 @@ export class Projectile {
     entity.takeDamage(this.damage);
     
     // Log successful hit
-    console.log(`🎯 Projectile hit ${entity.type} for ${this.damage} damage`);
+    console.log(`Projectile hit ${entity.type} for ${this.damage} damage`);
 
     // TODO: Add hit effect/particles here
   }

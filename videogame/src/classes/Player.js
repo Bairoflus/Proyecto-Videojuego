@@ -57,7 +57,7 @@ export class Player extends AnimatedObject {
     
     // Clear any active projectiles when changing rooms to prevent cross-room damage
     if (this.projectiles.length > 0) {
-      console.log(`🧹 Clearing ${this.projectiles.length} active projectiles during room transition`);
+      console.log(`Clearing ${this.projectiles.length} active projectiles during room transition`);
       this.projectiles = [];
     }
   }
@@ -80,7 +80,7 @@ export class Player extends AnimatedObject {
   }
 
   die() {
-    console.log("💀 Player died! Initiating game reset...");
+    console.log("Player died! Initiating game reset...");
     
     // Trigger complete game reset through the global game instance
     if (window.game && typeof window.game.resetGameAfterDeath === 'function') {
@@ -89,13 +89,13 @@ export class Player extends AnimatedObject {
         window.game.resetGameAfterDeath();
       }, 1000); // 1 second delay
     } else {
-      console.error("❌ Cannot reset game: Game instance not found");
+      console.error("Cannot reset game: Game instance not found");
     }
   }
 
   // DEATH RESET: Restore player to initial state
   resetToInitialState(startPosition) {
-    console.log("🔄 === PLAYER RESET TO INITIAL STATE ===");
+    console.log("=== PLAYER RESET TO INITIAL STATE ===");
     
     // Reset health and stats
     this.health = this.maxHealth;
@@ -132,7 +132,7 @@ export class Player extends AnimatedObject {
     this.currentDirection = "down";
     this.previousDirection = "down";
     
-    console.log("✅ Player reset complete:");
+    console.log("Player reset complete:");
     console.log(`  - Health: ${this.health}/${this.maxHealth}`);
     console.log(`  - Position: (${Math.round(this.position.x)}, ${Math.round(this.position.y)})`);
     console.log(`  - Weapon: ${this.weaponType}`);
@@ -199,7 +199,7 @@ export class Player extends AnimatedObject {
       
       // Check if this position collides with a wall
       if (this.currentRoom.checkWallCollision(testObject)) {
-        console.log(`🧱 Wall detected at distance ${Math.round(currentDistance)} (direction: ${this.currentDirection})`);
+        console.log(`Wall detected at distance ${Math.round(currentDistance)} (direction: ${this.currentDirection})`);
         return currentDistance;
       }
       
@@ -218,7 +218,7 @@ export class Player extends AnimatedObject {
       this.hasAppliedMeleeDamage = false; // Reset melee damage flag
       this.attackCooldown = playerAttack.cooldown;
 
-      console.log(`⚔️ Player attacking with ${this.weaponType}`);
+      console.log(`Player attacking with ${this.weaponType}`);
 
       // Apply melee damage immediately for dagger attacks
       if (this.weaponType === "dagger") {
@@ -255,7 +255,7 @@ export class Player extends AnimatedObject {
         const actualAttackRange = this.raycastToWall(playerCenter, attackDirection, baseAttackRange);
         
         if (actualAttackRange < baseAttackRange) {
-          console.log(`🗡️ Attack range limited by wall: ${baseAttackRange} → ${Math.round(actualAttackRange)}`);
+          console.log(`Attack range limited by wall: ${baseAttackRange} → ${Math.round(actualAttackRange)}`);
         }
 
         // Define attack area based on direction with actual range
@@ -318,20 +318,20 @@ export class Player extends AnimatedObject {
               if (raycastToEnemy >= distanceToEnemy - 5) { // 5px tolerance
                 enemy.takeDamage(attackDamage);
                 enemiesHit++;
-                console.log(`🗡️ Dagger hit ${enemy.type} for ${attackDamage} damage (clear line of sight)`);
+                console.log(`Dagger hit ${enemy.type} for ${attackDamage} damage (clear line of sight)`);
               } else {
-                console.log(`🚫 ${enemy.type} blocked by wall - no damage dealt`);
+                console.log(`${enemy.type} blocked by wall - no damage dealt`);
               }
             }
           });
           
           if (enemiesHit === 0) {
-            console.log("🗡️ Dagger attack missed all enemies");
+            console.log("Dagger attack missed all enemies");
           } else {
-            console.log(`🗡️ Dagger attack hit ${enemiesHit} enemies`);
+            console.log(`Dagger attack hit ${enemiesHit} enemies`);
           }
         } else {
-          console.warn("⚠️ No current room or enemies found for dagger attack");
+          console.warn("No current room or enemies found for dagger attack");
         }
         
         this.hasAppliedMeleeDamage = true;
@@ -355,9 +355,9 @@ export class Player extends AnimatedObject {
       this.frame = this.minFrame;
     } else {
       if (this.isAttacking) {
-        console.log("⏳ Attack blocked: Already attacking");
+        console.log("Attack blocked: Already attacking");
       } else if (this.attackCooldown > 0) {
-        console.log(`⏳ Attack blocked: Cooldown remaining ${Math.round(this.attackCooldown)}ms`);
+        console.log(`Attack blocked: Cooldown remaining ${Math.round(this.attackCooldown)}ms`);
       }
     }
   }
@@ -463,7 +463,7 @@ export class Player extends AnimatedObject {
           this.projectiles.push(projectile);
           this.hasCreatedProjectile = true; // Mark that we've created the projectile
           
-          console.log(`🏹 Slingshot projectile created (direction: ${this.currentDirection}, damage: ${projectileDamage})`);
+          console.log(`Slingshot projectile created (direction: ${this.currentDirection}, damage: ${projectileDamage})`);
         }
 
         // Apply melee damage is now handled in the attack() method
@@ -500,7 +500,7 @@ export class Player extends AnimatedObject {
         return projectile.isActive;
       });
 
-      this.setVelocity();
+    this.setVelocity();
       
       // Try movement in X direction
       const newPositionX = this.position.plus(new Vec(this.velocity.x * deltaTime, 0));
@@ -686,7 +686,7 @@ export class Player extends AnimatedObject {
     for (const key of this.keys) {
       const move = playerMovement[key];
       if (move && move.axis) {
-        this.velocity[move.axis] += move.direction;
+      this.velocity[move.axis] += move.direction;
       }
     }
     this.velocity = this.velocity.normalize().times(variables.playerSpeed);
@@ -697,7 +697,7 @@ export class Player extends AnimatedObject {
     // Only update direction if we're actually moving
     if (v.x !== 0 || v.y !== 0) {
       const newDirection =
-        Math.abs(v.y) > Math.abs(v.x)
+      Math.abs(v.y) > Math.abs(v.x)
           ? v.y > 0
             ? "down"
             : v.y < 0
@@ -711,9 +711,9 @@ export class Player extends AnimatedObject {
 
       if (newDirection !== this.currentDirection) {
         this.currentDirection = newDirection;
-        const anim = playerMovement[this.currentDirection];
-        this.setAnimation(...anim.frames, anim.repeat, anim.duration);
-        this.frame = this.minFrame;
+      const anim = playerMovement[this.currentDirection];
+      this.setAnimation(...anim.frames, anim.repeat, anim.duration);
+      this.frame = this.minFrame;
         this.previousDirection = this.currentDirection;
       }
     } else {
@@ -744,27 +744,27 @@ export class Player extends AnimatedObject {
 
   // Validation method for testing the attack system
   validateAttackSystem() {
-    console.log("🧪 === OPTIMIZED ATTACK SYSTEM VALIDATION ===");
+    console.log("=== OPTIMIZED ATTACK SYSTEM VALIDATION ===");
     
     const status = this.getAttackStatus();
-    console.log("📊 Current Status:", status);
+    console.log("Current Status:", status);
     
     // Check room and enemies
     if (!this.currentRoom) {
-      console.error("❌ No current room set");
+      console.error("No current room set");
       return false;
     }
     
     if (!this.currentRoom.objects.enemies) {
-      console.error("❌ No enemies array in current room");
+      console.error("No enemies array in current room");
       return false;
     }
     
     const aliveEnemies = this.currentRoom.objects.enemies.filter(enemy => enemy.state !== "dead");
-    console.log(`👹 Enemies: ${aliveEnemies.length} alive, ${this.currentRoom.objects.enemies.length} total`);
+    console.log(`Enemies: ${aliveEnemies.length} alive, ${this.currentRoom.objects.enemies.length} total`);
     
     // Check attack constants with new line-of-sight system
-    console.log("🗡️ OPTIMIZED Dagger Config:", {
+    console.log("OPTIMIZED Dagger Config:", {
       baseRange: DAGGER_ATTACK_RANGE,
       width: DAGGER_ATTACK_WIDTH,
       damage: DAGGER_ATTACK_DAMAGE,
@@ -781,7 +781,7 @@ export class Player extends AnimatedObject {
       const testDirection = new Vec(1, 0); // Test right direction
       const raycastResult = this.raycastToWall(playerCenter, testDirection, DAGGER_ATTACK_RANGE);
       
-      console.log("🎯 Line-of-Sight Test:", {
+      console.log("Line-of-Sight Test:", {
         playerPosition: `(${Math.round(playerCenter.x)}, ${Math.round(playerCenter.y)})`,
         testDirection: "right",
         maxRange: DAGGER_ATTACK_RANGE,
@@ -791,18 +791,18 @@ export class Player extends AnimatedObject {
     }
     
     // Check weapon and cooldown
-    console.log("⚔️ Weapon:", this.weaponType);
-    console.log("⏱️ Cooldown:", playerAttack.cooldown + "ms");
+    console.log("Weapon:", this.weaponType);
+    console.log("Cooldown:", playerAttack.cooldown + "ms");
     
     // Validate projectile wall collision system
-    console.log("🧱 Projectile Wall Collision:", {
+    console.log("Projectile Wall Collision:", {
       playerProjectiles: this.projectiles.length,
       roomReferenceSet: this.projectiles.every(p => p.currentRoom !== null),
       feature: "Projectiles stop when hitting walls"
     });
     
     // Performance optimizations info
-    console.log("⚡ Performance Optimizations:", {
+    console.log("Performance Optimizations:", {
       roomStateUpdates: "Event-driven only (enemy death, transitions)",
       raycastStepSize: "4px increments",
       lineOfSightTolerance: "5px",
@@ -810,11 +810,11 @@ export class Player extends AnimatedObject {
     });
     
     if (aliveEnemies.length > 0) {
-      console.log("✅ Optimized attack system ready for testing");
-      console.log("💡 NEW: Line-of-sight melee + optimized state updates");
-      console.log("🎨 Visual: Orange attack area when limited by walls");
+      console.log("Optimized attack system ready for testing");
+      console.log("NEW: Line-of-sight melee + optimized state updates");
+      console.log("Visual: Orange attack area when limited by walls");
     } else {
-      console.log("ℹ️ No alive enemies to test with");
+      console.log("No alive enemies to test with");
     }
     
     return true;

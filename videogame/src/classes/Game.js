@@ -30,14 +30,14 @@ export class Game {
     
     // NEW: Room persistence and transition testing
     window.testRoomPersistence = () => {
-      console.log("🏠 === ROOM PERSISTENCE SYSTEM TEST ===");
+      console.log("=== ROOM PERSISTENCE SYSTEM TEST ===");
       
       const currentIndex = this.floorGenerator.getCurrentRoomIndex();
       const hasVisited = this.floorGenerator.hasBeenVisited(currentIndex);
       const roomState = this.floorGenerator.getSavedRoomState(currentIndex);
       const canTransition = this.currentRoom.canTransition();
       
-      console.log("📊 Room State:", {
+      console.log("Room State:", {
         currentRoom: currentIndex,
         hasBeenVisited: hasVisited,
         hasSavedState: roomState !== null,
@@ -46,11 +46,11 @@ export class Game {
         aliveEnemies: this.currentRoom.objects.enemies.filter(e => e.state !== "dead").length
       });
       
-      console.log("🔄 Transition Rules:");
-      console.log("  - ✅ Can advance if no alive enemies");
-      console.log("  - ✅ Can retreat if no alive enemies + not first room");
-      console.log("  - ❌ Blocked if enemies still alive");
-      console.log("  - 💾 Room states preserved when returning");
+      console.log("Transition Rules:");
+      console.log("  - Can advance if no alive enemies");
+      console.log("  - Can retreat if no alive enemies + not first room");
+      console.log("  - Blocked if enemies still alive");
+      console.log("  - Room states preserved when returning");
       
       return {
         currentRoom: currentIndex,
@@ -61,7 +61,7 @@ export class Game {
     
     // NEW: Projectile wall collision testing
     window.testProjectileWalls = () => {
-      console.log("🧱 === PROJECTILE WALL COLLISION TEST ===");
+      console.log("=== PROJECTILE WALL COLLISION TEST ===");
       
       const playerProjectiles = this.player.projectiles.length;
       const playerProjectilesWithRoom = this.player.projectiles.filter(p => p.currentRoom !== null).length;
@@ -77,7 +77,7 @@ export class Game {
         }
       });
       
-      console.log("🏹 Projectile Status:", {
+      console.log("Projectile Status:", {
         playerProjectiles: playerProjectiles,
         playerWithRoomRef: playerProjectilesWithRoom,
         enemyProjectiles: enemyProjectiles,
@@ -85,7 +85,7 @@ export class Game {
         wallCollisionEnabled: playerProjectilesWithRoom === playerProjectiles && enemyProjectilesWithRoom === enemyProjectiles
       });
       
-      console.log("💡 Test: Fire projectiles at walls to see them disappear!");
+      console.log("Test: Fire projectiles at walls to see them disappear!");
       
       return {
         totalProjectiles: playerProjectiles + enemyProjectiles,
@@ -95,23 +95,23 @@ export class Game {
     
     // NEW: Enhanced combat system overview
     window.testCombatEnhancements = () => {
-      console.log("⚔️ === COMBAT ENHANCEMENTS OVERVIEW ===");
+      console.log("=== COMBAT ENHANCEMENTS OVERVIEW ===");
       
       const meleeRange = 75; // DAGGER_ATTACK_RANGE
       const originalRange = 30;
       const enhancement = meleeRange / originalRange;
       
-      console.log("🗡️ Melee Combat:");
+      console.log("Melee Combat:");
       console.log(`  - Range: ${meleeRange}px (${enhancement}x original)`);
       console.log("  - Wall collision: Projectiles stop at walls");
       console.log("  - Room persistence: Enemy states preserved");
       
-      console.log("🚪 Movement Rules:");
-      console.log("  - ✅ Forward: Only if no enemies alive");
-      console.log("  - ✅ Backward: Only if no enemies alive");
-      console.log("  - 💾 States: Rooms remember enemy positions");
+      console.log("Movement Rules:");
+      console.log("  - Forward: Only if no enemies alive");
+      console.log("  - Backward: Only if no enemies alive");
+      console.log("  - States: Rooms remember enemy positions");
       
-      console.log("🎯 Testing Commands:");
+      console.log("Testing Commands:");
       console.log("  - testAttackSystem() - Validate combat");
       console.log("  - testRoomPersistence() - Check room states");
       console.log("  - testProjectileWalls() - Verify wall collision");
@@ -126,12 +126,12 @@ export class Game {
     
     // NEW: Performance optimization testing
     window.testPerformanceOptimizations = () => {
-      console.log("⚡ === PERFORMANCE OPTIMIZATIONS TEST ===");
+      console.log("=== PERFORMANCE OPTIMIZATIONS TEST ===");
       
-      console.log("🔄 Room State Update Strategy:");
-      console.log("  ✅ BEFORE: Updated every frame (inefficient)");
-      console.log("  ✅ NOW: Event-driven only (efficient)");
-      console.log("  📋 Triggers:");
+      console.log("Room State Update Strategy:");
+      console.log("  - BEFORE: Updated every frame (inefficient)");
+      console.log("  - NOW: Event-driven only (efficient)");
+      console.log("  - Triggers:");
       console.log("    - Enemy death");
       console.log("    - Room transitions");
       console.log("    - Item collection (when implemented)");
@@ -139,7 +139,7 @@ export class Game {
       const roomState = this.floorGenerator.getSavedRoomState();
       const aliveEnemies = this.currentRoom.objects.enemies.filter(e => e.state !== "dead").length;
       
-      console.log("📊 Current Performance Metrics:", {
+      console.log("Current Performance Metrics:", {
         roomStateStored: roomState !== null,
         roomIndex: this.floorGenerator.getCurrentRoomIndex(),
         aliveEnemies: aliveEnemies,
@@ -147,7 +147,7 @@ export class Game {
         frameOptimization: "No unnecessary state calculations"
       });
       
-      console.log("💡 Test: Kill enemies to see state updates only on death");
+      console.log("Test: Kill enemies to see state updates only on death");
       
       return {
         optimized: true,
@@ -158,10 +158,10 @@ export class Game {
     
     // NEW: Line-of-sight attack testing
     window.testLineOfSight = () => {
-      console.log("👁️ === LINE-OF-SIGHT ATTACK SYSTEM TEST ===");
+      console.log("=== LINE-OF-SIGHT ATTACK SYSTEM TEST ===");
       
       if (!this.player.currentRoom) {
-        console.log("❌ No current room - cannot test line of sight");
+        console.log("No current room - cannot test line of sight");
         return { error: "No current room" };
       }
       
@@ -181,8 +181,8 @@ export class Game {
       const maxRange = 75; // DAGGER_ATTACK_RANGE
       const results = {};
       
-      console.log("🎯 Raycast Results from Player Position:");
-      console.log(`📍 Player at: (${Math.round(playerCenter.x)}, ${Math.round(playerCenter.y)})`);
+      console.log("Raycast Results from Player Position:");
+      console.log(`Player at: (${Math.round(playerCenter.x)}, ${Math.round(playerCenter.y)})`);
       
       Object.entries(directions).forEach(([dirName, dirVector]) => {
         const raycastDistance = this.player.raycastToWall(playerCenter, dirVector, maxRange);
@@ -196,34 +196,34 @@ export class Game {
           reduction: isLimited ? `${Math.round((1 - raycastDistance/maxRange) * 100)}%` : "0%"
         };
         
-        console.log(`  ${dirName.toUpperCase()}: ${Math.round(raycastDistance)}px ${isLimited ? '🧱 (limited)' : '✅ (clear)'}`);
+        console.log(`  ${dirName.toUpperCase()}: ${Math.round(raycastDistance)}px ${isLimited ? '(limited)' : '(clear)'}`);
       });
       
-      console.log("🎨 Visual Feedback:");
+      console.log("Visual Feedback:");
       console.log("  - Red attack area: Normal range");
       console.log("  - Orange attack area: Wall-limited range");
       
-      console.log("💡 Test: Attack near walls in different directions");
+      console.log("Test: Attack near walls in different directions");
       
       return results;
     };
     
     // ENHANCED: Combat system with all optimizations
     window.testOptimizedCombat = () => {
-      console.log("🚀 === OPTIMIZED COMBAT SYSTEM TEST ===");
+      console.log("=== OPTIMIZED COMBAT SYSTEM TEST ===");
       
       const performance = window.testPerformanceOptimizations();
       const lineOfSight = window.testLineOfSight();
       const attack = window.testAttackSystem();
       
-      console.log("🏆 === OPTIMIZATION SUMMARY ===");
-      console.log("✅ 1. Event-driven room state updates");
-      console.log("✅ 2. Line-of-sight melee attacks");
-      console.log("✅ 3. Wall-limited attack range");
-      console.log("✅ 4. Visual feedback for limitations");
-      console.log("✅ 5. Performance optimizations");
+      console.log("=== OPTIMIZATION SUMMARY ===");
+      console.log("1. Event-driven room state updates");
+      console.log("2. Line-of-sight melee attacks");
+      console.log("3. Wall-limited attack range");
+      console.log("4. Visual feedback for limitations");
+      console.log("5. Performance optimizations");
       
-      console.log("🎯 Key Improvements:");
+      console.log("Key Improvements:");
       console.log("  - No more per-frame state updates");
       console.log("  - Realistic melee combat (no wall penetration)");
       console.log("  - Smart raycast system");
@@ -239,7 +239,7 @@ export class Game {
     
     // MASTER: Complete system validation
     window.validateAllSystems = () => {
-      console.log("🧪 === COMPLETE SYSTEM VALIDATION ===");
+      console.log("=== COMPLETE SYSTEM VALIDATION ===");
       
       const results = {
         attackSystem: window.testAttackSystem(),
@@ -251,24 +251,24 @@ export class Game {
         optimizedCombat: window.testOptimizedCombat()
       };
       
-      console.log("📋 === VALIDATION SUMMARY ===");
-      console.log("✅ 1. Extended melee range (30 → 75px)");
-      console.log("✅ 2. Room state persistence system");
-      console.log("✅ 3. Transition validation (forward/backward)");
-      console.log("✅ 4. Projectile wall collision detection");
-      console.log("✅ 5. No enemy regeneration on retreat");
-      console.log("✅ 6. Performance optimizations");
+      console.log("=== VALIDATION SUMMARY ===");
+      console.log("1. Extended melee range (30 → 75px)");
+      console.log("2. Room state persistence system");
+      console.log("3. Transition validation (forward/backward)");
+      console.log("4. Projectile wall collision detection");
+      console.log("5. No enemy regeneration on retreat");
+      console.log("6. Performance optimizations");
       
-      console.log("🎯 ALL ENHANCEMENTS ACTIVE!");
+      console.log("ALL ENHANCEMENTS ACTIVE!");
       
       return results;
     };
     
     // NEW: Death reset testing
     window.testDeathReset = () => {
-      console.log("💀 === DEATH RESET SYSTEM TEST ===");
-      console.log("⚠️  Warning: This will reset the entire game!");
-      console.log("📋 Use: game.resetGameAfterDeath() to test manually");
+      console.log("=== DEATH RESET SYSTEM TEST ===");
+      console.log("Warning: This will reset the entire game!");
+      console.log("Use: game.resetGameAfterDeath() to test manually");
       
       return {
         resetMethod: "resetGameAfterDeath()",
@@ -279,15 +279,15 @@ export class Game {
     
     // NEW: Player health testing commands
     window.damagePlayer = (amount = 20) => {
-      console.log(`💥 Damaging player for ${amount} points`);
+      console.log(`Damaging player for ${amount} points`);
       const oldHealth = this.player.health;
       this.player.takeDamage(amount);
       const newHealth = this.player.health;
       
-      console.log(`❤️  Health: ${oldHealth} → ${newHealth}`);
+      console.log(`Health: ${oldHealth} → ${newHealth}`);
       
       if (newHealth <= 0) {
-        console.log("💀 Player will die in 1 second...");
+        console.log("Player will die in 1 second...");
       }
       
       return {
@@ -299,7 +299,7 @@ export class Game {
     };
     
     window.killPlayer = () => {
-      console.log("💀 Killing player instantly...");
+      console.log("Killing player instantly...");
       const oldHealth = this.player.health;
       this.player.takeDamage(this.player.health);
       
@@ -311,12 +311,12 @@ export class Game {
     };
     
     window.healPlayer = (amount = 50) => {
-      console.log(`💚 Healing player for ${amount} points`);
+      console.log(`Healing player for ${amount} points`);
       const oldHealth = this.player.health;
       this.player.health = Math.min(this.player.maxHealth, this.player.health + amount);
       const newHealth = this.player.health;
       
-      console.log(`❤️  Health: ${oldHealth} → ${newHealth}`);
+      console.log(`Health: ${oldHealth} → ${newHealth}`);
       
       return {
         oldHealth: oldHealth,
@@ -342,27 +342,27 @@ export class Game {
     
     // MASTER: Death and reset system validation
     window.validateDeathSystem = () => {
-      console.log("💀 === DEATH & RESET SYSTEM VALIDATION ===");
+      console.log("=== DEATH & RESET SYSTEM VALIDATION ===");
       
       // Current state before testing
       const beforeState = window.getGameState();
-      console.log("📊 State Before Death Test:", beforeState);
+      console.log("State Before Death Test:", beforeState);
       
-      console.log("🧪 Death System Features:");
-      console.log("  ✅ Automatic trigger when health = 0");
-      console.log("  ✅ 1 second delay before reset");
-      console.log("  ✅ Complete state reset to Run 1, Floor 1, Room 1");
-      console.log("  ✅ Fresh enemy generation");
-      console.log("  ✅ Player fully restored");
-      console.log("  ✅ All room states cleared");
+      console.log("Death System Features:");
+      console.log("  - Automatic trigger when health = 0");
+      console.log("  - 1 second delay before reset");
+      console.log("  - Complete state reset to Run 1, Floor 1, Room 1");
+      console.log("  - Fresh enemy generation");
+      console.log("  - Player fully restored");
+      console.log("  - All room states cleared");
       
-      console.log("🎯 Testing Commands:");
+      console.log("Testing Commands:");
       console.log("  - damagePlayer(20) - Damage player");
       console.log("  - killPlayer() - Instant death");
       console.log("  - healPlayer(50) - Restore health");
       console.log("  - getGameState() - Check current state");
       
-      console.log("⚠️  Note: Death triggers automatic reset after 1 second");
+      console.log("Note: Death triggers automatic reset after 1 second");
       
       return {
         systemReady: true,
@@ -375,7 +375,7 @@ export class Game {
     
     // ULTRA MASTER: Complete game systems validation
     window.validateEntireGame = () => {
-      console.log("🎮 === COMPLETE GAME SYSTEMS VALIDATION ===");
+      console.log("=== COMPLETE GAME SYSTEMS VALIDATION ===");
       
       const results = {
         combat: window.testAttackSystem(),
@@ -389,30 +389,30 @@ export class Game {
         state: window.getGameState()
       };
       
-      console.log("🏆 === FINAL VALIDATION SUMMARY ===");
-      console.log("✅ 1. Enhanced Combat System (2.5x melee range)");
-      console.log("✅ 2. Room State Persistence (no regeneration)");
-      console.log("✅ 3. Transition Validation (both directions)");
-      console.log("✅ 4. Projectile Wall Collision");
-      console.log("✅ 5. Death & Reset System (complete state reset)");
-      console.log("✅ 6. Performance optimizations");
-      console.log("✅ 7. Line-of-sight melee attacks");
-      console.log("✅ 8. Wall-limited attack range");
-      console.log("✅ 9. Visual feedback for limitations");
-      console.log("✅ 10. All Testing Commands Available");
+      console.log("=== FINAL VALIDATION SUMMARY ===");
+      console.log("1. Enhanced Combat System (2.5x melee range)");
+      console.log("2. Room State Persistence (no regeneration)");
+      console.log("3. Transition Validation (both directions)");
+      console.log("4. Projectile Wall Collision");
+      console.log("5. Death & Reset System (complete state reset)");
+      console.log("6. Performance optimizations");
+      console.log("7. Line-of-sight melee attacks");
+      console.log("8. Wall-limited attack range");
+      console.log("9. Visual feedback for limitations");
+      console.log("10. All Testing Commands Available");
       
-      console.log("🚀 GAME IS FULLY FUNCTIONAL!");
+      console.log("GAME IS FULLY FUNCTIONAL!");
       
       return results;
     };
     
-    console.log("🎮 Enhanced Game System Loaded!");
-    console.log("🧪 Test Commands: testAttackSystem() | testRoomPersistence() | testProjectileWalls() | testCombatEnhancements()");
-    console.log("🏆 MASTER COMMAND: validateAllSystems()");
-    console.log("💀 DEATH RESET: testDeathReset() | damagePlayer(20) | killPlayer() | healPlayer(50)");
-    console.log("📊 STATE INSPECT: getGameState()");
-    console.log("⚡ NEW OPTIMIZATIONS: testPerformanceOptimizations() | testLineOfSight() | testOptimizedCombat()");
-    console.log("🌟 ULTIMATE: validateEntireGame()");
+    console.log("Enhanced Game System Loaded!");
+    console.log("Test Commands: testAttackSystem() | testRoomPersistence() | testProjectileWalls() | testCombatEnhancements()");
+    console.log("MASTER COMMAND: validateAllSystems()");
+    console.log("DEATH RESET: testDeathReset() | damagePlayer(20) | killPlayer() | healPlayer(50)");
+    console.log("STATE INSPECT: getGameState()");
+    console.log("NEW OPTIMIZATIONS: testPerformanceOptimizations() | testLineOfSight() | testOptimizedCombat()");
+    console.log("ULTIMATE: validateEntireGame()");
   }
   // Creates initial player and room
   initObjects() {
@@ -519,7 +519,7 @@ export class Game {
           }
         }
       } else {
-        console.log("⛔ Cannot advance: Enemies still alive in combat room");
+        console.log("Cannot advance: Enemies still alive in combat room");
       }
     } else if (this.currentRoom.isPlayerAtLeftEdge(this.player)) {
       // Check if we can go back to previous room
@@ -543,11 +543,11 @@ export class Game {
               // Update global enemies array
               this.enemies = this.currentRoom.objects.enemies;
               
-              console.log(`🔙 Returned to room ${this.floorGenerator.getCurrentRoomIndex()} (previously visited)`);
+              console.log(`Returned to room ${this.floorGenerator.getCurrentRoomIndex()} (previously visited)`);
             }
           }
         } else {
-          console.log("⛔ Cannot retreat: Enemies still alive in current room");
+          console.log("Cannot retreat: Enemies still alive in current room");
         }
       }
     }
@@ -614,10 +614,10 @@ export class Game {
   
   // DEATH RESET: Complete game reset after player death
   resetGameAfterDeath() {
-    console.log("💀 ===== GAME RESET AFTER DEATH =====");
+    console.log("===== GAME RESET AFTER DEATH =====");
     
     // Log state before reset
-    console.log("📊 State BEFORE reset:");
+    console.log("State BEFORE reset:");
     try {
       const beforeState = window.getGameState();
       console.log("  Run:", beforeState.floorGenerator.run);
@@ -630,34 +630,34 @@ export class Game {
     }
     
     try {
-      console.log("🔄 Step 1: Resetting FloorGenerator...");
+      console.log("Step 1: Resetting FloorGenerator...");
       // 1. Reset FloorGenerator to initial state
       this.floorGenerator.resetToInitialState();
       
-      console.log("🔄 Step 2: Creating fresh initial room...");
+      console.log("Step 2: Creating fresh initial room...");
       // 2. Create fresh initial room
       this.currentRoom = this.floorGenerator.getCurrentRoom();
       
-      console.log("🔄 Step 3: Getting initial player position...");
+      console.log("Step 3: Getting initial player position...");
       // 3. Get initial player position
       const startPos = this.currentRoom.getPlayerStartPosition();
       
-      console.log("🔄 Step 4: Resetting player state...");
+      console.log("Step 4: Resetting player state...");
       // 4. Reset player to initial state
       this.player.resetToInitialState(startPos);
       this.player.setCurrentRoom(this.currentRoom);
       
-      console.log("🔄 Step 5: Updating game state...");
+      console.log("Step 5: Updating game state...");
       // 5. Update global enemies array
       this.enemies = this.currentRoom.objects.enemies;
       
       // 6. Reset any game-level state
       this.player.previousPosition = new Vec(startPos.x, startPos.y);
       
-      console.log("✅ === GAME RESET COMPLETE ===");
+      console.log("=== GAME RESET COMPLETE ===");
       
       // Log state after reset
-      console.log("📊 State AFTER reset:");
+      console.log("State AFTER reset:");
       const afterState = window.getGameState();
       console.log("  Run:", afterState.floorGenerator.run);
       console.log("  Floor:", afterState.floorGenerator.floor);
@@ -668,22 +668,22 @@ export class Game {
       console.log("  Room Enemies:", afterState.room.enemies);
       console.log("  Alive Enemies:", afterState.room.aliveEnemies);
       
-      console.log("🎮 Ready for new run!");
+      console.log("Ready for new run!");
       
       return true;
       
     } catch (error) {
-      console.error("❌ Error during game reset:", error);
+      console.error("Error during game reset:", error);
       console.error("Attempting fallback reset...");
       
       try {
         // Fallback: reinitialize everything
         this.floorGenerator = new FloorGenerator();
         this.initObjects();
-        console.log("✅ Fallback reset successful");
+        console.log("Fallback reset successful");
         return true;
       } catch (fallbackError) {
-        console.error("❌ Fallback reset also failed:", fallbackError);
+        console.error("Fallback reset also failed:", fallbackError);
         return false;
       }
     }

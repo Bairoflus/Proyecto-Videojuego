@@ -40,7 +40,7 @@ export class FloorGenerator {
         this.currentRoomIndex = 0;
         
         console.log("Generated new floor", this.floorCount, "with", this.currentFloor.length, "rooms");
-        console.log("🧹 Room states and visit history cleared for new floor");
+        console.log("Room states and visit history cleared for new floor");
     }
 
     // Selects n unique random combat rooms
@@ -77,7 +77,7 @@ export class FloorGenerator {
         
         // Check if we already have a saved state for this room
         if (this.roomStates[roomIndex]) {
-            console.log(`🔄 Loading saved state for room ${roomIndex}`);
+            console.log(`Loading saved state for room ${roomIndex}`);
             return this.roomStates[roomIndex];
         }
         
@@ -91,9 +91,9 @@ export class FloorGenerator {
         this.visitedRooms.add(roomIndex);
         
         if (isCombatRoom) {
-            console.log(`🆕 Created new combat room ${roomIndex} with ${room.objects.enemies.length} enemies`);
+            console.log(`Created new combat room ${roomIndex} with ${room.objects.enemies.length} enemies`);
         } else {
-            console.log(`🆕 Created new ${this.roomTypes[roomIndex]} room ${roomIndex}`);
+            console.log(`Created new ${this.roomTypes[roomIndex]} room ${roomIndex}`);
         }
         
         return room;
@@ -192,13 +192,13 @@ export class FloorGenerator {
     updateRoomState(roomIndex = this.currentRoomIndex, room) {
         if (room) {
             this.roomStates[roomIndex] = room;
-            console.log(`💾 Updated room ${roomIndex} state`);
+            console.log(`Updated room ${roomIndex} state`);
         }
     }
     
     // DEATH RESET: Complete game state reset
     resetToInitialState() {
-        console.log("🔄 === COMPLETE FLOOR GENERATOR RESET ===");
+        console.log("=== COMPLETE FLOOR GENERATOR RESET ===");
         
         // Reset all counters to initial state
         this.floorCount = 1;
@@ -211,13 +211,13 @@ export class FloorGenerator {
         this.currentFloor = [];
         this.roomTypes = [];
         
-        console.log("🧹 Cleared all room states and visit history");
-        console.log("📊 Reset to: Run 1, Floor 1, Room 1");
+        console.log("Cleared all room states and visit history");
+        console.log("Reset to: Run 1, Floor 1, Room 1");
         
         // Generate fresh floor
         this.generateFloor();
         
-        console.log("✅ Floor generator completely reset to initial state");
+        console.log("Floor generator completely reset to initial state");
     }
     
     // Get initial game state info
