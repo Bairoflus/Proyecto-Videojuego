@@ -7,9 +7,9 @@ import { variables } from '../config.js';
 export class Room {
     constructor(layout) {
         this.layout = layout;
-        this.tileSize = 32; // Tamaño de cada celda en píxeles
-        this.transitionZone = 64; // Zona de activación para la transición
-        this.minSafeDistance = 16; // Distancia mínima para evitar activación inmediata
+        this.tileSize = 32; // Size of each cell in pixels
+        this.transitionZone = 64; // Activation zone for transition
+        this.minSafeDistance = 16; // Minimum distance to avoid immediate activation
         this.objects = {
             walls: [],
             enemies: [],
@@ -20,7 +20,7 @@ export class Room {
         this.parseLayout();
     }
 
-    // Parsea el layout ASCII y crea los objetos correspondientes
+    // Parses the ASCII layout and creates corresponding objects
     parseLayout() {
         const rows = this.layout.trim().split('\n');
         const height = rows.length;
@@ -32,7 +32,7 @@ export class Room {
                 const position = new Vec(x * this.tileSize, y * this.tileSize);
 
                 switch (char) {
-                    case 'W': // Pared
+                    case 'W': // Wall
                         this.objects.walls.push(new Rect(
                             position.x,
                             position.y,
@@ -40,10 +40,10 @@ export class Room {
                             this.tileSize
                         ));
                         break;
-                    case 'E': // Enemigo
-                        // TODO: Implementar creación de enemigos
+                    case 'E': // Enemy
+                        // TODO: Implement enemy creation
                         break;
-                    case 'C': // Moneda
+                    case 'C': // Coin
                         const coin = new Coin(
                             position,
                             this.tileSize,
@@ -55,38 +55,38 @@ export class Room {
                         coin.setAnimation(0, 7, true, variables.animationDelay);
                         this.objects.coins.push(coin);
                         break;
-                    case 'S': // Tienda
-                        // TODO: Implementar creación de tienda
+                    case 'S': // Shop
+                        // TODO: Implement shop creation
                         break;
-                    case 'B': // Jefe
-                        // TODO: Implementar creación de jefe
+                    case 'B': // Boss
+                        // TODO: Implement boss creation
                         break;
                 }
             }
         }
     }
 
-    // Dibuja todos los objetos de la sala
+    // Draws all room objects
     draw(ctx) {
-        // Dibujar paredes
+        // Draw walls
         ctx.fillStyle = 'gray';
         this.objects.walls.forEach(wall => {
             ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
         });
 
-        // Dibujar monedas
+        // Draw coins
         this.objects.coins.forEach(coin => coin.draw(ctx));
 
-        // TODO: Dibujar enemigos, tienda y jefe
+        // TODO: Draw enemies, shop and boss
     }
 
-    // Actualiza todos los objetos de la sala
+    // Updates all room objects
     update(deltaTime) {
         this.objects.coins.forEach(coin => coin.update(deltaTime));
-        // TODO: Actualizar enemigos, tienda y jefe
+        // TODO: Update enemies, shop and boss
     }
 
-    // Verifica colisiones con paredes
+    // Checks for wall collisions
     checkWallCollision(obj) {
         return this.objects.walls.some(wall => {
             return obj.position.x + obj.width > wall.x &&
@@ -96,16 +96,16 @@ export class Room {
         });
     }
 
-    // Verifica si el jugador está cerca del borde derecho central
+    // Checks if player is near the central right edge
     isPlayerAtRightEdge(player) {
         const rightEdge = variables.canvasWidth - player.width;
         
-        // Primero verificar si el jugador está en la zona de transición
+        // First check if player is in transition zone
         if (player.position.x < rightEdge - this.transitionZone) {
             return false;
         }
         
-        // Solo si está en la zona de transición, hacer el chequeo completo
+        // Only if in transition zone, do full check
         const middleY = variables.canvasHeight / 2;
         const isAtRightEdge = player.position.x >= rightEdge - this.transitionZone;
         const isAtMiddleY = Math.abs(player.position.y + player.height/2 - middleY) < player.height;
@@ -117,14 +117,14 @@ export class Room {
         return isAtRightEdge && isAtMiddleY;
     }
 
-    // Verifica si el jugador está cerca del borde izquierdo central
+    // Checks if player is near the central left edge
     isPlayerAtLeftEdge(player) {
-        // Primero verificar si el jugador está en la zona de transición
+        // First check if player is in transition zone
         if (player.position.x > this.transitionZone) {
             return false;
         }
         
-        // Solo si está en la zona de transición, hacer el chequeo completo
+        // Only if in transition zone, do full check
         const middleY = variables.canvasHeight / 2;
         const isAtLeftEdge = player.position.x <= this.transitionZone;
         const isAtMiddleY = Math.abs(player.position.y + player.height/2 - middleY) < player.height;
@@ -136,7 +136,7 @@ export class Room {
         return isAtLeftEdge && isAtMiddleY;
     }
 
-    // Obtiene la posición inicial del jugador (borde izquierdo)
+    // Gets player's initial position (left edge)
     getPlayerStartPosition() {
         return new Vec(
             this.transitionZone + this.minSafeDistance,
@@ -144,10 +144,10 @@ export class Room {
         );
     }
 
-    // Obtiene la posición del jugador para el borde derecho
+    // Gets player's position for right edge
     getPlayerRightEdgePosition() {
         return new Vec(
-            variables.canvasWidth - this.transitionZone - this.minSafeDistance - 64, // 64 es el ancho del jugador
+            variables.canvasWidth - this.transitionZone - this.minSafeDistance - 64, // 64 is player width
             variables.canvasHeight / 2 - 32
         );
     }

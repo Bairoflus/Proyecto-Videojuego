@@ -9,24 +9,25 @@ export class FloorGenerator {
         this.generateFloor();
     }
 
-    // Genera un nuevo piso seleccionando 4 salas de combate aleatorias
+    // Generates a new floor with random rooms
     generateFloor() {
-        console.log("Generating new floor");
-        // Seleccionar 4 salas de combate aleatorias únicas
+        // Select 4 random combat rooms
         const combatRooms = this.selectRandomCombatRooms(4);
         
-        // Combinar con la tienda y el jefe
+        // Create floor layout: 4 combat rooms + shop + boss
         this.currentFloor = [
             ...combatRooms,
             SHOP_ROOM_LAYOUT,
             BOSS_ROOM_LAYOUT
         ];
         
+        // Reset room index
         this.currentRoomIndex = 0;
-        console.log("Floor generated with", this.currentFloor.length, "rooms");
+        
+        console.log("Generated new floor with", this.currentFloor.length, "rooms");
     }
 
-    // Selecciona n salas de combate aleatorias únicas
+    // Selects n unique random combat rooms
     selectRandomCombatRooms(n) {
         const rooms = [...COMBAT_ROOMS];
         const selected = [];
@@ -41,7 +42,7 @@ export class FloorGenerator {
         return selected;
     }
 
-    // Obtiene el layout de la sala actual
+    // Gets current room layout
     getCurrentRoomLayout() {
         if (this.currentRoomIndex >= this.currentFloor.length) {
             console.log("Warning: Room index out of bounds");
@@ -50,7 +51,7 @@ export class FloorGenerator {
         return this.currentFloor[this.currentRoomIndex];
     }
 
-    // Avanza a la siguiente sala
+    // Advances to next room
     nextRoom() {
         if (this.currentRoomIndex < this.currentFloor.length - 1) {
             this.currentRoomIndex++;
@@ -61,7 +62,7 @@ export class FloorGenerator {
         return false;
     }
 
-    // Retrocede a la sala anterior
+    // Returns to previous room
     previousRoom() {
         if (this.currentRoomIndex > 0) {
             this.currentRoomIndex--;
@@ -72,65 +73,42 @@ export class FloorGenerator {
         return false;
     }
 
-    // Verifica si es la primera sala
+    // Checks if it's the first room
     isFirstRoom() {
         return this.currentRoomIndex === 0;
     }
 
-    // Verifica si es la última sala
-    isLastRoom() {
-        return this.currentRoomIndex === this.currentFloor.length - 1;
-    }
-
-    // Verifica si es la sala del jefe
+    // Checks if it's the boss room
     isBossRoom() {
         const isBoss = this.currentRoomIndex === this.currentFloor.length - 1;
         console.log("Is boss room:", isBoss, "Current index:", this.currentRoomIndex, "Total rooms:", this.currentFloor.length);
         return isBoss;
     }
 
-    // Avanza al siguiente piso
+    // Advances to next floor
     nextFloor() {
-        console.log("Advancing to next floor");
-        console.log("Current floor:", this.floorCount);
-        console.log("Current run:", this.runCount);
-        
         this.floorCount++;
-        
-        // Si llegamos al piso 3, reiniciamos a piso 1 y aumentamos el run
-        if (this.floorCount > 3) {
-            console.log("Resetting to floor 1 and incrementing run");
-            this.floorCount = 1;
-            this.runCount++;
-        }
-        
-        // Generar nuevo piso y reiniciar índice de sala
         this.generateFloor();
-        
-        console.log("New floor:", this.floorCount);
-        console.log("New run:", this.runCount);
-        console.log("Room index reset to:", this.currentRoomIndex);
-        
-        return true;
+        console.log("Advanced to floor", this.floorCount);
     }
 
-    // Obtiene el índice de la sala actual
-    getCurrentRoomIndex() {
-        return this.currentRoomIndex;
-    }
-
-    // Obtiene el total de salas en el piso
-    getTotalRooms() {
-        return this.currentFloor.length;
-    }
-
-    // Obtiene el número de piso actual
+    // Gets current floor number
     getCurrentFloor() {
         return this.floorCount;
     }
 
-    // Obtiene el número de run actual
+    // Gets current run number
     getCurrentRun() {
         return this.runCount;
+    }
+
+    // Gets current room index
+    getCurrentRoomIndex() {
+        return this.currentRoomIndex;
+    }
+
+    // Gets total rooms in floor
+    getTotalRooms() {
+        return this.currentFloor.length;
     }
 } 

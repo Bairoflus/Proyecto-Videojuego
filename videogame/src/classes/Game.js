@@ -1,4 +1,4 @@
-// Game.js: Lógica principal del juego
+// Game.js: Main game logic
 import { Vec } from "./Vec.js";
 import { Rect } from "./Rect.js";
 import { Player } from "./Player.js";
@@ -14,12 +14,12 @@ export class Game {
     this.floorGenerator = new FloorGenerator();
     this.initObjects();
   }
-  // Crea jugador y sala inicial
+  // Creates initial player and room
   initObjects() {
-    // Crear sala inicial
+    // Create initial room
     this.currentRoom = new Room(this.floorGenerator.getCurrentRoomLayout());
     
-    // Crear jugador en la posición inicial de la sala
+    // Create player at initial room position
     const startPos = this.currentRoom.getPlayerStartPosition();
     this.player = new Player(
       startPos,
@@ -29,65 +29,95 @@ export class Game {
     this.player.setAnimation(130, 130, false, variables.animationDelay);
     this.player.setCurrentRoom(this.currentRoom);
   }
-  // Dibuja la sala actual y el jugador
+  // Draws current room and player
   draw(ctx) {
+    // Draw current room
     this.currentRoom.draw(ctx);
+    
+    // Draw player
     this.player.draw(ctx);
+
+    // Draw status text
+    ctx.fillStyle = 'white';
+    ctx.font = '16px Arial';
+    const run = this.floorGenerator.getCurrentRun();
+    const floor = this.floorGenerator.getCurrentFloor();
+    const room = this.floorGenerator.getCurrentRoomIndex() + 1;
+    const text = `Run ${run} | Floor ${floor} | Room ${room}`;
+    const textWidth = ctx.measureText(text).width;
+    const padding = 10;
+    
+    // Draw semi-transparent background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(
+      variables.canvasWidth - textWidth - padding * 2,
+      variables.canvasHeight - 30,
+      textWidth + padding * 2,
+      30
+    );
+    
+    // Draw text
+    ctx.fillStyle = 'white';
+    ctx.fillText(
+      text,
+      variables.canvasWidth - textWidth - padding,
+      variables.canvasHeight - 10
+    );
   }
-  // Actualiza la lógica del juego
+  // Updates game logic
   update(deltaTime) {
-    // Actualizar sala actual
+    // Update current room
     this.currentRoom.update(deltaTime);
 
-    // Verificar transición de sala
+    // Check room transition
     if (this.currentRoom.isPlayerAtRightEdge(this.player)) {
-      // Si es la sala del jefe, avanzar al siguiente piso
+      // If it's the boss room, advance to next floor
       if (this.floorGenerator.isBossRoom()) {
         console.log("Transitioning to next floor");
         this.floorGenerator.nextFloor();
         
         const nextLayout = this.floorGenerator.getCurrentRoomLayout();
         if (nextLayout) {
-          // Crear nueva sala
+          // Create new room
           this.currentRoom = new Room(nextLayout);
-          // Actualizar referencia de sala en el jugador
+          // Update room reference in player
           this.player.setCurrentRoom(this.currentRoom);
-          // Reposicionar jugador en el lado izquierdo de la nueva sala
+          // Reposition player at left side of new room
           this.player.position = this.currentRoom.getPlayerStartPosition();
-          // Asegurar que el jugador no pueda moverse durante la transición
+          // Ensure player can't move during transition
           this.player.velocity = new Vec(0, 0);
           this.player.keys = [];
         }
       } else {
-        // Transición normal entre salas
+        // Normal room transition
         if (this.floorGenerator.nextRoom()) {
           const nextLayout = this.floorGenerator.getCurrentRoomLayout();
           if (nextLayout) {
-            // Crear nueva sala
+            // Create new room
             this.currentRoom = new Room(nextLayout);
-            // Actualizar referencia de sala en el jugador
+            // Update room reference in player
             this.player.setCurrentRoom(this.currentRoom);
-            // Reposicionar jugador en el lado izquierdo de la nueva sala
+            // Reposition player at left side of new room
             this.player.position = this.currentRoom.getPlayerStartPosition();
-            // Asegurar que el jugador no pueda moverse durante la transición
+            // Ensure player can't move during transition
             this.player.velocity = new Vec(0, 0);
             this.player.keys = [];
           }
         }
       }
     } else if (this.currentRoom.isPlayerAtLeftEdge(this.player)) {
-      // Verificar si podemos retroceder a la sala anterior
+      // Check if we can go back to previous room
       if (!this.floorGenerator.isFirstRoom()) {
         if (this.floorGenerator.previousRoom()) {
           const previousLayout = this.floorGenerator.getCurrentRoomLayout();
           if (previousLayout) {
-            // Crear sala anterior
+            // Create previous room
             this.currentRoom = new Room(previousLayout);
-            // Actualizar referencia de sala en el jugador
+            // Update room reference in player
             this.player.setCurrentRoom(this.currentRoom);
-            // Reposicionar jugador en el lado derecho de la sala anterior
+            // Reposition player at right side of previous room
             this.player.position = this.currentRoom.getPlayerRightEdgePosition();
-            // Asegurar que el jugador no pueda moverse durante la transición
+            // Ensure player can't move during transition
             this.player.velocity = new Vec(0, 0);
             this.player.keys = [];
           }
@@ -95,22 +125,22 @@ export class Game {
       }
     }
 
-    // Actualizar jugador
+    // Update player
     this.player.update(deltaTime);
 
-    // Verificar colisiones con paredes
+    // Check wall collisions
     if (this.currentRoom.checkWallCollision(this.player)) {
-      // Revertir posición del jugador si colisiona con pared
+      // Revert player position if colliding with wall
       this.player.position = this.player.previousPosition;
     }
 
-    // Guardar posición actual para la siguiente actualización
+    // Save current position for next update
     this.player.previousPosition = new Vec(
       this.player.position.x,
       this.player.position.y
     );
   }
-  // Eventos de teclado para movimiento
+  // Keyboard events for movement
   createEventListeners() {
     window.addEventListener("keydown", e => { 
       if (keyDirections[e.key]) this.add_key(keyDirections[e.key]); 
@@ -119,13 +149,13 @@ export class Game {
       if (keyDirections[e.key]) this.del_key(keyDirections[e.key]); 
     });
   }
-  // Añade dirección de movimiento
+  // Add movement direction
   add_key(direction) {
     if (!this.player.keys.includes(direction)) {
       this.player.keys.push(direction);
     }
   }
-  // Elimina dirección de movimiento
+  // Remove movement direction
   del_key(direction) {
     this.player.keys = this.player.keys.filter(key => key !== direction);
   }

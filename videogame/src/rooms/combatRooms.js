@@ -1,14 +1,14 @@
-// Layouts ASCII para las salas del juego
-// 'P' = Jugador (Player)
-// 'W' = Pared (Wall)
-// 'E' = Enemigo (Enemy)
-// 'C' = Moneda (Coin)
-// 'S' = Tienda (Shop)
-// 'B' = Jefe (Boss)
-// '.' = Espacio vacío
+// ASCII layouts for game rooms
+// 'P' = Player
+// 'W' = Wall
+// 'E' = Enemy
+// 'C' = Coin
+// 'S' = Shop
+// 'B' = Boss
+// '.' = Empty space
 
 export const COMBAT_ROOMS = [
-// 1. Sala casi vacía
+// 1. Almost empty room
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W..........WWW..........W
 W.......................W
@@ -28,7 +28,7 @@ W.......................W
 W.......................W
 W..........WWW..........W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 2. Pared central vertical (dejando 2 tiles de espacio)
+// 2. Central vertical wall (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -48,7 +48,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 3. Dos paredes horizontales (dejando 2 tiles de espacio)
+// 3. Two horizontal walls (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -68,7 +68,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 4. Esquinas bloqueadas (dejando 2 tiles de espacio)
+// 4. Blocked corners (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W..........WWWW.........W
 W.......................W
@@ -88,7 +88,7 @@ W.......................W
 W.......................W
 W..........WWWW.........W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 5. Columnas alternas (dejando 2 tiles de espacio)
+// 5. Alternating columns (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -108,7 +108,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 6. Laberinto simple (dejando 2 tiles de espacio)
+// 6. Simple maze (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -128,7 +128,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 7. Paredes en cruz (dejando 2 tiles de espacio)
+// 7. Cross walls (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -148,7 +148,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 8. Paredes en zigzag (dejando 2 tiles de espacio)
+// 8. Zigzag walls (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -168,7 +168,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 9. Paredes laterales internas (dejando 2 tiles de espacio)
+// 9. Internal side walls (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W......WWWWWWWW.........W
 W............WW.........W
@@ -188,7 +188,7 @@ W.............W.........W
 W............WW.........W
 W......WWWWWWWW.........W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 10. Paredes en diagonal (dejando 2 tiles de espacio)
+// 10. Diagonal walls (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -208,7 +208,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 11. Paredes en U (dejando 2 tiles de espacio)
+// 11. U-shaped walls (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W...............WWWWW...W
 W.................WWW...W
@@ -228,7 +228,7 @@ W.......................W
 W.......................W
 W...WWWWW...............W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 12. Paredes dispersas (dejando 2 tiles de espacio)
+// 12. Scattered walls (leaving 2 tiles of space)
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -250,7 +250,7 @@ W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`
 ];
 
-// Layout para la sala de tienda
+// Shop room layout
 export const SHOP_ROOM_LAYOUT = 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
@@ -260,8 +260,9 @@ W.......................W
 W.......................W
 W.......................W
 W.......................W
-WP........WWWW..........W
-W.........WWWW..........W
+W.......................W
+W.......................W
+WP......................W
 W.......................W
 W.......................W
 W.......................W
@@ -272,7 +273,7 @@ W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`;
 
-// Layout para la sala del jefe
+// Boss room layout
 export const BOSS_ROOM_LAYOUT = 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
