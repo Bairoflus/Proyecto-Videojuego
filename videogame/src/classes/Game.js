@@ -27,7 +27,7 @@ export class Game {
       13
     );
     this.player.setSprite(
-      "./assets/sprites/dagger-sprite-sheet.png",
+      "../assets/sprites/dagger-sprite-sheet.png",
       new Rect(0, 0, 64, 64)
     );
     this.enemies = [
@@ -36,7 +36,7 @@ export class Game {
     ];
     this.coins = this.generateCoins(10);
 
-    variables.backgroundImage.src = "./assets/background/background.jpg";
+    variables.backgroundImage.src = "../assets/background/background.jpg";
   }
 
   generateCoins(count) {
@@ -91,14 +91,14 @@ export class Game {
         if (k === "1") {
           this.player.setWeapon("dagger");
           this.player.setSprite(
-            "./assets/sprites/dagger-sprite-sheet.png",
+            "../assets/sprites/dagger-sprite-sheet.png",
             new Rect(0, 0, 64, 64)
           );
           this.player.setMovementAnimation();
         } else if (k === "2") {
           this.player.setWeapon("slingshot");
           this.player.setSprite(
-            "./assets/sprites/slingshot-sprite-sheet.png",
+            "../assets/sprites/slingshot-sprite-sheet.png",
             new Rect(0, 0, 64, 64)
           );
           this.player.setMovementAnimation();
