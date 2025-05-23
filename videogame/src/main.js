@@ -11,7 +11,7 @@ import { Game } from "./classes/Game.js";
 
 function main() {
   // Obtener referencia al canvas y ajustar sus dimensiones
-  const canvas = document.getElementById("canvas");
+  const canvas = document.getElementById("gameCanvas");
   canvas.width = variables.canvasWidth;
   canvas.height = variables.canvasHeight;
 

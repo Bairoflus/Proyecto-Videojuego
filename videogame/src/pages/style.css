@@ -1,98 +1,103 @@
-/* Tipografía por defecto para toda la aplicación */
+/* Reset & base setup */
 * {
-  font-family: Verdana, Geneva, Tahoma, sans-serif;
-}
-
-/* Estilos del body para centrar contenido y definir layout de grid */
-body {
-  background-color: White;
-  width: 100vw;
-  height: 100vh;
   box-sizing: border-box;
   margin: 0;
-  overflow: hidden;
-  display: grid;
-  grid-template-rows: 10vh 1fr;
-  grid-template-columns: 1fr;
-  grid-template-areas:
-    "header"
-    "main";
-  justify-content: center;
-  align-items: center;
-  justify-items: center;
+  padding: 0;
 }
 
-/* Contenedor del header (si se usara) */
-#headerContainer {
-  grid-area: header;
-  background-color: darkred;
-  width: 100%;
-  height: 100%;
+body {
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  color: #fff;
+  min-height: 100vh;
+  background-image: url('../assets/pages_background.png');
+  background-size: cover;
+  background-position: center;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-/* Encabezados h1 sin margen */
-h1 {
-  margin: 0;
+/* Logo */
+.logo {
+  display: block;
+  max-width: 280px;
+  margin: 0 auto 30px;
 }
 
-/* Estilos del canvas: borde y fondo por defecto */
-canvas {
-  border: 2px solid black;
-  background-color: #87ceeb;
+/* Main content wrappers */
+.page-container {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 40px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+  max-width: 380px;
+  width: 90%;
 }
 
-/* Grid area principal para el canvas */
-#canvas {
-  background-color: #87ceeb;
-  grid-area: main;
+/* Headings */
+h2 {
+  margin-bottom: 25px;
+  font-size: 26px;
+  color: #ffffff;
 }
 
-/* Posicionamiento automático de lil-gui */
-.lil-gui.autoPlace {
-  top: 15vh;
-  right: 5vw;
+/* Form */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
-/* Botón de volver (si se usa) */
-#backButton {
-  margin: 10px;
+form input {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+  outline: none;
 }
 
-/* Contenedor de UI con estilo overlay */
-#uiContainer {
-  position: absolute;
-  top: 15vh;
-  right: 5vw;
-  z-index: 3;
-  font-family: monospace;
-  pointer-events: none;
-  padding: 1em;
-  background-color: rgba(0, 0, 0, 0.8);
-  border-radius: 1em;
-  border: 1px solid turquoise;
-  text-shadow:
-    -1px -1px 0 #FFF,
-    1px -1px 0 #FFF,
-    -1px 1px 0 #FFF,
-    1px 1px 0 #FFF;
+/* Buttons */
+button {
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 8px;
+  border: none;
+  background-color: #ff4d4d;
+  color: white;
+  cursor: pointer;
+  transition: background 0.3s ease;
 }
 
-/* Opacidad del elemento UI principal */
-#ui {
-  opacity: 0.8;
+button:hover {
+  background-color: #e03d3d;
 }
 
-/* Asegurar que solo elementos interactivos reciban eventos */
-#ui>div {
-  pointer-events: none;
+.link-button {
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
-#ui input,
-#ui select,
-#ui option,
-#ui canvas {
-  pointer-events: auto;
+.link-button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Navigation links */
+a {
+  color: #a3d4ff;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Landing page buttons */
+.landing-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 30px;
 }
