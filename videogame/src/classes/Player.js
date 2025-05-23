@@ -1,5 +1,6 @@
 import { AnimatedObject } from "./AnimatedObject.js";
 import { Vec } from "./Vec.js";
+import { Rect } from "./Rect.js";
 import { Projectile } from "./Projectile.js";
 import {
   variables,
@@ -41,9 +42,17 @@ export class Player extends AnimatedObject {
     this.invulnerabilityDuration = 1000; // 1 second of invulnerability after taking damage
     this.invulnerabilityTimer = 0;
 
-    // Hitbox (smaller than sprite)
-    this.hitboxWidth = width * 0.6; // 60% of sprite width
-    this.hitboxHeight = height * 0.6; // 60% of sprite height
+    // Customize hitbox to better match player's feet
+    this.hitbox = {
+      width: width * 0.6,
+      height: height * 0.6,
+      offsetX: width * 0.2,  // Center horizontally (20% margin on each side)
+      offsetY: height * 0.3  // Move hitbox down (30% margin at top, 10% at bottom)
+    };
+  }
+
+  setCurrentRoom(room) {
+    this.currentRoom = room;
   }
 
   takeDamage(amount) {
@@ -71,6 +80,18 @@ export class Player extends AnimatedObject {
   setWeapon(type) {
     if (type === "dagger" || type === "slingshot") {
       this.weaponType = type;
+      // Update sprite sheet based on weapon type
+      const spritePath = type === "dagger" 
+        ? "./assets/sprites/dagger-sprite-sheet.png" 
+        : "./assets/sprites/slingshot-sprite-sheet.png";
+      this.setSprite(spritePath, new Rect(0, 0, 64, 64));
+      
+      // Reset to idle animation in current direction
+      const anim = playerMovement[this.currentDirection];
+      this.setAnimation(anim.frames[0], anim.frames[0], false, anim.duration);
+      this.frame = anim.frames[0];
+      this.spriteRect.x = this.frame % this.sheetCols;
+      this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
     }
   }
 
@@ -257,7 +278,38 @@ export class Player extends AnimatedObject {
       });
 
       this.setVelocity();
-      this.position = this.position.plus(this.velocity.times(deltaTime));
+      
+      // Try movement in X direction
+      const newPositionX = this.position.plus(new Vec(this.velocity.x * deltaTime, 0));
+      const tempPlayerX = new Player(
+        newPositionX,
+        this.width,
+        this.height,
+        this.color,
+        this.sheetCols
+      );
+
+      // Try movement in Y direction
+      const newPositionY = this.position.plus(new Vec(0, this.velocity.y * deltaTime));
+      const tempPlayerY = new Player(
+        newPositionY,
+        this.width,
+        this.height,
+        this.color,
+        this.sheetCols
+      );
+
+      // Check collisions separately
+      const canMoveX = !this.currentRoom?.checkWallCollision(tempPlayerX);
+      const canMoveY = !this.currentRoom?.checkWallCollision(tempPlayerY);
+
+      // Apply movement based on collisions
+      if (canMoveX) {
+        this.position.x = newPositionX.x;
+      }
+      if (canMoveY) {
+        this.position.y = newPositionY.y;
+      }
     }
 
     this.constrainToCanvas();
@@ -274,7 +326,7 @@ export class Player extends AnimatedObject {
     this.projectiles.forEach((projectile) => projectile.draw(ctx));
 
     // Draw attack range visualization for melee attacks (dagger)
-    if (variables.showHitboxes && this.weaponType === "dagger") {
+    if (this.weaponType === "dagger") {
       const attackRange = DAGGER_ATTACK_RANGE;
       const attackWidth = DAGGER_ATTACK_WIDTH;
 

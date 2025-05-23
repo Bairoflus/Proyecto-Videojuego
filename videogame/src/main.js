@@ -1,6 +1,5 @@
 /*
- * Fausto Izquierdo
- * 2025-04-23
+Punto de entrada de la aplicación
  */
 
 import { variables } from "./config.js";

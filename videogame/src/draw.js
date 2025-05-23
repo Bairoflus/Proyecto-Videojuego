@@ -48,13 +48,17 @@ function drawHitbox(ctx, obj, color = "black") {
 }
 
 function drawHitboxes(ctx, game) {
-  // Draw player hitbox (cyan)
-  drawHitbox(ctx, game.player, "#00ffff");
+  // Draw player hitbox (cyan) if player exists
+  if (game.player) {
+    drawHitbox(ctx, game.player, "#00ffff");
+  }
 
-  // Draw enemy hitboxes (yellow)
-  game.enemies.forEach((enemy) => {
-    drawHitbox(ctx, enemy, "#ffff00");
-  });
+  // Draw enemy hitboxes (yellow) if enemies array exists
+  if (game.enemies && Array.isArray(game.enemies)) {
+    game.enemies.forEach((enemy) => {
+      drawHitbox(ctx, enemy, "#ffff00");
+    });
+  }
 
   // Attack range visualization moved to Player.draw() method
 }

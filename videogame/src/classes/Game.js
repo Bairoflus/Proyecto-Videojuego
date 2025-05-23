@@ -1,3 +1,4 @@
+// Game.js: Main game logic
 import { Vec } from "./Vec.js";
 import { Rect } from "./Rect.js";
 import { Player } from "./Player.js";
@@ -6,137 +7,181 @@ import { GoblinArcher } from "./enemies/floor1/GoblinArcher.js";
 import { GoblinDagger } from "./enemies/floor1/GoblinDagger.js";
 import { variables, keyDirections, playerMovement } from "../config.js";
 import { boxOverlap } from "../utils.js";
+import { FloorGenerator } from "./FloorGenerator.js";
+import { Room } from "./Room.js";
 
 export class Game {
   constructor() {
     this.createEventListeners();
+    this.floorGenerator = new FloorGenerator();
+    this.enemies = []; // Initialize empty enemies array
     this.initObjects();
     // Make game instance accessible to other classes
     window.game = this;
   }
-
+  // Creates initial player and room
   initObjects() {
-    this.player = new Player(
-      new Vec(variables.canvasWidth / 2, variables.canvasHeight / 2),
-      64,
+    // Create initial room
+    this.currentRoom = new Room(this.floorGenerator.getCurrentRoomLayout());
 
-      64,
-
-      "red",
-
-      13
-    );
+    // Create player at initial room position
+    const startPos = this.currentRoom.getPlayerStartPosition();
+    this.player = new Player(startPos, 64, 64, "red", 13);
     this.player.setSprite(
       "./assets/sprites/dagger-sprite-sheet.png",
       new Rect(0, 0, 64, 64)
     );
-    this.enemies = [
-      new GoblinArcher(new Vec(100, 100)),
-      new GoblinDagger(new Vec(200, 200)),
-    ];
-    this.coins = this.generateCoins(10);
-
-    variables.backgroundImage.src = "./assets/background/background.jpg";
+    this.player.setAnimation(130, 130, false, variables.animationDelay);
+    this.player.setCurrentRoom(this.currentRoom);
   }
-
-  generateCoins(count) {
-    const coins = [];
-    for (let i = 0; i < count; i++) {
-      const x = Math.random() * (variables.canvasWidth - 32);
-      const y = Math.random() * (variables.canvasHeight - 32);
-      const coin = new Coin(new Vec(x, y), 32, 32, "yellow", 8);
-      coin.setSprite("./assets/sprites/coin_gold.png", new Rect(0, 0, 32, 32));
-      coin.setAnimation(0, 7, true, variables.animationDelay);
-      coins.push(coin);
-    }
-    return coins;
-  }
-
+  // Draws current room and player
   draw(ctx) {
-    if (variables.backgroundImage.complete) {
-      ctx.drawImage(
-        variables.backgroundImage,
-        0,
-        0,
-        variables.canvasWidth,
-        variables.canvasHeight
-      );
+    // Draw current room
+    this.currentRoom.draw(ctx);
+
+    // Draw player
+    this.player.draw(ctx);
+
+    // Draw status text
+    ctx.fillStyle = "white";
+    ctx.font = "16px Arial";
+    const run = this.floorGenerator.getCurrentRun();
+    const floor = this.floorGenerator.getCurrentFloor();
+    const room = this.floorGenerator.getCurrentRoomIndex() + 1;
+    const text = `Run ${run} | Floor ${floor} | Room ${room}`;
+    const textWidth = ctx.measureText(text).width;
+    const padding = 10;
+
+    // Draw semi-transparent background
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(
+      variables.canvasWidth - textWidth - padding * 2,
+      variables.canvasHeight - 30,
+      textWidth + padding * 2,
+      30
+    );
+
+    // Draw text
+    ctx.fillStyle = "white";
+    ctx.fillText(
+      text,
+      variables.canvasWidth - textWidth - padding,
+      variables.canvasHeight - 10
+    );
+  }
+  // Updates game logic
+  update(deltaTime) {
+    // Update current room
+    this.currentRoom.update(deltaTime);
+
+    // Check room transition
+    if (this.currentRoom.isPlayerAtRightEdge(this.player)) {
+      // If it's the boss room, advance to next floor
+      if (this.floorGenerator.isBossRoom()) {
+        console.log("Transitioning to next floor");
+        this.floorGenerator.nextFloor();
+
+        const nextLayout = this.floorGenerator.getCurrentRoomLayout();
+        if (nextLayout) {
+          // Create new room
+          this.currentRoom = new Room(nextLayout);
+          // Update room reference in player
+          this.player.setCurrentRoom(this.currentRoom);
+          // Reposition player at left side of new room
+          this.player.position = this.currentRoom.getPlayerStartPosition();
+          // Ensure player can't move during transition
+          this.player.velocity = new Vec(0, 0);
+          this.player.keys = [];
+        }
+      } else {
+        // Normal room transition
+        if (this.floorGenerator.nextRoom()) {
+          const nextLayout = this.floorGenerator.getCurrentRoomLayout();
+          if (nextLayout) {
+            // Create new room
+            this.currentRoom = new Room(nextLayout);
+            // Update room reference in player
+            this.player.setCurrentRoom(this.currentRoom);
+            // Reposition player at left side of new room
+            this.player.position = this.currentRoom.getPlayerStartPosition();
+            // Ensure player can't move during transition
+            this.player.velocity = new Vec(0, 0);
+            this.player.keys = [];
+          }
+        }
+      }
+    } else if (this.currentRoom.isPlayerAtLeftEdge(this.player)) {
+      // Check if we can go back to previous room
+      if (!this.floorGenerator.isFirstRoom()) {
+        if (this.floorGenerator.previousRoom()) {
+          const previousLayout = this.floorGenerator.getCurrentRoomLayout();
+          if (previousLayout) {
+            // Create previous room
+            this.currentRoom = new Room(previousLayout);
+            // Update room reference in player
+            this.player.setCurrentRoom(this.currentRoom);
+            // Reposition player at right side of previous room
+            this.player.position =
+              this.currentRoom.getPlayerRightEdgePosition();
+            // Ensure player can't move during transition
+            this.player.velocity = new Vec(0, 0);
+            this.player.keys = [];
+          }
+        }
+      }
     }
 
-    this.enemies.forEach((enemy) => enemy.draw(ctx));
-    this.coins.forEach((coin) => coin.draw(ctx));
-    this.player.draw(ctx);
-  }
-
-  update(deltaTime) {
-    // Remove dead enemies
-    this.enemies = this.enemies.filter((enemy) => enemy.state !== "dead");
-
-    // Update remaining enemies
-    this.enemies.forEach((enemy) => (enemy.target = this.player));
-    
-    // Calculate player hitbox center
-    const playerHitbox = this.player.getHitboxBounds();
-    const playerHitboxCenter = new Vec(
-      playerHitbox.x + playerHitbox.width / 2,
-      playerHitbox.y + playerHitbox.height / 2
-    );
-    
-    this.enemies.forEach((enemy) => enemy.moveTo(playerHitboxCenter));
-    this.enemies.forEach((enemy) => enemy.attack(this.player));
-    this.enemies.forEach((enemy) => enemy.update(deltaTime, this.player));
-
-    this.coins = this.coins.filter((coin) => !boxOverlap(this.player, coin));
-    this.coins.forEach((coin) => coin.update(deltaTime));
+    // Update player
     this.player.update(deltaTime);
-  }
 
+    // Check wall collisions
+    if (this.currentRoom.checkWallCollision(this.player)) {
+      // Revert player position if colliding with wall
+      this.player.position = this.player.previousPosition;
+    }
+
+    // Save current position for next update
+    this.player.previousPosition = new Vec(
+      this.player.position.x,
+      this.player.position.y
+    );
+  }
+  // Keyboard events for movement and actions
   createEventListeners() {
     window.addEventListener("keydown", (e) => {
-      const k = e.key.toLowerCase();
-      if (keyDirections[k]) {
-        this.add_key(keyDirections[k]);
-        if (k === "1") {
-          this.player.setWeapon("dagger");
-          this.player.setSprite(
-            "./assets/sprites/dagger-sprite-sheet.png",
-            new Rect(0, 0, 64, 64)
-          );
-          this.player.setMovementAnimation();
-        } else if (k === "2") {
-          this.player.setWeapon("slingshot");
-          this.player.setSprite(
-            "./assets/sprites/slingshot-sprite-sheet.png",
-            new Rect(0, 0, 64, 64)
-          );
-          this.player.setMovementAnimation();
-        } else if (k === " ") {
-          this.player.attack();
-        } else {
-          this.add_key(keyDirections[k]);
-        }
-      } else if (k === "shift") {
-        // Si la tecla Shift está presionada, iniciar el dash
-        this.player.startDash();
+      const action = keyDirections[e.key];
+      if (!action) return;
+
+      // Handle weapon switching
+      if (action === "dagger" || action === "slingshot") {
+        this.player.setWeapon(action);
+        return;
       }
+
+      // Handle attack
+      if (action === "attack") {
+        this.player.attack();
+        return;
+      }
+
+      // Handle movement
+      this.add_key(action);
     });
     window.addEventListener("keyup", (e) => {
-      const k = e.key.toLowerCase();
-      if (keyDirections[k] && k !== "1" && k !== "2") {
-        this.del_key(keyDirections[k]);
+      const action = keyDirections[e.key];
+      if (action && action !== "attack" && action !== "dagger" && action !== "slingshot") {
+        this.del_key(action);
       }
     });
   }
-
-  // Add a key to the player's keys array if it doesn't already exist
+  // Add movement direction
   add_key(direction) {
     if (!this.player.keys.includes(direction)) {
       this.player.keys.push(direction);
     }
   }
-
+  // Remove movement direction
   del_key(direction) {
-    const i = this.player.keys.indexOf(direction);
-    if (i !== -1) this.player.keys.splice(i, 1);
+    this.player.keys = this.player.keys.filter((key) => key !== direction);
   }
 }
