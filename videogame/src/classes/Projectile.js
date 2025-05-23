@@ -8,7 +8,9 @@ export class Projectile {
     this.damage = damage;
 
     // Calculate direction to target
-    const direction = target.position.minus(position);
+    // Handle both Vec objects and objects with position property
+    const targetPosition = target instanceof Vec ? target : target.position;
+    const direction = targetPosition.minus(position);
     this.velocity = direction.normalize().times(speed);
 
     // Projectile state

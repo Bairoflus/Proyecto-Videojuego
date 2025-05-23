@@ -24,6 +24,7 @@ export class GoblinDagger extends MeleeEnemy {
   moveTo(targetPosition) {
     if (this.state === "dead") return;
 
+    // targetPosition is already the player's hitbox center from Game.js
     const direction = targetPosition.minus(this.position);
     const distance = direction.magnitude();
 
@@ -41,7 +42,14 @@ export class GoblinDagger extends MeleeEnemy {
   attack(target) {
     if (this.state === "dead" || this.attackCooldown > 0) return;
 
-    const distance = target.position.minus(this.position).magnitude();
+    // Calculate target hitbox center position
+    const targetHitbox = target.getHitboxBounds();
+    const targetCenter = new Vec(
+      targetHitbox.x + targetHitbox.width / 2,
+      targetHitbox.y + targetHitbox.height / 2
+    );
+
+    const distance = targetCenter.minus(this.position).magnitude();
     if (distance <= this.attackRange) {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;

@@ -96,9 +96,16 @@ export class RangedEnemy extends Enemy {
   fireProjectile(target) {
     if (this.state === "dead") return;
 
+    // Calculate target hitbox center position
+    const targetHitbox = target.getHitboxBounds();
+    const targetCenter = new Vec(
+      targetHitbox.x + targetHitbox.width / 2,
+      targetHitbox.y + targetHitbox.height / 2
+    );
+
     const projectile = new Projectile(
       this.position,
-      target,
+      targetCenter,
       this.projectileSpeed,
       this.baseDamage
     );

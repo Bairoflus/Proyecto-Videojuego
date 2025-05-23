@@ -32,18 +32,27 @@ export class GoblinArcher extends RangedEnemy {
   attack(target) {
     if (this.state === "dead" || this.attackCooldown > 0) return;
 
-    const distance = target.position.minus(this.position).magnitude();
+    // Calculate target hitbox center position
+    const targetHitbox = target.getHitboxBounds();
+    const targetCenter = new Vec(
+      targetHitbox.x + targetHitbox.width / 2,
+      targetHitbox.y + targetHitbox.height / 2
+    );
+
+    const distance = targetCenter.minus(this.position).magnitude();
     if (distance <= this.attackRange) {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
-      this.fireProjectile(target);
+      this.fireProjectile(targetCenter);
     }
   }
 
-  fireProjectile(target) {
+  fireProjectile(targetCenter) {
+    // targetCenter is already a Vec with the hitbox center coordinates
+
     const projectile = new Projectile(
       this.position,
-      target,
+      targetCenter,
       this.projectileSpeed,
       this.baseDamage
     );

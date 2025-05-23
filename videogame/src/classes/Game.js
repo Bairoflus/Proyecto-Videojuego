@@ -74,7 +74,15 @@ export class Game {
 
     // Update remaining enemies
     this.enemies.forEach((enemy) => (enemy.target = this.player));
-    this.enemies.forEach((enemy) => enemy.moveTo(this.player.position));
+    
+    // Calculate player hitbox center
+    const playerHitbox = this.player.getHitboxBounds();
+    const playerHitboxCenter = new Vec(
+      playerHitbox.x + playerHitbox.width / 2,
+      playerHitbox.y + playerHitbox.height / 2
+    );
+    
+    this.enemies.forEach((enemy) => enemy.moveTo(playerHitboxCenter));
     this.enemies.forEach((enemy) => enemy.attack(this.player));
     this.enemies.forEach((enemy) => enemy.update(deltaTime, this.player));
 

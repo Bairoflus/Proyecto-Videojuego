@@ -69,7 +69,14 @@ export class Enemy extends AnimatedObject {
   attack(target) {
     if (this.state === "dead" || this.attackCooldown > 0) return;
 
-    const distance = target.position.minus(this.position).length();
+    // Calculate target hitbox center position
+    const targetHitbox = target.getHitboxBounds();
+    const targetCenter = new Vec(
+      targetHitbox.x + targetHitbox.width / 2,
+      targetHitbox.y + targetHitbox.height / 2
+    );
+
+    const distance = targetCenter.minus(this.position).length();
     if (distance <= this.attackRange) {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
