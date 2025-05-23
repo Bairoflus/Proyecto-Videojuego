@@ -57,8 +57,28 @@ export class Projectile {
   checkCollision(entity) {
     if (!this.isActive || this.hasHit || entity.state === "dead") return false;
 
-    const distance = this.position.minus(entity.position).magnitude();
-    return distance < this.radius + entity.width / 2;
+    // Use hitbox for collision
+    const hitbox = entity.getHitboxBounds
+      ? entity.getHitboxBounds()
+      : {
+          x: entity.position.x,
+          y: entity.position.y,
+          width: entity.width,
+          height: entity.height,
+        };
+    // Treat projectile as a small box for collision
+    const projBox = {
+      x: this.position.x - this.radius,
+      y: this.position.y - this.radius,
+      width: this.radius * 2,
+      height: this.radius * 2,
+    };
+    return (
+      projBox.x < hitbox.x + hitbox.width &&
+      projBox.x + projBox.width > hitbox.x &&
+      projBox.y < hitbox.y + hitbox.height &&
+      projBox.y + projBox.height > hitbox.y
+    );
   }
 
   handleCollision(entity) {
