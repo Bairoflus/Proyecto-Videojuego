@@ -60,6 +60,7 @@ export const keyDirections = {
   " ": "attack",
   1: "dagger",
   2: "slingshot",
+  shift: "dash"
 };
 
 export const playerMovement = {

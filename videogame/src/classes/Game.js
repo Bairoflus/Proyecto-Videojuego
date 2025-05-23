@@ -149,7 +149,7 @@ export class Game {
   // Keyboard events for movement and actions
   createEventListeners() {
     window.addEventListener("keydown", (e) => {
-      const action = keyDirections[e.key];
+      const action = keyDirections[e.key.toLowerCase()];
       if (!action) return;
 
       // Handle weapon switching
@@ -164,12 +164,18 @@ export class Game {
         return;
       }
 
+      // Handle dash
+      if (action === "dash") {
+        this.player.startDash();
+        return;
+      }
+
       // Handle movement
       this.add_key(action);
     });
     window.addEventListener("keyup", (e) => {
-      const action = keyDirections[e.key];
-      if (action && action !== "attack" && action !== "dagger" && action !== "slingshot") {
+      const action = keyDirections[e.key.toLowerCase()];
+      if (action && action !== "attack" && action !== "dagger" && action !== "slingshot" && action !== "dash") {
         this.del_key(action);
       }
     });

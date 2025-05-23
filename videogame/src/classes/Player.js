@@ -25,7 +25,7 @@ export class Player extends AnimatedObject {
     this.dashDuration = 100; // ms que dura el dash
     this.dashSpeed = variables.playerSpeed * 3; // velocidad durante dash
     this.dashTime = 0; // tiempo restante de dash
-    this.dashCooldown = 1000; // ms de cooldown entre dashes
+    this.dashCooldown = 0; // ms de cooldown entre dashes
     this.dashCooldownTime = 0; // timer de cooldown
     this.dashDirection = new Vec(0, 0); // dirección fijada al dash
     this.weaponType = "dagger"; // Default weapon
@@ -194,10 +194,41 @@ export class Player extends AnimatedObject {
     if (this.dashCooldownTime > 0) this.dashCooldownTime -= deltaTime;
 
     if (this.dashTime > 0) {
-      // Durante dash: mover en dashDirection
-      this.position = this.position.plus(
-        this.dashDirection.times(this.dashSpeed * deltaTime)
+      // Durante dash: intentar movimiento en X e Y por separado
+      const dashVelocity = this.dashDirection.times(this.dashSpeed * deltaTime);
+      
+      // Try movement in X direction
+      const newPositionX = this.position.plus(new Vec(dashVelocity.x, 0));
+      const tempPlayerX = new Player(
+        newPositionX,
+        this.width,
+        this.height,
+        this.color,
+        this.sheetCols
       );
+
+      // Try movement in Y direction
+      const newPositionY = this.position.plus(new Vec(0, dashVelocity.y));
+      const tempPlayerY = new Player(
+        newPositionY,
+        this.width,
+        this.height,
+        this.color,
+        this.sheetCols
+      );
+
+      // Check collisions separately
+      const canMoveX = !this.currentRoom?.checkWallCollision(tempPlayerX);
+      const canMoveY = !this.currentRoom?.checkWallCollision(tempPlayerY);
+
+      // Apply movement based on collisions
+      if (canMoveX) {
+        this.position.x = newPositionX.x;
+      }
+      if (canMoveY) {
+        this.position.y = newPositionY.y;
+      }
+
       this.dashTime -= deltaTime;
     } else {
       // Normal movement
@@ -387,10 +418,32 @@ export class Player extends AnimatedObject {
 
   // startDash: start the dash if cooldown is over
   startDash() {
-    if (this.dashCooldownTime <= 0 && this.dashTime <= 0) {
+    // Solo permitir dash si no está en cooldown y no está atacando
+    if (this.dashCooldownTime <= 0 && this.dashTime <= 0 && !this.isAttacking) {
+      // Si no hay dirección de movimiento, usar la dirección actual
+      if (this.velocity.magnitude() === 0) {
+        switch (this.currentDirection) {
+          case "up":
+            this.dashDirection = new Vec(0, -1);
+            break;
+          case "down":
+            this.dashDirection = new Vec(0, 1);
+            break;
+          case "left":
+            this.dashDirection = new Vec(-1, 0);
+            break;
+          case "right":
+            this.dashDirection = new Vec(1, 0);
+            break;
+          default:
+            this.dashDirection = new Vec(0, 1); // Default to down
+        }
+      } else {
+        this.dashDirection = this.velocity.normalize();
+      }
+
       this.dashTime = this.dashDuration;
       this.dashCooldownTime = this.dashCooldown;
-      this.dashDirection = this.velocity.normalize();
       this.isInvulnerable = true;
       this.invulnerabilityTimer = this.dashDuration;
     }

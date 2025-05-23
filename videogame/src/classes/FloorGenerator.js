@@ -21,10 +21,10 @@ export class FloorGenerator {
             BOSS_ROOM_LAYOUT
         ];
         
-        // Reset room index
+        // Reset room index to start of new floor
         this.currentRoomIndex = 0;
         
-        console.log("Generated new floor with", this.currentFloor.length, "rooms");
+        console.log("Generated new floor", this.floorCount, "with", this.currentFloor.length, "rooms");
     }
 
     // Selects n unique random combat rooms
@@ -87,9 +87,19 @@ export class FloorGenerator {
 
     // Advances to next floor
     nextFloor() {
-        this.floorCount++;
+        if (this.floorCount >= 3) {
+            // If we're at floor 3, increment run and reset floor
+            this.runCount++;
+            this.floorCount = 1;
+            console.log("Completed floor 3, starting new run:", this.runCount);
+        } else {
+            // Otherwise just increment floor
+            this.floorCount++;
+            console.log("Advanced to floor", this.floorCount);
+        }
+        
+        // Generate new floor and reset room index
         this.generateFloor();
-        console.log("Advanced to floor", this.floorCount);
     }
 
     // Gets current floor number
