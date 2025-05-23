@@ -30,6 +30,11 @@ export class RangedEnemy extends Enemy {
     this.currentDirection = "down";
     this.isAttacking = false;
     this.attackCooldown = 0;
+    
+    // Ranged enemy specific properties
+    this.attackRange = 150; // Default attack range
+    this.retreatDistance = 80; // Distance to maintain from target
+    this.projectileSpeed = 200; // Default projectile speed
 
     // Projectiles
     this.projectiles = [];
@@ -46,12 +51,18 @@ export class RangedEnemy extends Enemy {
       this.state = "retreating";
       const retreatDirection = this.position.minus(targetPosition);
       this.velocity = retreatDirection.normalize().times(this.movementSpeed);
-      this.position = this.position.plus(this.velocity);
+      
+      // Calculate new position and use safe movement that respects walls
+      const newPosition = this.position.plus(this.velocity);
+      this.moveToPosition(newPosition);
     } else if (distance > this.attackRange) {
       // Move closer if too far
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
-      this.position = this.position.plus(this.velocity);
+      
+      // Calculate new position and use safe movement that respects walls
+      const newPosition = this.position.plus(this.velocity);
+      this.moveToPosition(newPosition);
     } else {
       // Stay in range and attack
       this.state = "attacking";
@@ -63,6 +74,10 @@ export class RangedEnemy extends Enemy {
     if (this.state === "dead") {
       // Keep updating existing projectiles even when dead
       this.projectiles = this.projectiles.filter((projectile) => {
+        // Ensure projectile has room reference for wall collision
+        if (!projectile.currentRoom && this.currentRoom) {
+          projectile.setCurrentRoom(this.currentRoom);
+        }
         projectile.update(deltaTime, [player]);
         return projectile.isActive;
       });
@@ -75,6 +90,10 @@ export class RangedEnemy extends Enemy {
 
     // Update projectiles
     this.projectiles = this.projectiles.filter((projectile) => {
+      // Ensure projectile has room reference for wall collision
+      if (!projectile.currentRoom && this.currentRoom) {
+        projectile.setCurrentRoom(this.currentRoom);
+      }
       projectile.update(deltaTime, [player]); // Wrap player in array
       return projectile.isActive;
     });
@@ -109,7 +128,13 @@ export class RangedEnemy extends Enemy {
       this.projectileSpeed,
       this.baseDamage
     );
+    
+    // Set room reference for wall collision detection
+    projectile.setCurrentRoom(this.currentRoom);
+    
     this.projectiles.push(projectile);
+    
+    console.log(`🏹 ${this.type} fired projectile at player`);
   }
 
   updateAnimation() {

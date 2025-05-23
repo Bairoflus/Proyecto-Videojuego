@@ -2,11 +2,14 @@ import { Vec } from './Vec.js';
 import { Rect } from './Rect.js';
 import { Player } from './Player.js';
 import { Coin } from './Coin.js';
+import { GoblinDagger } from './enemies/floor1/GoblinDagger.js';
+import { GoblinArcher } from './enemies/floor1/GoblinArcher.js';
 import { variables } from '../config.js';
 
 export class Room {
-    constructor(layout) {
+    constructor(layout, isCombatRoom = false) {
         this.layout = layout;
+        this.isCombatRoom = isCombatRoom;
         this.tileSize = 32; // Size of each cell in pixels
         this.transitionZone = 64; // Activation zone for transition
         this.minSafeDistance = 16; // Minimum distance to avoid immediate activation
@@ -18,6 +21,11 @@ export class Room {
             boss: null
         };
         this.parseLayout();
+        
+        // Generate enemies procedurally if this is a combat room
+        if (this.isCombatRoom) {
+            this.generateEnemies();
+        }
     }
 
     // Parses the ASCII layout and creates corresponding objects
@@ -39,9 +47,6 @@ export class Room {
                             this.tileSize,
                             this.tileSize
                         ));
-                        break;
-                    case 'E': // Enemy
-                        // TODO: Implement enemy creation
                         break;
                     case 'C': // Coin
                         const coin = new Coin(
@@ -77,13 +82,53 @@ export class Room {
         // Draw coins
         this.objects.coins.forEach(coin => coin.draw(ctx));
 
-        // TODO: Draw enemies, shop and boss
+        // Draw enemies
+        this.objects.enemies.forEach(enemy => enemy.draw(ctx));
+
+        // TODO: Draw shop and boss
     }
 
     // Updates all room objects
     update(deltaTime) {
         this.objects.coins.forEach(coin => coin.update(deltaTime));
-        // TODO: Update enemies, shop and boss
+        
+        // Update enemies
+        this.objects.enemies.forEach(enemy => {
+            // Ensure enemy has room reference for collision detection
+            if (!enemy.currentRoom) {
+                enemy.setCurrentRoom(this);
+            }
+            
+            if (enemy.state !== "dead") {
+                // Set player as target for enemy AI
+                if (window.game && window.game.player) {
+                    enemy.target = window.game.player;
+                    // Get player hitbox center position
+                    const playerHitbox = window.game.player.getHitboxBounds();
+                    const playerCenter = new Vec(
+                        playerHitbox.x + playerHitbox.width / 2,
+                        playerHitbox.y + playerHitbox.height / 2
+                    );
+                    enemy.moveTo(playerCenter);
+                    
+                    // For ranged enemies, also call their attack method
+                    if (enemy.type === "goblin_archer") {
+                        enemy.attack(window.game.player);
+                    }
+                }
+                
+                // Update enemy with player reference for projectile handling
+                enemy.update(deltaTime, window.game.player);
+            } else {
+                // Even dead enemies need to update their projectiles
+                enemy.update(deltaTime, window.game.player);
+            }
+        });
+        
+        // Remove dead enemies from the array
+        this.objects.enemies = this.objects.enemies.filter(enemy => enemy.state !== "dead");
+        
+        // TODO: Update shop and boss
     }
 
     // Checks for wall collisions using hitboxes
@@ -164,5 +209,138 @@ export class Room {
             variables.canvasWidth - this.transitionZone - this.minSafeDistance - playerWidth + hitboxOffset,
             variables.canvasHeight / 2 - 32
         );
+    }
+
+    // Generates procedural enemies for combat rooms
+    generateEnemies() {
+        console.log("🏹 Starting procedural enemy generation for combat room...");
+        
+        // Generate 6-10 enemies randomly
+        const enemyCount = Math.floor(Math.random() * 5) + 6; // 6 to 10 enemies
+        
+        // Random proportion: 60%-80% common, 20%-40% rare
+        const commonPercentage = Math.random() * 0.2 + 0.6; // 0.6 to 0.8
+        const commonCount = Math.floor(enemyCount * commonPercentage);
+        const rareCount = enemyCount - commonCount;
+        
+        console.log(`📊 Enemy distribution: ${enemyCount} total | ${commonCount} GoblinDagger (${Math.round(commonPercentage*100)}%) | ${rareCount} GoblinArcher (${Math.round((1-commonPercentage)*100)}%)`);
+        
+        // Safe zone definition (128x128 centered on left edge)
+        const safeZone = {
+            x: 0,
+            y: variables.canvasHeight / 2 - 64,
+            width: 128,
+            height: 128
+        };
+        
+        console.log(`🛡️ Safe zone: x=${safeZone.x}, y=${safeZone.y}, w=${safeZone.width}, h=${safeZone.height}`);
+        
+        let successfulPlacements = 0;
+        
+        // Generate common enemies (left half, excluding safe zone)
+        console.log("⚔️ Generating GoblinDagger enemies (left half)...");
+        for (let i = 0; i < commonCount; i++) {
+            const position = this.getValidEnemyPosition(true, safeZone);
+            if (position) {
+                const enemy = new GoblinDagger(position);
+                enemy.setCurrentRoom(this); // Set room reference for collision detection
+                this.objects.enemies.push(enemy);
+                successfulPlacements++;
+                console.log(`  ✅ GoblinDagger ${i+1} placed at (${Math.round(position.x)}, ${Math.round(position.y)})`);
+            } else {
+                console.warn(`  ❌ Failed to place GoblinDagger ${i+1}`);
+            }
+        }
+        
+        // Generate rare enemies (right half)
+        console.log("🏹 Generating GoblinArcher enemies (right half)...");
+        for (let i = 0; i < rareCount; i++) {
+            const position = this.getValidEnemyPosition(false, safeZone);
+            if (position) {
+                const enemy = new GoblinArcher(position);
+                enemy.setCurrentRoom(this); // Set room reference for collision detection
+                this.objects.enemies.push(enemy);
+                successfulPlacements++;
+                console.log(`  ✅ GoblinArcher ${i+1} placed at (${Math.round(position.x)}, ${Math.round(position.y)})`);
+            } else {
+                console.warn(`  ❌ Failed to place GoblinArcher ${i+1}`);
+            }
+        }
+        
+        console.log(`🎯 Enemy generation complete: ${successfulPlacements}/${enemyCount} enemies successfully placed`);
+        
+        // Validate that all enemies are correct instances
+        const goblinDaggerCount = this.objects.enemies.filter(e => e.type === "goblin_dagger").length;
+        const goblinArcherCount = this.objects.enemies.filter(e => e.type === "goblin_archer").length;
+        
+        console.log(`🔍 Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher instances created`);
+    }
+    
+    // Gets a valid position for enemy placement
+    getValidEnemyPosition(isCommon, safeZone) {
+        const maxAttempts = 50; // Prevent infinite loops
+        let attempts = 0;
+        
+        while (attempts < maxAttempts) {
+            let x, y;
+            
+            if (isCommon) {
+                // Common enemies: left half (excluding safe zone)
+                x = Math.random() * (variables.canvasWidth / 2 - 32);
+                y = Math.random() * (variables.canvasHeight - 32);
+                
+                // Check if position overlaps with safe zone
+                if (x < safeZone.x + safeZone.width && 
+                    x + 32 > safeZone.x && 
+                    y < safeZone.y + safeZone.height && 
+                    y + 32 > safeZone.y) {
+                    attempts++;
+                    continue;
+                }
+            } else {
+                // Rare enemies: right half
+                x = Math.random() * (variables.canvasWidth / 2 - 32) + variables.canvasWidth / 2;
+                y = Math.random() * (variables.canvasHeight - 32);
+            }
+            
+            const position = new Vec(x, y);
+            
+            // Create a temporary enemy to test collision
+            const tempEnemy = new GoblinDagger(position);
+            
+            // Check if position is valid (no wall collision)
+            if (!this.checkWallCollision(tempEnemy)) {
+                return position;
+            }
+            
+            attempts++;
+        }
+        
+        console.warn("Could not find valid position for enemy after", maxAttempts, "attempts");
+        return null;
+    }
+    
+    // Checks if the room can transition (no enemies alive)
+    canTransition() {
+        if (!this.isCombatRoom) {
+            console.log("🚪 Transition allowed: Non-combat room");
+            return true; // Non-combat rooms can always transition
+        }
+        
+        // Combat rooms require all enemies to be defeated
+        const totalEnemies = this.objects.enemies.length;
+        const aliveEnemies = this.objects.enemies.filter(enemy => enemy.state !== "dead");
+        const deadEnemies = totalEnemies - aliveEnemies.length;
+        
+        const canTransition = aliveEnemies.length === 0;
+        
+        if (canTransition) {
+            console.log(`🎉 Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`);
+        } else {
+            const aliveGoblins = aliveEnemies.map(e => e.type).join(", ");
+            console.log(`⛔ Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveGoblins})`);
+        }
+        
+        return canTransition;
     }
 }

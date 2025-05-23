@@ -32,6 +32,52 @@ export class Enemy extends AnimatedObject {
     this.type = type;
     this.currentDirection = "down";
     this.isAttacking = false;
+    
+    // Reference to current room for collision detection
+    this.currentRoom = null;
+  }
+
+  // Set the current room reference for collision detection
+  setCurrentRoom(room) {
+    this.currentRoom = room;
+  }
+
+  // Safe movement method that respects wall collisions
+  moveToPosition(newPosition) {
+    if (this.state === "dead" || !this.currentRoom) {
+      return false;
+    }
+    
+    const originalPosition = new Vec(this.position.x, this.position.y);
+    let collisionDetected = false;
+    
+    // Try movement in X direction only
+    const newPositionX = new Vec(newPosition.x, this.position.y);
+    this.position = newPositionX;
+    
+    if (this.currentRoom.checkWallCollision(this)) {
+      // Revert X movement if it collides
+      this.position.x = originalPosition.x;
+      collisionDetected = true;
+    }
+    
+    // Try movement in Y direction only
+    const newPositionY = new Vec(this.position.x, newPosition.y);
+    this.position = newPositionY;
+    
+    if (this.currentRoom.checkWallCollision(this)) {
+      // Revert Y movement if it collides
+      this.position.y = originalPosition.y;
+      collisionDetected = true;
+    }
+    
+    // Log collision detection for debugging (only occasionally to avoid spam)
+    if (collisionDetected && Math.random() < 0.01) {
+      console.log(`🧱 ${this.type} collision detected - movement blocked`);
+    }
+    
+    // Return true if we moved at all
+    return this.position.x !== originalPosition.x || this.position.y !== originalPosition.y;
   }
 
   takeDamage(amount) {
@@ -47,6 +93,17 @@ export class Enemy extends AnimatedObject {
 
   die() {
     this.state = "dead";
+    console.log(`💀 ${this.type} died`);
+    
+    // EVENT-DRIVEN UPDATE: Update room state when enemy dies
+    if (window.game && window.game.floorGenerator && this.currentRoom) {
+      window.game.floorGenerator.updateRoomState(
+        window.game.floorGenerator.getCurrentRoomIndex(), 
+        this.currentRoom
+      );
+      console.log("💾 Room state updated due to enemy death");
+    }
+    
     // TODO: Add death animation and effects
   }
 
@@ -54,12 +111,15 @@ export class Enemy extends AnimatedObject {
     if (this.state === "dead") return;
 
     const direction = targetPosition.minus(this.position);
-    const distance = direction.length();
+    const distance = direction.magnitude();
 
     if (distance > this.attackRange) {
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
-      this.position = this.position.plus(this.velocity);
+      
+      // Calculate new position and use safe movement
+      const newPosition = this.position.plus(this.velocity);
+      this.moveToPosition(newPosition);
     } else {
       this.state = "attacking";
       this.velocity = new Vec(0, 0);
@@ -76,7 +136,7 @@ export class Enemy extends AnimatedObject {
       targetHitbox.y + targetHitbox.height / 2
     );
 
-    const distance = targetCenter.minus(this.position).length();
+    const distance = targetCenter.minus(this.position).magnitude();
     if (distance <= this.attackRange) {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;

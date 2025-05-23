@@ -1,4 +1,5 @@
 import { Vec } from "./Vec.js";
+import { variables } from "../config.js";
 
 export class Projectile {
   constructor(position, target, speed, damage, radius = 5) {
@@ -16,13 +17,31 @@ export class Projectile {
     // Projectile state
     this.isActive = true;
     this.hasHit = false;
+    
+    // Reference to current room for wall collision detection
+    this.currentRoom = null;
+  }
+  
+  // Set the current room reference for wall collision detection
+  setCurrentRoom(room) {
+    this.currentRoom = room;
   }
 
   update(deltaTime, entities) {
     if (!this.isActive) return;
 
+    // Store previous position for collision reversion
+    const previousPosition = new Vec(this.position.x, this.position.y);
+
     // Move projectile
     this.position = this.position.plus(this.velocity.times(deltaTime / 1000));
+
+    // Check wall collision first (prioritize wall collision over entity collision)
+    if (this.currentRoom && this.checkWallCollision()) {
+      this.isActive = false;
+      console.log("🧱 Projectile hit wall and was destroyed");
+      return;
+    }
 
     // Check collision with all entities
     if (entities) {
@@ -35,14 +54,15 @@ export class Projectile {
       });
     }
 
-    // Check if projectile is out of bounds
+    // Check if projectile is out of bounds (using canvas variables)
     if (
       this.position.x < 0 ||
-      this.position.x > 800 ||
+      this.position.x > variables.canvasWidth ||
       this.position.y < 0 ||
-      this.position.y > 600
+      this.position.y > variables.canvasHeight
     ) {
       this.isActive = false;
+      console.log("🚫 Projectile went out of bounds");
     }
   }
 
@@ -91,7 +111,32 @@ export class Projectile {
 
     // Apply damage to entity
     entity.takeDamage(this.damage);
+    
+    // Log successful hit
+    console.log(`🎯 Projectile hit ${entity.type} for ${this.damage} damage`);
 
     // TODO: Add hit effect/particles here
+  }
+
+  // Check collision with walls
+  checkWallCollision() {
+    if (!this.currentRoom || !this.isActive) return false;
+    
+    // Create a temporary object representing the projectile for collision detection
+    const tempProjectile = {
+      position: this.position,
+      width: this.radius * 2,
+      height: this.radius * 2,
+      getHitboxBounds: () => {
+        return {
+          x: this.position.x - this.radius,
+          y: this.position.y - this.radius,
+          width: this.radius * 2,
+          height: this.radius * 2
+        };
+      }
+    };
+    
+    return this.currentRoom.checkWallCollision(tempProjectile);
   }
 }

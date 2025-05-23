@@ -10,7 +10,8 @@ import {
 } from "../config.js";
 
 // Attack range constants
-const DAGGER_ATTACK_RANGE = 30;
+// EXTENDED RANGE: Multiplied original range (30) by 2.5 for improved melee combat
+const DAGGER_ATTACK_RANGE = 75; // Extended from 30 to 75 (2.5x increase)
 const DAGGER_ATTACK_WIDTH = 20;
 const DAGGER_ATTACK_DAMAGE = 10;
 
@@ -53,6 +54,12 @@ export class Player extends AnimatedObject {
 
   setCurrentRoom(room) {
     this.currentRoom = room;
+    
+    // Clear any active projectiles when changing rooms to prevent cross-room damage
+    if (this.projectiles.length > 0) {
+      console.log(`🧹 Clearing ${this.projectiles.length} active projectiles during room transition`);
+      this.projectiles = [];
+    }
   }
 
   takeDamage(amount) {
@@ -73,8 +80,77 @@ export class Player extends AnimatedObject {
   }
 
   die() {
-    // TODO: Implement death logic
-    console.log("Player died!");
+    console.log("💀 Player died! Initiating game reset...");
+    
+    // Trigger complete game reset through the global game instance
+    if (window.game && typeof window.game.resetGameAfterDeath === 'function') {
+      // Small delay to show death state before reset
+      setTimeout(() => {
+        window.game.resetGameAfterDeath();
+      }, 1000); // 1 second delay
+    } else {
+      console.error("❌ Cannot reset game: Game instance not found");
+    }
+  }
+
+  // DEATH RESET: Restore player to initial state
+  resetToInitialState(startPosition) {
+    console.log("🔄 === PLAYER RESET TO INITIAL STATE ===");
+    
+    // Reset health and stats
+    this.health = this.maxHealth;
+    this.isInvulnerable = false;
+    this.invulnerabilityTimer = 0;
+    
+    // Reset position
+    if (startPosition) {
+      this.position = new Vec(startPosition.x, startPosition.y);
+    }
+    
+    // Reset movement and attack state
+    this.velocity = new Vec(0, 0);
+    this.keys = [];
+    this.isAttacking = false;
+    this.attackCooldown = 0;
+    this.hasCreatedProjectile = false;
+    this.hasAppliedMeleeDamage = false;
+    
+    // Reset dash state
+    this.dashTime = 0;
+    this.dashCooldownTime = 0;
+    this.dashDirection = new Vec(0, 0);
+    this.isInvulnerable = false;
+    
+    // Clear all projectiles
+    this.projectiles = [];
+    
+    // Reset weapon to default
+    this.weaponType = "dagger";
+    this.setWeapon("dagger");
+    
+    // Reset direction
+    this.currentDirection = "down";
+    this.previousDirection = "down";
+    
+    console.log("✅ Player reset complete:");
+    console.log(`  - Health: ${this.health}/${this.maxHealth}`);
+    console.log(`  - Position: (${Math.round(this.position.x)}, ${Math.round(this.position.y)})`);
+    console.log(`  - Weapon: ${this.weaponType}`);
+    console.log(`  - Projectiles cleared: ${this.projectiles.length === 0}`);
+  }
+  
+  // Get current player state for debugging
+  getPlayerState() {
+    return {
+      health: this.health,
+      maxHealth: this.maxHealth,
+      position: { x: Math.round(this.position.x), y: Math.round(this.position.y) },
+      weapon: this.weaponType,
+      isAttacking: this.isAttacking,
+      attackCooldown: Math.round(this.attackCooldown),
+      activeProjectiles: this.projectiles.length,
+      isDead: this.health <= 0
+    };
   }
 
   setWeapon(type) {
@@ -95,6 +171,46 @@ export class Player extends AnimatedObject {
     }
   }
 
+  // LINE OF SIGHT: Raycast to detect walls between player and target
+  raycastToWall(startPos, direction, maxDistance, stepSize = 4) {
+    if (!this.currentRoom) return maxDistance;
+    
+    let currentDistance = 0;
+    const normalizedDirection = direction.normalize();
+    
+    // Step through the ray in small increments
+    while (currentDistance < maxDistance) {
+      const currentPos = startPos.plus(normalizedDirection.times(currentDistance));
+      
+      // Create a small test object for collision detection
+      const testObject = {
+        position: currentPos,
+        width: 4,
+        height: 4,
+        getHitboxBounds: () => {
+          return {
+            x: currentPos.x - 2,
+            y: currentPos.y - 2,
+            width: 4,
+            height: 4
+          };
+        }
+      };
+      
+      // Check if this position collides with a wall
+      if (this.currentRoom.checkWallCollision(testObject)) {
+        console.log(`🧱 Wall detected at distance ${Math.round(currentDistance)} (direction: ${this.currentDirection})`);
+        return currentDistance;
+      }
+      
+      currentDistance += stepSize;
+    }
+    
+    // No wall found within max distance
+    return maxDistance;
+  }
+  
+  // ENHANCED ATTACK: Melee attack with line-of-sight wall detection
   attack() {
     if (!this.isAttacking && this.attackCooldown <= 0) {
       this.isAttacking = true;
@@ -102,22 +218,51 @@ export class Player extends AnimatedObject {
       this.hasAppliedMeleeDamage = false; // Reset melee damage flag
       this.attackCooldown = playerAttack.cooldown;
 
+      console.log(`⚔️ Player attacking with ${this.weaponType}`);
+
       // Apply melee damage immediately for dagger attacks
       if (this.weaponType === "dagger") {
         // Using constants defined at the top of the file
-        const attackRange = DAGGER_ATTACK_RANGE;
+        const baseAttackRange = DAGGER_ATTACK_RANGE;
         const attackWidth = DAGGER_ATTACK_WIDTH;
         const attackDamage = DAGGER_ATTACK_DAMAGE;
 
         // Calculate player center position
         const playerCenterX = this.position.x + this.width / 2;
         const playerCenterY = this.position.y + this.height / 2;
+        const playerCenter = new Vec(playerCenterX, playerCenterY);
 
-        // Define attack area based on direction
+        // Calculate attack direction vector
+        let attackDirection;
+        switch (this.currentDirection) {
+          case "right":
+            attackDirection = new Vec(1, 0);
+            break;
+          case "left":
+            attackDirection = new Vec(-1, 0);
+            break;
+          case "up":
+            attackDirection = new Vec(0, -1);
+            break;
+          case "down":
+            attackDirection = new Vec(0, 1);
+            break;
+          default:
+            attackDirection = new Vec(0, 1);
+        }
+
+        // WALL DETECTION: Check for walls and limit attack range
+        const actualAttackRange = this.raycastToWall(playerCenter, attackDirection, baseAttackRange);
+        
+        if (actualAttackRange < baseAttackRange) {
+          console.log(`🗡️ Attack range limited by wall: ${baseAttackRange} → ${Math.round(actualAttackRange)}`);
+        }
+
+        // Define attack area based on direction with actual range
         let attackArea = {
           x: playerCenterX,
           y: playerCenterY,
-          width: attackRange,
+          width: actualAttackRange,
           height: attackWidth,
         };
 
@@ -128,39 +273,67 @@ export class Player extends AnimatedObject {
             attackArea.y = playerCenterY - attackWidth / 2;
             break;
           case "left":
-            attackArea.x = playerCenterX - attackRange;
+            attackArea.x = playerCenterX - actualAttackRange;
             attackArea.y = playerCenterY - attackWidth / 2;
             break;
           case "up":
             attackArea.width = attackWidth;
-            attackArea.height = attackRange;
+            attackArea.height = actualAttackRange;
             attackArea.x = playerCenterX - attackWidth / 2;
-            attackArea.y = playerCenterY - attackRange;
+            attackArea.y = playerCenterY - actualAttackRange;
             break;
           case "down":
             attackArea.width = attackWidth;
-            attackArea.height = attackRange;
+            attackArea.height = actualAttackRange;
             attackArea.x = playerCenterX - attackWidth / 2;
             attackArea.y = playerCenterY;
             break;
         }
 
-        // Get all enemies and check for collision with attack area
-        const enemies = window.game.enemies;
-        enemies.forEach((enemy) => {
-          // Get enemy hitbox in world coordinates
-          const enemyHitbox = enemy.getHitboxBounds();
+        // Get enemies from current room instead of window.game.enemies
+        if (this.currentRoom && this.currentRoom.objects.enemies) {
+          const enemies = this.currentRoom.objects.enemies.filter(enemy => enemy.state !== "dead");
+          let enemiesHit = 0;
+          
+          enemies.forEach((enemy) => {
+            // Get enemy hitbox in world coordinates
+            const enemyHitbox = enemy.getHitboxBounds();
 
-          // Check collision between attack area and enemy hitbox
-          if (
-            attackArea.x < enemyHitbox.x + enemyHitbox.width &&
-            attackArea.x + attackArea.width > enemyHitbox.x &&
-            attackArea.y < enemyHitbox.y + enemyHitbox.height &&
-            attackArea.y + attackArea.height > enemyHitbox.y
-          ) {
-            enemy.takeDamage(attackDamage);
+            // Check collision between attack area and enemy hitbox
+            if (
+              attackArea.x < enemyHitbox.x + enemyHitbox.width &&
+              attackArea.x + attackArea.width > enemyHitbox.x &&
+              attackArea.y < enemyHitbox.y + enemyHitbox.height &&
+              attackArea.y + attackArea.height > enemyHitbox.y
+            ) {
+              // ADDITIONAL CHECK: Verify line of sight to enemy center
+              const enemyCenterX = enemyHitbox.x + enemyHitbox.width / 2;
+              const enemyCenterY = enemyHitbox.y + enemyHitbox.height / 2;
+              const enemyCenter = new Vec(enemyCenterX, enemyCenterY);
+              
+              const distanceToEnemy = enemyCenter.minus(playerCenter).magnitude();
+              const raycastToEnemy = this.raycastToWall(playerCenter, enemyCenter.minus(playerCenter), distanceToEnemy);
+              
+              // Only hit if there's clear line of sight to enemy
+              if (raycastToEnemy >= distanceToEnemy - 5) { // 5px tolerance
+                enemy.takeDamage(attackDamage);
+                enemiesHit++;
+                console.log(`🗡️ Dagger hit ${enemy.type} for ${attackDamage} damage (clear line of sight)`);
+              } else {
+                console.log(`🚫 ${enemy.type} blocked by wall - no damage dealt`);
+              }
+            }
+          });
+          
+          if (enemiesHit === 0) {
+            console.log("🗡️ Dagger attack missed all enemies");
+          } else {
+            console.log(`🗡️ Dagger attack hit ${enemiesHit} enemies`);
           }
-        });
+        } else {
+          console.warn("⚠️ No current room or enemies found for dagger attack");
+        }
+        
         this.hasAppliedMeleeDamage = true;
       }
 
@@ -180,6 +353,12 @@ export class Player extends AnimatedObject {
         playerAttack.duration
       );
       this.frame = this.minFrame;
+    } else {
+      if (this.isAttacking) {
+        console.log("⏳ Attack blocked: Already attacking");
+      } else if (this.attackCooldown > 0) {
+        console.log(`⏳ Attack blocked: Cooldown remaining ${Math.round(this.attackCooldown)}ms`);
+      }
     }
   }
 
@@ -280,8 +459,11 @@ export class Player extends AnimatedObject {
             projectileSpeed,
             projectileDamage
           );
+          projectile.setCurrentRoom(this.currentRoom); // Set room reference for wall collision
           this.projectiles.push(projectile);
           this.hasCreatedProjectile = true; // Mark that we've created the projectile
+          
+          console.log(`🏹 Slingshot projectile created (direction: ${this.currentDirection}, damage: ${projectileDamage})`);
         }
 
         // Apply melee damage is now handled in the attack() method
@@ -302,9 +484,19 @@ export class Player extends AnimatedObject {
         }
       }
 
-      // Update projectiles
+      // Update projectiles with current room's enemies
       this.projectiles = this.projectiles.filter((projectile) => {
-        projectile.update(deltaTime, window.game.enemies);
+        // Ensure projectile has room reference for wall collision detection
+        if (!projectile.currentRoom && this.currentRoom) {
+          projectile.setCurrentRoom(this.currentRoom);
+        }
+        
+        // Get current room's alive enemies
+        const roomEnemies = this.currentRoom && this.currentRoom.objects.enemies 
+          ? this.currentRoom.objects.enemies.filter(enemy => enemy.state !== "dead")
+          : [];
+          
+        projectile.update(deltaTime, roomEnemies);
         return projectile.isActive;
       });
 
@@ -356,20 +548,43 @@ export class Player extends AnimatedObject {
     // Draw projectiles
     this.projectiles.forEach((projectile) => projectile.draw(ctx));
 
-    // Draw attack range visualization for melee attacks (dagger)
-    if (this.weaponType === "dagger") {
-      const attackRange = DAGGER_ATTACK_RANGE;
+    // Draw attack range visualization for melee attacks (dagger) - only when attacking
+    if (this.weaponType === "dagger" && this.isAttacking && variables.showHitboxes) {
+      const baseAttackRange = DAGGER_ATTACK_RANGE;
       const attackWidth = DAGGER_ATTACK_WIDTH;
 
       // Calculate player center position
       const playerCenterX = this.position.x + this.width / 2;
       const playerCenterY = this.position.y + this.height / 2;
+      const playerCenter = new Vec(playerCenterX, playerCenterY);
 
-      // Define attack area based on direction
+      // Calculate attack direction for wall detection
+      let attackDirection;
+      switch (this.currentDirection) {
+        case "right":
+          attackDirection = new Vec(1, 0);
+          break;
+        case "left":
+          attackDirection = new Vec(-1, 0);
+          break;
+        case "up":
+          attackDirection = new Vec(0, -1);
+          break;
+        case "down":
+          attackDirection = new Vec(0, 1);
+          break;
+        default:
+          attackDirection = new Vec(0, 1);
+      }
+
+      // Get actual attack range limited by walls
+      const actualAttackRange = this.raycastToWall(playerCenter, attackDirection, baseAttackRange);
+
+      // Define attack area based on direction with actual range
       let attackArea = {
         x: playerCenterX,
         y: playerCenterY,
-        width: attackRange,
+        width: actualAttackRange,
         height: attackWidth,
       };
 
@@ -380,27 +595,38 @@ export class Player extends AnimatedObject {
           attackArea.y = playerCenterY - attackWidth / 2;
           break;
         case "left":
-          attackArea.x = playerCenterX - attackRange;
+          attackArea.x = playerCenterX - actualAttackRange;
           attackArea.y = playerCenterY - attackWidth / 2;
           break;
         case "up":
           attackArea.width = attackWidth;
-          attackArea.height = attackRange;
+          attackArea.height = actualAttackRange;
           attackArea.x = playerCenterX - attackWidth / 2;
-          attackArea.y = playerCenterY - attackRange;
+          attackArea.y = playerCenterY - actualAttackRange;
           break;
         case "down":
           attackArea.width = attackWidth;
-          attackArea.height = attackRange;
+          attackArea.height = actualAttackRange;
           attackArea.x = playerCenterX - attackWidth / 2;
           attackArea.y = playerCenterY;
           break;
       }
 
-      // Draw the attack area
-      ctx.strokeStyle = "rgba(255, 0, 0, 0.7)";
-      ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
-      ctx.lineWidth = 2;
+      // Draw the attack area with different colors based on whether it's limited by walls
+      const isLimited = actualAttackRange < baseAttackRange;
+      const pulseIntensity = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+      
+      if (isLimited) {
+        // Red/orange for wall-limited attacks
+        ctx.strokeStyle = `rgba(255, 165, 0, ${pulseIntensity})`;
+        ctx.fillStyle = `rgba(255, 165, 0, ${pulseIntensity * 0.3})`;
+      } else {
+        // Red for normal attacks
+        ctx.strokeStyle = `rgba(255, 0, 0, ${pulseIntensity})`;
+        ctx.fillStyle = `rgba(255, 0, 0, ${pulseIntensity * 0.3})`;
+      }
+      
+      ctx.lineWidth = 3;
       ctx.fillRect(
         attackArea.x,
         attackArea.y,
@@ -498,5 +724,99 @@ export class Player extends AnimatedObject {
       this.spriteRect.x = this.frame % this.sheetCols;
       this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
     }
+  }
+
+  // Get attack status information for debugging
+  getAttackStatus() {
+    const roomEnemyCount = this.currentRoom && this.currentRoom.objects.enemies 
+      ? this.currentRoom.objects.enemies.filter(enemy => enemy.state !== "dead").length 
+      : 0;
+      
+    return {
+      isAttacking: this.isAttacking,
+      attackCooldown: Math.round(this.attackCooldown),
+      weaponType: this.weaponType,
+      canAttack: !this.isAttacking && this.attackCooldown <= 0,
+      activeProjectiles: this.projectiles.length,
+      roomEnemies: roomEnemyCount
+    };
+  }
+
+  // Validation method for testing the attack system
+  validateAttackSystem() {
+    console.log("🧪 === OPTIMIZED ATTACK SYSTEM VALIDATION ===");
+    
+    const status = this.getAttackStatus();
+    console.log("📊 Current Status:", status);
+    
+    // Check room and enemies
+    if (!this.currentRoom) {
+      console.error("❌ No current room set");
+      return false;
+    }
+    
+    if (!this.currentRoom.objects.enemies) {
+      console.error("❌ No enemies array in current room");
+      return false;
+    }
+    
+    const aliveEnemies = this.currentRoom.objects.enemies.filter(enemy => enemy.state !== "dead");
+    console.log(`👹 Enemies: ${aliveEnemies.length} alive, ${this.currentRoom.objects.enemies.length} total`);
+    
+    // Check attack constants with new line-of-sight system
+    console.log("🗡️ OPTIMIZED Dagger Config:", {
+      baseRange: DAGGER_ATTACK_RANGE,
+      width: DAGGER_ATTACK_WIDTH,
+      damage: DAGGER_ATTACK_DAMAGE,
+      enhancements: [
+        "Range extended by 2.5x (30 → 75)",
+        "Wall collision detection (raycast)",
+        "Line-of-sight verification"
+      ]
+    });
+    
+    // Test raycast functionality
+    if (this.currentRoom) {
+      const playerCenter = new Vec(this.position.x + this.width/2, this.position.y + this.height/2);
+      const testDirection = new Vec(1, 0); // Test right direction
+      const raycastResult = this.raycastToWall(playerCenter, testDirection, DAGGER_ATTACK_RANGE);
+      
+      console.log("🎯 Line-of-Sight Test:", {
+        playerPosition: `(${Math.round(playerCenter.x)}, ${Math.round(playerCenter.y)})`,
+        testDirection: "right",
+        maxRange: DAGGER_ATTACK_RANGE,
+        actualRange: Math.round(raycastResult),
+        wallDetected: raycastResult < DAGGER_ATTACK_RANGE
+      });
+    }
+    
+    // Check weapon and cooldown
+    console.log("⚔️ Weapon:", this.weaponType);
+    console.log("⏱️ Cooldown:", playerAttack.cooldown + "ms");
+    
+    // Validate projectile wall collision system
+    console.log("🧱 Projectile Wall Collision:", {
+      playerProjectiles: this.projectiles.length,
+      roomReferenceSet: this.projectiles.every(p => p.currentRoom !== null),
+      feature: "Projectiles stop when hitting walls"
+    });
+    
+    // Performance optimizations info
+    console.log("⚡ Performance Optimizations:", {
+      roomStateUpdates: "Event-driven only (enemy death, transitions)",
+      raycastStepSize: "4px increments",
+      lineOfSightTolerance: "5px",
+      noPerFrameUpdates: "Room state not updated every frame"
+    });
+    
+    if (aliveEnemies.length > 0) {
+      console.log("✅ Optimized attack system ready for testing");
+      console.log("💡 NEW: Line-of-sight melee + optimized state updates");
+      console.log("🎨 Visual: Orange attack area when limited by walls");
+    } else {
+      console.log("ℹ️ No alive enemies to test with");
+    }
+    
+    return true;
   }
 }

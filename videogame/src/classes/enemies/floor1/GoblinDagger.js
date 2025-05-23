@@ -11,7 +11,7 @@ export class GoblinDagger extends MeleeEnemy {
       "red", // color (temporary, will be replaced by sprite)
       4, // sheetCols
       "goblin_dagger", // type
-      variables.playerSpeed * 0, // movementSpeed (x5 to account for normalization)
+      variables.playerSpeed * 0.7, // movementSpeed (70% of player speed)
       10, // baseDamage
       20 // maxHealth
     );
@@ -31,7 +31,10 @@ export class GoblinDagger extends MeleeEnemy {
     // Always chase the player
     this.state = "chasing";
     this.velocity = direction.normalize().times(this.movementSpeed);
-    this.position = this.position.plus(this.velocity);
+    
+    // Calculate new position and use safe movement that respects walls
+    const newPosition = this.position.plus(this.velocity);
+    this.moveToPosition(newPosition);
 
     // Attack if in range
     if (distance <= this.attackRange) {
