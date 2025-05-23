@@ -1,7 +1,7 @@
 export const variables = {
   // Dimensiones del canvas
   canvasWidth: 800, // 25 * 32
-  canvasHeight: 600, // 19 * 32
+  canvasHeight: 608, // 19 * 32
   // Retardo de animación en milisegundos
   animationDelay: 100,
   playerSpeed: 0.3,

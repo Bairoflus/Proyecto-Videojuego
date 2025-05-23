@@ -420,32 +420,26 @@ export class Player extends AnimatedObject {
   startDash() {
     // Solo permitir dash si no está en cooldown y no está atacando
     if (this.dashCooldownTime <= 0 && this.dashTime <= 0 && !this.isAttacking) {
-      // Si no hay dirección de movimiento, usar la dirección actual
-      if (this.velocity.magnitude() === 0) {
-        switch (this.currentDirection) {
-          case "up":
-            this.dashDirection = new Vec(0, -1);
-            break;
-          case "down":
-            this.dashDirection = new Vec(0, 1);
-            break;
-          case "left":
-            this.dashDirection = new Vec(-1, 0);
-            break;
-          case "right":
-            this.dashDirection = new Vec(1, 0);
-            break;
-          default:
-            this.dashDirection = new Vec(0, 1); // Default to down
+      // Solo permitir dash si hay teclas presionadas
+      if (this.keys.length > 0) {
+        // Usar la dirección de las teclas actualmente presionadas
+        const currentVelocity = new Vec(0, 0);
+        for (const key of this.keys) {
+          const move = playerMovement[key];
+          if (move && move.axis) {
+            currentVelocity[move.axis] += move.direction;
+          }
         }
-      } else {
-        this.dashDirection = this.velocity.normalize();
+        
+        // Solo dash si hay movimiento
+        if (currentVelocity.magnitude() > 0) {
+          this.dashDirection = currentVelocity.normalize();
+          this.dashTime = this.dashDuration;
+          this.dashCooldownTime = this.dashCooldown;
+          this.isInvulnerable = true;
+          this.invulnerabilityTimer = this.dashDuration;
+        }
       }
-
-      this.dashTime = this.dashDuration;
-      this.dashCooldownTime = this.dashCooldown;
-      this.isInvulnerable = true;
-      this.invulnerabilityTimer = this.dashDuration;
     }
   }
 
