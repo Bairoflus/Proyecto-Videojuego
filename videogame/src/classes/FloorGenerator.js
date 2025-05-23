@@ -87,9 +87,16 @@ export class FloorGenerator {
 
     // Advances to next floor
     nextFloor() {
-        this.floorCount++;
+        // If we're at floor 3, increment run and reset floor
+        if (this.floorCount === 3) {
+            this.runCount++;
+            this.floorCount = 1;
+            console.log(`Completed floor 3! Starting Run ${this.runCount}`);
+        } else {
+            this.floorCount++;
+            console.log(`Advanced to floor ${this.floorCount}`);
+        }
         this.generateFloor();
-        console.log("Advanced to floor", this.floorCount);
     }
 
     // Gets current floor number
