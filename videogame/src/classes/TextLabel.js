@@ -1,8 +1,11 @@
-// TextLabel.js: Dibuja texto en pantalla con fuente y color variables
 export class TextLabel {
   constructor(x, y, font, color) {
-    this.x = x; this.y = y; this.font = font; this.color = color;
+    this.x = x;
+    this.y = y;
+    this.font = font;
+    this.color = color;
   }
+
   draw(ctx, text) {
     ctx.font = this.font;
     ctx.fillStyle = this.color;
