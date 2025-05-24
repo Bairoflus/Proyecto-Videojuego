@@ -474,11 +474,11 @@ export class Game {
       variables.canvasWidth - textWidth - padding,
       variables.canvasHeight - 10
     );
-    
+
     // Draw gold counter
     const goldText = `Gold: ${this.player.gold}`;
     const goldTextWidth = ctx.measureText(goldText).width;
-    
+
     // Draw semi-transparent background for gold
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     ctx.fillRect(
@@ -487,7 +487,7 @@ export class Game {
       goldTextWidth + padding * 2,
       30
     );
-    
+
     // Draw gold text with golden color
     ctx.fillStyle = "#FFD700";
     ctx.fillText(
@@ -722,8 +722,29 @@ export class Game {
     }
   }
   drawUI(ctx) {
+    const iconSize = 20;
+    const startX = 100;
+    const startY = 100;
     const barWidth = 200;
     const barHeight = 20;
+
+    const icons = [
+      { type: "dagger", img: "Sword.png" },
+      { type: "slingshot", img: "Bow.png" },
+    ];
+
+    icons.forEach((icon, i) => {
+      const iconImg = new Image();
+      iconImg.src = `./assets/sprites/${icon.img}`;
+      const x = startX + i * (iconSize + 10);
+      const y = startY;
+
+      ctx.drawImage(iconImg, x, y, iconSize, iconSize);
+
+      ctx.strokeStyle = this.player.weaponType === icon.type ? "white" : "gray";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 1, y - 1, iconSize + 2, iconSize + 2);
+    });
 
     // Vida
     const hpRatio = this.player.health / this.player.maxHealth;
