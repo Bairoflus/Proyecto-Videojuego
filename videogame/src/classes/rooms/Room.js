@@ -7,6 +7,7 @@ import { Vec } from '../../utils/Vec.js';
 import { Rect } from '../../utils/Rect.js';
 import { Player } from '../entities/Player.js';
 import { Coin } from '../entities/Coin.js';
+import { Chest } from '../entities/Chest.js';
 import { GoblinDagger } from '../enemies/floor1/GoblinDagger.js';
 import { GoblinArcher } from '../enemies/floor1/GoblinArcher.js';
 import { variables } from '../../config.js';
@@ -23,9 +24,12 @@ export class Room {
             walls: [],
             enemies: [],
             coins: [],
+            chest: null, // Gold chest that spawns after clearing enemies
             shop: null,
             boss: null
         };
+        this.chestSpawned = false; // Track if chest has been spawned
+        this.chestCollected = false; // Track if chest has been collected
         this.parseLayout();
         
         // Generate enemies procedurally if this is a combat room
@@ -99,6 +103,11 @@ export class Room {
         // Draw coins
         this.objects.coins.forEach(coin => coin.draw(ctx));
 
+        // Draw chest if it exists
+        if (this.objects.chest) {
+            this.objects.chest.draw(ctx);
+        }
+
         // Draw enemies
         this.objects.enemies.forEach(enemy => enemy.draw(ctx));
 
@@ -108,6 +117,20 @@ export class Room {
     // Updates all room objects
     update(deltaTime) {
         this.objects.coins.forEach(coin => coin.update(deltaTime));
+        
+        // Update chest if it exists
+        if (this.objects.chest) {
+            this.objects.chest.update(deltaTime);
+            
+            // Check for player collision with chest
+            if (!this.objects.chest.isCollected && window.game && window.game.player) {
+                const player = window.game.player;
+                if (this.checkChestCollision(player)) {
+                    this.objects.chest.collect(player);
+                    this.chestCollected = true;
+                }
+            }
+        }
         
         // Update enemies
         this.objects.enemies.forEach(enemy => {
@@ -143,7 +166,17 @@ export class Room {
         });
         
         // Remove dead enemies from the array
+        const previousEnemyCount = this.objects.enemies.length;
         this.objects.enemies = this.objects.enemies.filter(enemy => enemy.state !== "dead");
+        const currentEnemyCount = this.objects.enemies.length;
+        
+        // Check if all enemies were just defeated in a combat room
+        if (this.isCombatRoom && 
+            !this.chestSpawned && 
+            previousEnemyCount > 0 && 
+            currentEnemyCount === 0) {
+            this.spawnChest();
+        }
         
         // TODO: Update shop and boss
     }
@@ -351,5 +384,96 @@ export class Room {
         }
         
         return canTransition;
+    }
+    
+    /**
+     * Spawns a gold chest in the room after all enemies are defeated
+     */
+    spawnChest() {
+        if (this.chestSpawned || !this.isCombatRoom) return;
+        
+        // Calculate safe spawn position near transition zone
+        const transitionZoneWidth = 64;
+        const safeMargin = 32;
+        const chestSize = 64;
+        
+        const x = variables.canvasWidth - transitionZoneWidth - chestSize - safeMargin;
+        const y = variables.canvasHeight / 2 - chestSize / 2;
+        
+        // Create chest at calculated position
+        const chestPosition = new Vec(x, y);
+        
+        // Check if position would collide with a wall
+        const testChest = new Chest(chestPosition);
+        if (!this.checkWallCollision(testChest)) {
+            this.objects.chest = testChest;
+            this.chestSpawned = true;
+            log.info("Gold chest spawned in combat room");
+        } else {
+            // Try alternate position if wall collision
+            chestPosition.y = variables.canvasHeight / 2 - chestSize - 64;
+            testChest.position = chestPosition;
+            if (!this.checkWallCollision(testChest)) {
+                this.objects.chest = testChest;
+                this.chestSpawned = true;
+                log.info("Gold chest spawned in combat room (alternate position)");
+            }
+        }
+    }
+    
+    /**
+     * Checks if player is colliding with the chest
+     * @param {Player} player - The player to check collision with
+     * @returns {boolean} True if player is touching the chest
+     */
+    checkChestCollision(player) {
+        if (!this.objects.chest || this.objects.chest.isCollected) return false;
+        
+        const playerHitbox = player.getHitboxBounds();
+        const chestHitbox = this.objects.chest.getHitboxBounds();
+        
+        return (
+            playerHitbox.x < chestHitbox.x + chestHitbox.width &&
+            playerHitbox.x + playerHitbox.width > chestHitbox.x &&
+            playerHitbox.y < chestHitbox.y + chestHitbox.height &&
+            playerHitbox.y + playerHitbox.height > chestHitbox.y
+        );
+    }
+    
+    /**
+     * Gets the room state for persistence
+     * @returns {Object} Room state data
+     */
+    getRoomState() {
+        return {
+            chestSpawned: this.chestSpawned,
+            chestCollected: this.chestCollected,
+            enemies: this.objects.enemies.map(enemy => ({
+                type: enemy.type,
+                position: { x: enemy.position.x, y: enemy.position.y },
+                health: enemy.health,
+                state: enemy.state
+            }))
+        };
+    }
+    
+    /**
+     * Restores room state from saved data
+     * @param {Object} state - Saved room state
+     */
+    restoreRoomState(state) {
+        if (!state) return;
+        
+        this.chestSpawned = state.chestSpawned || false;
+        this.chestCollected = state.chestCollected || false;
+        
+        // Spawn chest if it was spawned but not collected
+        if (this.chestSpawned && !this.chestCollected && this.isCombatRoom) {
+            this.spawnChest();
+            if (this.objects.chest && state.chestCollected) {
+                this.objects.chest.isCollected = true;
+                this.objects.chest.isOpen = true;
+            }
+        }
     }
 }

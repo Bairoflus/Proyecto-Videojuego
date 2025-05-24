@@ -197,6 +197,7 @@ export class FloorGenerator {
     // Update room state (call this whenever enemies die or room changes)
     updateRoomState(roomIndex = this.currentRoomIndex, room) {
         if (room) {
+            // Store the complete room instance including chest state
             this.roomStates[roomIndex] = room;
             log.verbose(`Updated room ${roomIndex} state`);
         }

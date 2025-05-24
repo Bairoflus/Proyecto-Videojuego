@@ -458,7 +458,7 @@ export class Game {
     const textWidth = ctx.measureText(text).width;
     const padding = 10;
 
-    // Draw semi-transparent background
+    // Draw semi-transparent background for status
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     ctx.fillRect(
       variables.canvasWidth - textWidth - padding * 2,
@@ -467,12 +467,33 @@ export class Game {
       30
     );
 
-    // Draw text
+    // Draw status text
     ctx.fillStyle = "white";
     ctx.fillText(
       text,
       variables.canvasWidth - textWidth - padding,
       variables.canvasHeight - 10
+    );
+    
+    // Draw gold counter
+    const goldText = `Gold: ${this.player.gold}`;
+    const goldTextWidth = ctx.measureText(goldText).width;
+    
+    // Draw semi-transparent background for gold
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(
+      variables.canvasWidth - goldTextWidth - padding * 2,
+      10,
+      goldTextWidth + padding * 2,
+      30
+    );
+    
+    // Draw gold text with golden color
+    ctx.fillStyle = "#FFD700";
+    ctx.fillText(
+      goldText,
+      variables.canvasWidth - goldTextWidth - padding,
+      30
     );
   }
 
