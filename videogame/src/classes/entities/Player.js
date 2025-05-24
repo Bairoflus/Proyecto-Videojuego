@@ -25,11 +25,6 @@ export class Player extends AnimatedObject {
   constructor(position, width, height, color, sheetCols) {
     super(position, width, height, color, "player", sheetCols);
     this.velocity = new Vec(0, 0);
-    this.health = 100;
-    this.maxHealth = 100;
-    this.stamina = 100;
-    this.maxStamina = 100;
-    this.gold = 0;
     this.keys = [];
     this.previousDirection = "down";
     this.currentDirection = "down";
@@ -48,8 +43,11 @@ export class Player extends AnimatedObject {
     this.hasAppliedMeleeDamage = false; // Flag to track if melee damage was applied
 
     // Player stats
+    this.health = 100;
     this.maxHealth = 100;
-    this.health = this.maxHealth;
+    this.stamina = 100;
+    this.maxStamina = 100;
+    this.gold = 0;
     this.isInvulnerable = false;
     this.invulnerabilityDuration = 1000; // 1 second of invulnerability after taking damage
     this.invulnerabilityTimer = 0;
@@ -117,14 +115,15 @@ export class Player extends AnimatedObject {
     if (startPosition) {
       this.position = new Vec(startPosition.x, startPosition.y);
     }
-
-    // Reset movement and attack state
-    this.velocity = new Vec(0, 0);
+    // Reset player stats
     this.hp = 100;
     this.maxHp = 100;
     this.stamina = 100;
     this.maxStamina = 100;
     this.gold = 0;
+
+    // Reset movement and attack state
+    this.velocity = new Vec(0, 0);
     this.keys = [];
     this.isAttacking = false;
     this.attackCooldown = 0;
