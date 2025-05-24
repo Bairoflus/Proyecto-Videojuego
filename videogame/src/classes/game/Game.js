@@ -14,9 +14,13 @@ import { boxOverlap } from "../../utils/utils.js";
 import { FloorGenerator } from "./FloorGenerator.js";
 import { Room } from "../rooms/Room.js";
 import { log } from "../../utils/Logger.js";
+import { Shop } from "../entities/Shop.js";
 
 export class Game {
   constructor() {
+    // Create global shop instance FIRST before other initialization
+    this.globalShop = new Shop();
+    
     this.createEventListeners();
     this.floorGenerator = new FloorGenerator();
     this.enemies = []; // Initialize empty enemies array
@@ -427,7 +431,7 @@ export class Game {
 
     // Create player at initial room position
     const startPos = this.currentRoom.getPlayerStartPosition();
-    this.player = new Player(startPos, 64, 64, "red", 13);
+    this.player = new Player(startPos, 64, 64, "red", 13); // 13 columns for sprite sheet
     this.player.setSprite(
       "./assets/sprites/dagger-sprite-sheet.png",
       new Rect(0, 0, 64, 64)
@@ -437,6 +441,15 @@ export class Game {
     
     // Update global enemies array
     this.enemies = this.currentRoom.objects.enemies;
+    
+    // Setup shop reference for shop rooms
+    if (this.currentRoom.roomType === 'shop' && this.currentRoom.objects.shop) {
+      // Replace the room's shop with our global shop
+      this.currentRoom.objects.shop = this.globalShop;
+      this.currentRoom.objects.shop.setOnCloseCallback(() => {
+        this.currentRoom.shopCanBeOpened = false;
+      });
+    }
   }
 
   // Draws current room and player
@@ -498,6 +511,11 @@ export class Game {
 
   // Updates game logic
   update(deltaTime) {
+    // Check if shop is open - if so, don't update game state
+    if (this.currentRoom && this.currentRoom.objects.shop && this.currentRoom.objects.shop.isOpen) {
+      return;
+    }
+    
     // Update current room
     this.currentRoom.update(deltaTime);
     
@@ -595,14 +613,38 @@ export class Game {
       this.player.position.x,
       this.player.position.y
     );
+
+    // Check if all enemies are dead and spawn chest
+    const aliveEnemies = this.enemies.filter(enemy => enemy.state !== "dead");
+    if (this.currentRoom && this.currentRoom.isCombatRoom && aliveEnemies.length === 0 && !this.currentRoom.chestSpawned) {
+      this.currentRoom.spawnChest();
+    }
+    
+    // Update shop reference if we're in a shop room
+    if (this.currentRoom && this.currentRoom.roomType === 'shop') {
+      // Replace the room's shop instance with our global shop
+      this.currentRoom.objects.shop = this.globalShop;
+      this.currentRoom.objects.shop.setOnCloseCallback(() => {
+        this.currentRoom.shopCanBeOpened = false;
+      });
+    }
   }
 
   // Keyboard events for movement and actions
   createEventListeners() {
-    window.addEventListener("keydown", (e) => {
-      const action = keyDirections[e.key.toLowerCase()];
-      if (!action) return;
-
+    addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase();
+      
+      // Check if shop is open and handle shop input
+      if (this.currentRoom && this.currentRoom.objects.shop && this.currentRoom.objects.shop.isOpen) {
+        this.currentRoom.objects.shop.handleInput(e.key, this.player);
+        e.preventDefault(); // Prevent default actions when shop is open
+        return;
+      }
+      
+      // Get action from keyDirections mapping
+      const action = keyDirections[key];
+      
       // Handle weapon switching
       if (action === "dagger" || action === "slingshot") {
         this.player.setWeapon(action);
@@ -621,13 +663,21 @@ export class Game {
         return;
       }
 
-      // Handle movement
-      this.add_key(action);
+      // Handle movement - add the action (direction) to player keys
+      if (action && (action === "up" || action === "down" || action === "left" || action === "right")) {
+        if (!this.player.keys.includes(action)) {
+          this.player.keys.push(action);
+        }
+      }
     });
-    window.addEventListener("keyup", (e) => {
-      const action = keyDirections[e.key.toLowerCase()];
-      if (action && action !== "attack" && action !== "dagger" && action !== "slingshot" && action !== "dash") {
-        this.del_key(action);
+    
+    addEventListener("keyup", (e) => {
+      const key = e.key.toLowerCase();
+      const action = keyDirections[key];
+      
+      // Only remove movement keys on keyup
+      if (action && (action === "up" || action === "down" || action === "left" || action === "right")) {
+        this.player.keys = this.player.keys.filter((k) => k !== action);
       }
     });
   }
@@ -639,85 +689,55 @@ export class Game {
     }
   }
 
-  // Remove movement direction
+  // Remove movement direction  
   del_key(direction) {
     this.player.keys = this.player.keys.filter((key) => key !== direction);
   }
   
   // DEATH RESET: Complete game reset after player death
   resetGameAfterDeath() {
-    console.log("===== GAME RESET AFTER DEATH =====");
+    console.log("=== COMPLETE GAME RESET AFTER DEATH ===");
     
-    // Log state before reset
-    console.log("State BEFORE reset:");
-    try {
-      const beforeState = window.getGameState();
-      console.log("  Run:", beforeState.floorGenerator.run);
-      console.log("  Floor:", beforeState.floorGenerator.floor);
-      console.log("  Room:", beforeState.floorGenerator.room);
-      console.log("  Player Health:", beforeState.player.health + "/" + beforeState.player.maxHealth);
-      console.log("  Enemies:", beforeState.room.enemies);
-    } catch (e) {
-      console.log("  (Could not read previous state)");
-    }
+    // Reset floor generator (which handles rooms and floors)
+    this.floorGenerator.resetToInitialState();
     
-    try {
-      console.log("Step 1: Resetting FloorGenerator...");
-      // 1. Reset FloorGenerator to initial state
-      this.floorGenerator.resetToInitialState();
-      
-      console.log("Step 2: Creating fresh initial room...");
-      // 2. Create fresh initial room
-      this.currentRoom = this.floorGenerator.getCurrentRoom();
-      
-      console.log("Step 3: Getting initial player position...");
-      // 3. Get initial player position
-      const startPos = this.currentRoom.getPlayerStartPosition();
-      
-      console.log("Step 4: Resetting player state...");
-      // 4. Reset player to initial state
-      this.player.resetToInitialState(startPos);
+    // Reset global shop upgrades
+    this.globalShop.resetForNewRun();
+    
+    // Get new starting room
+    this.currentRoom = this.floorGenerator.getCurrentRoom();
+    if (this.currentRoom) {
       this.player.setCurrentRoom(this.currentRoom);
-      
-      console.log("Step 5: Updating game state...");
-      // 5. Update global enemies array
-      this.enemies = this.currentRoom.objects.enemies;
-      
-      // 6. Reset any game-level state
-      this.player.previousPosition = new Vec(startPos.x, startPos.y);
-      
-      console.log("=== GAME RESET COMPLETE ===");
-      
-      // Log state after reset
-      console.log("State AFTER reset:");
-      const afterState = window.getGameState();
-      console.log("  Run:", afterState.floorGenerator.run);
-      console.log("  Floor:", afterState.floorGenerator.floor);
-      console.log("  Room:", afterState.floorGenerator.room);
-      console.log("  Player Health:", afterState.player.health + "/" + afterState.player.maxHealth);
-      console.log("  Player Position:", "(" + afterState.player.position.x + ", " + afterState.player.position.y + ")");
-      console.log("  Player Weapon:", afterState.player.weapon);
-      console.log("  Room Enemies:", afterState.room.enemies);
-      console.log("  Alive Enemies:", afterState.room.aliveEnemies);
-      
-      console.log("Ready for new run!");
-      
-      return true;
-      
-    } catch (error) {
-      console.error("Error during game reset:", error);
-      console.error("Attempting fallback reset...");
-      
-      try {
-        // Fallback: reinitialize everything
-        this.floorGenerator = new FloorGenerator();
-        this.initObjects();
-        console.log("Fallback reset successful");
-        return true;
-      } catch (fallbackError) {
-        console.error("Fallback reset also failed:", fallbackError);
-        return false;
-      }
+      // Initialize enemies from the current room
+      this.enemies = this.currentRoom.objects.enemies || [];
     }
+    
+    // Reset player state
+    this.player.resetToInitialState(this.currentRoom.getPlayerStartPosition());
+    this.player.previousPosition = new Vec(this.currentRoom.getPlayerStartPosition().x, this.currentRoom.getPlayerStartPosition().y);
+    
+    // Update global enemies array
+    this.enemies = this.currentRoom.objects.enemies;
+    
+    console.log("=== GAME RESET COMPLETE ===");
+    
+    // Log state after reset
+    const afterState = window.getGameState();
+    console.log("State AFTER reset:");
+    console.log("  Run:", afterState.floorGenerator.run);
+    console.log("  Floor:", afterState.floorGenerator.floor);
+    console.log("  Room:", afterState.floorGenerator.room);
+    console.log("  Player Health:", afterState.player.health + "/" + afterState.player.maxHealth);
+    console.log("  Player Position:", "(" + afterState.player.position.x + ", " + afterState.player.position.y + ")");
+    console.log("  Player Weapon:", afterState.player.weapon);
+    console.log("  Player Gold:", this.player.gold);
+    console.log("  Shop Upgrades - Melee:", this.globalShop.getUpgradeCounts().melee);
+    console.log("  Shop Upgrades - Ranged:", this.globalShop.getUpgradeCounts().ranged);
+    console.log("  Room Enemies:", afterState.room.enemies);
+    console.log("  Alive Enemies:", afterState.room.aliveEnemies);
+    
+    console.log("Ready for new run!");
+    
+    return true;
   }
 }

@@ -176,4 +176,90 @@ updateConfig('logging.level', 3); // Set to DEBUG
 7. Create development vs production build configurations
 8. Implement shop system using accumulated gold
 9. Add more chest types with different rewards
+10. Create upgrade system that affects gold rewards
+
+## 9. Shop System Implementation
+
+### Overview
+The shop system provides a way for players to spend their accumulated gold on upgrades and health restoration. Shop rooms appear once per floor (room 5 out of 6) and automatically open when the player approaches the center of the room.
+
+### Features
+
+#### Shop Options:
+1. **Primary Weapon Upgrade (Melee)**
+   - Cost: 35 gold
+   - Effect: +3 melee damage per upgrade
+   - Limit: 15 upgrades per run
+   
+2. **Secondary Weapon Upgrade (Ranged)**
+   - Cost: 40 gold
+   - Effect: +4 ranged damage per upgrade
+   - Limit: 15 upgrades per run
+   
+3. **Full Health Restoration**
+   - Cost: 50 gold
+   - Effect: Restores HP to maximum
+   - Limit: No limit
+
+#### Controls:
+- **W/S or ↑/↓**: Navigate between options
+- **Enter**: Purchase selected option
+- **ESC**: Exit shop
+
+#### Purchase Rules:
+- Purchases blocked if insufficient gold
+- Upgrade counters persist for entire run (reset on death)
+- Disabled options shown in gray
+- Visual feedback for affordable/unaffordable items
+
+### Technical Implementation
+
+#### New Files:
+- `src/classes/entities/Shop.js` - Shop class handling UI and purchase logic
+
+#### Modified Files:
+- `Player.js` - Added `meleeDamageBonus` and `rangedDamageBonus` properties
+- `Room.js` - Added shop creation and rendering logic
+- `Game.js` - Added shop input handling and state management
+- `FloorGenerator.js` - Passes room type when creating rooms
+
+#### Integration:
+```javascript
+// Shop automatically opens when player enters shop room center
+// Player damage calculation now includes bonuses:
+const meleeDamage = DAGGER_ATTACK_DAMAGE + this.meleeDamageBonus;
+const rangedDamage = 15 + this.rangedDamageBonus;
+```
+
+### Usage Example:
+```javascript
+// Shop is created automatically in shop rooms
+// Players interact by moving to room center
+// All input handling is automatic via Game class
+
+// Check current upgrades (for debugging)
+const upgrades = shop.getUpgradeCounts();
+console.log(`Melee upgrades: ${upgrades.melee}/15`);
+console.log(`Ranged upgrades: ${upgrades.ranged}/15`);
+```
+
+### Visual Design:
+- Dark semi-transparent background overlay
+- Colored selection highlighting
+- Gold counter display
+- Purchase limits shown as fractions (e.g., "3/15")
+- Clear disabled state for maxed/unaffordable options
+
+## 10. Next Steps
+
+### Recommended Future Improvements:
+1. Create separate room type classes (ShopRoom, BossRoom) extending base Room
+2. Implement object pooling for projectiles to reduce garbage collection
+3. Add state management system for game states (menu, playing, paused, game over)
+4. Create factory classes for entity creation
+5. Implement proper asset loading system
+6. Add unit tests for utility functions
+7. Create development vs production build configurations
+8. Implement shop system using accumulated gold
+9. Add more chest types with different rewards
 10. Create upgrade system that affects gold rewards 

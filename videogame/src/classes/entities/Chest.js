@@ -13,7 +13,7 @@ export class Chest extends GameObject {
         super(position, 64, 64, "gold", "chest");
         
         // Chest properties
-        this.goldReward = 150; // Base gold reward amount
+        this.goldReward = 50; // Base gold reward amount
         this.isCollected = false;
         this.isOpen = false;
         

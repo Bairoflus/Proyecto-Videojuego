@@ -42,15 +42,22 @@
 
 ### 1.2 Gameplay
 
-Each run consists of 3 floors with 5 combat rooms, 1 shop, and 1 boss room. Each combat room auto-awards gold upon enemy defeat. Shops provide temporary weapon upgrades. Post-boss rooms offer permanent stat improvements. The game uses a food system that affects stamina regeneration; without food, players lose health. Gameplay is auto-saved after each room.
+Each run consists of 3 floors with 6 rooms per floor: 4 combat rooms, 1 shop, and 1 boss room. Combat rooms spawn a golden chest (50 gold) after all enemies are defeated. Shops provide temporary weapon upgrades that last for the current run. The game features a persistent run counter that tracks total attempts across all sessions.
 
-**Gameplay Loop:**
+**Current Gameplay Loop:**
 
-- Start in Base
-- Portal to Floor 1
-- Progress through 4 combat rooms + 1 shop + 1 boss
-- Gain permanent upgrade, proceed to next floor
-- After Floor 3 boss, run ends, stats updated, loop restarts with increased difficulty (damage/health x1.08)
+- Start in Room 1, Floor 1
+- Clear 4 combat rooms (collect gold from chests)
+- Visit shop room to purchase upgrades
+- Defeat floor boss (not yet implemented)
+- Progress to next floor
+- After death: Run counter increments, all progress resets
+
+**Planned Features:**
+- Post-boss permanent upgrades
+- Food system affecting stamina regeneration
+- Base hub with persistent upgrades
+- Difficulty scaling per run
 
 ### 1.3 Mindset
 
@@ -93,7 +100,23 @@ Shattered Timeline is built to reward mastery, adaptability, and persistence. It
 
 ### 2.3 Mechanics
 
-**Stamina (Max 150):**
+**Current Combat System:**
+
+| Action            | Stamina Cost | Damage        | Range    |
+|-------------------|--------------|---------------|----------|
+| Melee Attack      | 0 (temp)     | 10 + upgrades | 75px     |
+| Ranged Attack     | 0 (temp)     | 15 + upgrades | Projectile |
+| Dash              | 0 (temp)     | -             | 3x speed |
+
+**Shop Upgrades (Per Run):**
+
+| Upgrade Type      | Cost  | Effect      | Max/Run |
+|-------------------|-------|-------------|---------|
+| Melee Damage      | 35g   | +3 damage   | 15      |
+| Ranged Damage     | 40g   | +4 damage   | 15      |
+| Health Restore    | 50g   | Full HP     | ∞       |
+
+**Planned Stamina System:**
 
 | Action            | Cost  |
 |-------------------|--------|
@@ -240,12 +263,89 @@ The game world is fractured by time. The player, a lone warrior, must traverse d
 
 ## 10. Technical Implementation (Current State)
 
-- Room System: Procedural, with autosave per room
-- Enemy AI: Tracking, range checks, dodge mechanics
-- Combat: Melee/Ranged with distinct timing, range, feedback
-- Dash: Invulnerability, wall-aware
-- Stats: Gold tracking, food system, upgrades implemented
-- Boss Design: Multi-phase with telegraphed attacks
-- Web Integration: Login/Account systems with validation
-- Save System: Session persistence per room, with autosave icon
-- Performance: Event-driven room updates, raycasting, projectile pooling (planned)
+### Core Systems Implemented
+
+#### Combat System
+- **Melee Combat (Dagger)**:
+  - Extended range: 75px (2.5x original design)
+  - Line-of-sight detection prevents attacks through walls
+  - Visual feedback: Red area (normal), Orange area (wall-limited)
+  - Base damage: 10 + shop upgrades
+  
+- **Ranged Combat (Slingshot)**:
+  - Projectile-based with 15 base damage + shop upgrades
+  - Projectiles collide with walls and are destroyed
+  - Smooth projectile tracking towards enemies
+
+#### Shop System
+- **Purchase Options**:
+  1. Primary Weapon Upgrade: 35 gold, +3 damage, max 15/run
+  2. Secondary Weapon Upgrade: 40 gold, +4 damage, max 15/run  
+  3. Full Health Restore: 50 gold, unlimited purchases
+- **Features**:
+  - Global upgrade tracking per run
+  - Visual activation zone in shop rooms
+  - WASD navigation, Enter to purchase, ESC to exit
+  - Prevents purchases without sufficient gold or at max upgrades
+
+#### Progression System
+- **Structure**: 
+  - 3 floors per run
+  - 6 rooms per floor (4 combat + 1 shop + 1 boss)
+  - Procedural combat room generation with 6-10 enemies
+- **Gold Economy**:
+  - Chest spawns after clearing combat rooms: 50 gold
+  - No gold drops from enemies
+  - Gold resets on death
+
+#### Death & Reset System
+- **Persistent Run Counter**: Stored in localStorage, never resets
+- **On Death**:
+  - 1-second delay before reset
+  - Returns to Run X+1, Floor 1, Room 1
+  - Resets: gold, weapon upgrades, player position
+  - Preserves: total run count
+
+#### Room Persistence
+- **State Management**:
+  - Room states preserved when transitioning
+  - Enemies remain dead when returning to cleared rooms
+  - Chest collection state maintained
+  - Event-driven updates (not per-frame)
+
+#### Performance Optimizations
+- **Raycast System**: 4px step increments for wall detection
+- **Event-driven Updates**: Room states only update on significant events
+- **Projectile Management**: Automatic cleanup of inactive projectiles
+- **Collision Detection**: Efficient hitbox-based system
+
+### Current Enemy Types
+- **Goblin Dagger**: Melee enemy with tracking AI
+- **Goblin Archer**: Ranged enemy that fires projectiles
+
+### Controls
+- Movement: WASD/Arrow keys
+- Attack: Spacebar  
+- Weapon Switch: Q (dagger), E (slingshot)
+- Dash: Left Shift
+- Shop: WASD navigate, Enter purchase, ESC exit
+
+### Technical Stack
+- Pure JavaScript with ES6 modules
+- Canvas API for rendering
+- No external dependencies
+- Python HTTP server for development
+
+### Known Limitations
+- Boss rooms not yet implemented
+- Food/stamina system not implemented
+- Permanent upgrades system not implemented
+- Save system limited to run counter only
+- No audio implementation yet
+
+### Next Development Priorities
+1. Boss enemy implementation
+2. Food and stamina systems
+3. Permanent upgrade system between runs
+4. Full save/load functionality
+5. Audio system integration

@@ -12,7 +12,8 @@ export class FloorGenerator {
         this.currentFloor = [];
         this.currentRoomIndex = 0;
         this.floorCount = 1;
-        this.runCount = 1;
+        // Load persistent run count from localStorage or start at 1
+        this.runCount = parseInt(localStorage.getItem('gameRunCount') || '1', 10);
         this.roomTypes = []; // Track room types: 'combat', 'shop', 'boss'
         this.roomStates = []; // Store room instances with enemy states for persistence
         this.visitedRooms = new Set(); // Track which rooms have been visited
@@ -79,7 +80,10 @@ export class FloorGenerator {
         if (!layout) return null;
         
         const roomIndex = this.currentRoomIndex;
-        const isCombatRoom = this.roomTypes[roomIndex] === 'combat';
+        const roomType = this.roomTypes[roomIndex]; // Get the room type
+        const isCombatRoom = roomType === 'combat';
+        
+        log.info(`Getting room ${roomIndex} (${roomType})`);
         
         // Check if we already have a saved state for this room
         if (this.roomStates[roomIndex]) {
@@ -87,8 +91,8 @@ export class FloorGenerator {
             return this.roomStates[roomIndex];
         }
         
-        // Create new room instance
-        const room = new Room(layout, isCombatRoom);
+        // Create new room instance with room type
+        const room = new Room(layout, isCombatRoom, roomType);
         
         // Save the room state
         this.roomStates[roomIndex] = room;
@@ -99,7 +103,7 @@ export class FloorGenerator {
         if (isCombatRoom) {
             log.info(`Created new combat room ${roomIndex} with ${room.objects.enemies.length} enemies`);
         } else {
-            log.info(`Created new ${this.roomTypes[roomIndex]} room ${roomIndex}`);
+            log.info(`Created new ${roomType} room ${roomIndex}`);
         }
         
         return room;
@@ -203,13 +207,23 @@ export class FloorGenerator {
         }
     }
     
+    // Increments run count on player death
+    incrementRunCount() {
+        this.runCount++;
+        // Save to localStorage for persistence
+        localStorage.setItem('gameRunCount', this.runCount.toString());
+        log.info(`Player died. Starting run ${this.runCount}`);
+    }
+    
     // DEATH RESET: Complete game state reset
     resetToInitialState() {
         log.info("=== COMPLETE FLOOR GENERATOR RESET ===");
         
-        // Reset all counters to initial state
+        // Increment run count on death
+        this.incrementRunCount();
+        
+        // Reset all counters to initial state EXCEPT runCount
         this.floorCount = 1;
-        this.runCount = 1;
         this.currentRoomIndex = 0;
         
         // Clear all stored states
@@ -219,12 +233,12 @@ export class FloorGenerator {
         this.roomTypes = [];
         
         log.debug("Cleared all room states and visit history");
-        log.debug("Reset to: Run 1, Floor 1, Room 1");
+        log.debug(`Reset to: Run ${this.runCount}, Floor 1, Room 1`);
         
         // Generate fresh floor
         this.generateFloor();
         
-        log.info("Floor generator completely reset to initial state");
+        log.info("Floor generator reset to initial state (run count preserved)");
     }
     
     // Get initial game state info

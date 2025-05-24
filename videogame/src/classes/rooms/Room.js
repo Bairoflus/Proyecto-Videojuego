@@ -8,15 +8,17 @@ import { Rect } from '../../utils/Rect.js';
 import { Player } from '../entities/Player.js';
 import { Coin } from '../entities/Coin.js';
 import { Chest } from '../entities/Chest.js';
+import { Shop } from '../entities/Shop.js';
 import { GoblinDagger } from '../enemies/floor1/GoblinDagger.js';
 import { GoblinArcher } from '../enemies/floor1/GoblinArcher.js';
 import { variables } from '../../config.js';
 import { log } from '../../utils/Logger.js';
 
 export class Room {
-    constructor(layout, isCombatRoom = false) {
+    constructor(layout, isCombatRoom = false, roomType = 'combat') {
         this.layout = layout;
         this.isCombatRoom = isCombatRoom;
+        this.roomType = roomType; // 'combat', 'shop', or 'boss'
         this.tileSize = 32; // Size of each cell in pixels
         this.transitionZone = 64; // Activation zone for transition
         this.minSafeDistance = 16; // Minimum distance to avoid immediate activation
@@ -30,7 +32,22 @@ export class Room {
         };
         this.chestSpawned = false; // Track if chest has been spawned
         this.chestCollected = false; // Track if chest has been collected
+        this.shopActivationArea = null; // Shop activation area
+        this.playerInShopArea = false; // Track if player is in shop activation area
+        this.shopCanBeOpened = true; // Prevent reopening until player leaves area
         this.parseLayout();
+        
+        // Create shop instance for shop rooms
+        if (this.roomType === 'shop' && !this.objects.shop) {
+            this.objects.shop = new Shop();
+            
+            // Set callback to handle ESC closing
+            this.objects.shop.setOnCloseCallback(() => {
+                this.shopCanBeOpened = false;
+            });
+            
+            log.info('Shop instance created in constructor for shop room');
+        }
         
         // Generate enemies procedurally if this is a combat room
         if (this.isCombatRoom) {
@@ -71,7 +88,18 @@ export class Room {
                         this.objects.coins.push(coin);
                         break;
                     case 'S': // Shop
-                        // TODO: Implement shop creation
+                        // Shop rooms have a shop instance
+                        log.info(`Found 'S' marker at position (${x}, ${y}), roomType: ${this.roomType}`);
+                        if (this.roomType === 'shop') {
+                            // Create shop activation area at the 'S' position
+                            this.shopActivationArea = new Rect(
+                                position.x - this.tileSize/2,
+                                position.y - this.tileSize/2,
+                                this.tileSize * 2,
+                                this.tileSize * 2
+                            );
+                            log.info('Shop activation area created');
+                        }
                         break;
                     case 'B': // Boss
                         // TODO: Implement boss creation
@@ -111,7 +139,48 @@ export class Room {
         // Draw enemies
         this.objects.enemies.forEach(enemy => enemy.draw(ctx));
 
-        // TODO: Draw shop and boss
+        // Draw shop activation area if this is a shop room
+        if (this.roomType === 'shop' && this.shopActivationArea) {
+            // Draw a glowing shop icon/area
+            const centerX = this.shopActivationArea.x + this.shopActivationArea.width / 2;
+            const centerY = this.shopActivationArea.y + this.shopActivationArea.height / 2;
+            
+            // Pulsing effect
+            const pulse = Math.sin(Date.now() * 0.003) * 0.2 + 0.8;
+            
+            // Draw glow effect
+            ctx.fillStyle = `rgba(100, 200, 255, ${0.3 * pulse})`;
+            ctx.fillRect(
+                this.shopActivationArea.x,
+                this.shopActivationArea.y,
+                this.shopActivationArea.width,
+                this.shopActivationArea.height
+            );
+            
+            // Draw border
+            ctx.strokeStyle = `rgba(100, 200, 255, ${0.8 * pulse})`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(
+                this.shopActivationArea.x,
+                this.shopActivationArea.y,
+                this.shopActivationArea.width,
+                this.shopActivationArea.height
+            );
+            
+            // Draw "SHOP" text
+            ctx.fillStyle = `rgba(255, 255, 255, ${pulse})`;
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('SHOP', centerX, centerY);
+        }
+
+        // Draw shop UI if open
+        if (this.objects.shop && this.objects.shop.isOpen) {
+            this.objects.shop.draw(ctx, variables.canvasWidth, variables.canvasHeight, window.game.player);
+        }
+
+        // TODO: Draw boss
     }
 
     // Updates all room objects
@@ -178,7 +247,39 @@ export class Room {
             this.spawnChest();
         }
         
-        // TODO: Update shop and boss
+        // Update shop interaction
+        if (this.roomType === 'shop' && this.objects.shop && this.shopActivationArea && window.game && window.game.player) {
+            const player = window.game.player;
+            const playerHitbox = player.getHitboxBounds();
+            
+            // Check if player is in shop activation area
+            const isInArea = this.checkShopActivation(playerHitbox);
+            
+            // Handle shop state changes
+            if (!this.playerInShopArea && isInArea) {
+                // Player just entered the area
+                this.playerInShopArea = true;
+                if (this.shopCanBeOpened && !this.objects.shop.isOpen) {
+                    this.objects.shop.open();
+                }
+            } else if (this.playerInShopArea && !isInArea) {
+                // Player just left the area
+                this.playerInShopArea = false;
+                this.shopCanBeOpened = true; // Reset flag when leaving area
+                
+                // Close shop if it's open and player left the area
+                if (this.objects.shop.isOpen) {
+                    this.objects.shop.close();
+                }
+            }
+            
+            // If shop is closed while player is in area, prevent reopening until they leave
+            if (this.playerInShopArea && !this.objects.shop.isOpen) {
+                this.shopCanBeOpened = false;
+            }
+        }
+        
+        // TODO: Update boss
     }
 
     // Checks for wall collisions using hitboxes
@@ -475,5 +576,21 @@ export class Room {
                 this.objects.chest.isOpen = true;
             }
         }
+    }
+
+    /**
+     * Checks if player is in shop activation area
+     * @param {Object} playerHitbox - Player's hitbox bounds
+     * @returns {boolean} True if player is in activation area
+     */
+    checkShopActivation(playerHitbox) {
+        if (!this.shopActivationArea) return false;
+        
+        return (
+            playerHitbox.x < this.shopActivationArea.x + this.shopActivationArea.width &&
+            playerHitbox.x + playerHitbox.width > this.shopActivationArea.x &&
+            playerHitbox.y < this.shopActivationArea.y + this.shopActivationArea.height &&
+            playerHitbox.y + playerHitbox.height > this.shopActivationArea.y
+        );
     }
 }

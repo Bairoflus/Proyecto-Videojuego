@@ -22,7 +22,7 @@ const DAGGER_ATTACK_WIDTH = 20;
 const DAGGER_ATTACK_DAMAGE = 10;
 
 export class Player extends AnimatedObject {
-  constructor(position, width, height, color, sheetCols) {
+  constructor(position, width, height, color, sheetCols = 13) {
     super(position, width, height, color, "player", sheetCols);
     this.velocity = new Vec(0, 0);
     this.keys = [];
@@ -51,6 +51,10 @@ export class Player extends AnimatedObject {
 
     // Gold system
     this.gold = 0; // Player's accumulated gold
+
+    // Shop upgrade bonuses
+    this.meleeDamageBonus = 0; // Bonus damage from shop upgrades
+    this.rangedDamageBonus = 0; // Bonus damage from shop upgrades
 
     // Customize hitbox to better match player's feet
     this.hitbox = {
@@ -142,6 +146,10 @@ export class Player extends AnimatedObject {
     
     // Reset gold to zero
     this.gold = 0;
+    
+    // Reset shop upgrades
+    this.meleeDamageBonus = 0;
+    this.rangedDamageBonus = 0;
     
     // Reset position
     if (startPosition) {
@@ -267,7 +275,7 @@ export class Player extends AnimatedObject {
         // Using constants defined at the top of the file
         const baseAttackRange = DAGGER_ATTACK_RANGE;
         const attackWidth = DAGGER_ATTACK_WIDTH;
-        const attackDamage = DAGGER_ATTACK_DAMAGE;
+        const attackDamage = DAGGER_ATTACK_DAMAGE + this.meleeDamageBonus; // Add shop bonus
 
         // Calculate player center position
         const playerCenterX = this.position.x + this.width / 2;
@@ -467,7 +475,7 @@ export class Player extends AnimatedObject {
           this.frame === Math.floor((this.minFrame + this.maxFrame) / 2)
         ) {
           const projectileSpeed = 300;
-          const projectileDamage = 15;
+          const projectileDamage = 15 + this.rangedDamageBonus; // Add shop bonus
 
           // Calculate spawn position at the center of the player
           const spawnPos = new Vec(
