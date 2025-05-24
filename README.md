@@ -1,125 +1,145 @@
-# Shattered Timeline - Videojuego Roguelite
+# Shattered Timeline - Roguelite Video Game
 
-## Descripción
-Shattered Timeline es un videojuego de acción roguelite top-down desarrollado en JavaScript utilizando Canvas API. El jugador debe atravesar múltiples pisos llenos de enemigos, recolectar oro y mejorar sus armas en las tiendas para progresar.
+## Description
 
-## Características Principales
+Shattered Timeline is a top-down action roguelite video game developed in JavaScript using the Canvas API. The player must traverse multiple floors filled with enemies, collect gold, and upgrade their weapons in shops to progress.
 
-### Sistema de Combate
-- **Arma primaria (Dagger)**: Ataque cuerpo a cuerpo con rango extendido (75px)
-  - Sistema de detección de línea de visión que limita el ataque si hay paredes
-  - Daño base: 10 puntos + bonificaciones de tienda
-  - Visualización del área de ataque (roja normal, naranja cuando está limitada por paredes)
-  
-- **Arma secundaria (Slingshot)**: Ataque a distancia con proyectiles
-  - Daño base: 15 puntos + bonificaciones de tienda
-  - Los proyectiles se destruyen al impactar con paredes
+## Main Features
 
-### Sistema de Progresión
-- **Estructura del juego**: 
-  - 3 pisos por run
-  - 6 habitaciones por piso (4 de combate + 1 tienda + 1 jefe)
-  - Contador de runs persistente que nunca se resetea
-  
-- **Sistema de oro y recompensas**:
-  - Los enemigos no sueltan oro al morir
-  - Cofres dorados aparecen tras limpiar habitaciones de combate (50 oro)
-  - El oro se pierde al morir
+### Combat System
 
-### Sistema de Tienda
-- **Mejoras disponibles**:
-  1. **Mejora de arma primaria**: 35 oro, +3 daño, máximo 15 mejoras por run
-  2. **Mejora de arma secundaria**: 40 oro, +4 daño, máximo 15 mejoras por run
-  3. **Restauración de salud completa**: 50 oro, sin límite
+- **Primary Weapon (Dagger)**: Melee attack with extended range (75px)
 
-- **Características**:
-  - Las mejoras son globales por run (se mantienen entre habitaciones)
-  - Se resetean al morir
-  - Interfaz con WASD para navegar, Enter para comprar, ESC para salir
-  - Zona de activación visual en las habitaciones de tienda
+  - Line-of-sight detection system that limits the attack if walls are present
+  - Base damage: 10 points + shop bonuses
+  - Attack area visualization (red for normal, orange when limited by walls)
 
-### Enemigos
-- **Goblin Dagger**: Enemigo cuerpo a cuerpo común
-- **Goblin Archer**: Enemigo a distancia que dispara proyectiles
-- Generación procedural: 6-10 enemigos por habitación de combate
-- Los enemigos no reaparecen al volver a habitaciones anteriores
+- **Secondary Weapon (Slingshot)**: Ranged attack with projectiles
+  - Base damage: 15 points + shop bonuses
+  - Projectiles are destroyed upon hitting walls
 
-### Sistema de Muerte y Reset
-- Al morir:
-  - Se incrementa el contador de runs (persistente)
-  - Se resetean: piso, habitación, oro, mejoras de armas
-  - El jugador vuelve al inicio con estadísticas base
-  - Delay de 1 segundo antes del reset
+### Progression System
 
-## Controles
-- **Movimiento**: WASD o flechas direccionales
-- **Ataque**: Barra espaciadora
-- **Cambiar arma**: Q (dagger) / E (slingshot)
-- **Dash**: Shift izquierdo
-- **Tienda**: WASD para navegar, Enter para comprar, ESC para salir
+- **Game Structure**:
 
-## Requisitos Técnicos
-- Navegador web moderno con soporte para ES6 modules
-- Python 3 para el servidor local de desarrollo
+  - 3 floors per run
+  - 6 rooms per floor (4 combat + 1 shop + 1 boss)
+  - Persistent run counter that never resets
 
-## Instalación y Ejecución
+- **Gold and Rewards System**:
+  - Enemies do not drop gold upon death
+  - Golden chests appear after clearing combat rooms (50 gold)
+  - Gold is lost upon death
 
-1. Clona el repositorio:
+### Shop System
+
+- **Available Upgrades**:
+
+  1. **Primary Weapon Upgrade**: 35 gold, +3 damage, maximum 15 upgrades per run
+  2. **Secondary Weapon Upgrade**: 40 gold, +4 damage, maximum 15 upgrades per run
+  3. **Full Health Restoration**: 50 gold, no limit
+
+- **Features**:
+  - Upgrades are global per run (persist between rooms)
+  - Reset upon death
+  - Interface with WASD to navigate, Enter to purchase, ESC to exit
+  - Visual activation zone in shop rooms
+
+### Enemies
+
+- **Goblin Dagger**: Common melee enemy
+- **Goblin Archer**: Ranged enemy that shoots projectiles
+- Procedural generation: 6-10 enemies per combat room
+- Enemies do not respawn when revisiting previous rooms
+
+### Death and Reset System
+
+- Upon death:
+  - Run counter increments (persistent)
+  - Resets: floor, room, gold, weapon upgrades
+  - Player returns to the start with base stats
+  - 1-second delay before reset
+
+## Controls
+
+- **Movement**: WASD or arrow keys
+- **Attack**: Spacebar
+- **Switch Weapon**: Q (dagger) / E (slingshot)
+- **Dash**: Left Shift
+- **Shop**: WASD to navigate, Enter to purchase, ESC to exit
+
+## Technical Requirements
+
+- Modern web browser with support for ES6 modules
+- Python 3 for the local development server
+
+## Installation and Execution
+
+1. Clone the repository:
+
 ```bash
-git clone https://github.com/tu-usuario/Proyecto-Videojuego.git
+git clone https://github.com/your-username/Proyecto-Videojuego.git
 cd Proyecto-Videojuego
 ```
 
-2. Inicia el servidor local:
+2. Start the local server:
+
 ```bash
 cd videogame
 python3 -m http.server 8000
 ```
 
-3. Abre tu navegador y ve a:
+3. Open your browser and go to:
+
 ```
 http://localhost:8000/src/
 ```
 
-## Estructura del Proyecto
+## Project Structure
+
 ```
 videogame/
 ├── src/
-│   ├── assets/         # Sprites y recursos gráficos
-│   ├── classes/        # Clases del juego
+│   ├── assets/         # Sprites and graphic resources
+│   ├── classes/        # Game classes
 │   │   ├── entities/   # Player, Enemy, Projectile, Shop, etc.
-│   │   ├── enemies/    # Tipos específicos de enemigos
-│   │   ├── rooms/      # Sistema de habitaciones
-│   │   └── game/       # Game controller y FloorGenerator
-│   ├── utils/          # Utilidades (Vec, Rect, Logger)
-│   ├── config.js       # Configuración global
-│   ├── main.js         # Punto de entrada
-│   └── index.html      # Página principal
+│   │   ├── enemies/    # Specific enemy types
+│   │   ├── rooms/      # Room system
+│   │   └── game/       # Game controller and FloorGenerator
+│   ├── utils/          # Utilities (Vec, Rect, Logger)
+│   ├── config.js       # Global configuration
+│   ├── main.js         # Entry point
+│   └── index.html      # Main page
 ```
 
-## Características Técnicas Implementadas
+## Implemented Technical Features
 
-### Optimizaciones de Rendimiento
-- Sistema de actualización de estados basado en eventos (no por frame)
-- Detección eficiente de colisiones con raycast
-- Gestión inteligente de proyectiles
+### Performance Optimizations
 
-### Persistencia
-- Estados de habitaciones preservados al navegar entre ellas
-- Contador de runs guardado en localStorage
-- Sistema global de mejoras de tienda por run
+- Event-based state update system (not per frame)
+- Efficient collision detection with raycasting
+- Smart projectile management
 
-### Sistema de Combate Mejorado
-- Detección de línea de visión para ataques cuerpo a cuerpo
-- Los ataques no atraviesan paredes
-- Retroalimentación visual clara del alcance de ataque
+### Persistence
 
-## Próximas Características
-- Implementación del jefe final
-- Más tipos de enemigos
-- Sistema de habilidades especiales
-- Mejoras visuales y efectos de sonido
-- Balance de dificultad progresiva
+- Room states preserved when navigating between them
+- Run counter saved in localStorage
+- Global shop upgrade system per run
 
-## Créditos
-Desarrollado por el equipo de Tecnológico de Monterrey - Semestre 4
+### Enhanced Combat System
+
+- Line-of-sight detection for melee attacks
+- Attacks do not pass through walls
+- Clear visual feedback for attack range
+
+## Upcoming Features
+
+- Final boss implementation
+- More enemy types
+- Special abilities system
+- Visual and sound effect improvements
+- Progressive difficulty balancing
+
+## Credits
+
+Developed by the Tecnológico de Monterrey - Semester 4 team
