@@ -1,5 +1,11 @@
-import { Vec } from "./Vec.js";
-import { variables } from "../config.js";
+/**
+ * Projectile class for ranged attacks
+ * Handles projectile movement, collision detection with entities and walls,
+ * and damage application on impact
+ */
+import { Vec } from "../../utils/Vec.js";
+import { variables } from "../../config.js";
+import { log } from "../../utils/Logger.js";
 
 export class Projectile {
   constructor(position, target, speed, damage, radius = 5) {
@@ -39,7 +45,7 @@ export class Projectile {
     // Check wall collision first (prioritize wall collision over entity collision)
     if (this.currentRoom && this.checkWallCollision()) {
       this.isActive = false;
-      console.log("Projectile hit wall and was destroyed");
+      log.verbose("Projectile hit wall and was destroyed");
       return;
     }
 
@@ -62,7 +68,7 @@ export class Projectile {
       this.position.y > variables.canvasHeight
     ) {
       this.isActive = false;
-      console.log("Projectile went out of bounds");
+      log.verbose("Projectile went out of bounds");
     }
   }
 
@@ -113,7 +119,7 @@ export class Projectile {
     entity.takeDamage(this.damage);
     
     // Log successful hit
-    console.log(`Projectile hit ${entity.type} for ${this.damage} damage`);
+    log.verbose(`Projectile hit ${entity.type} for ${this.damage} damage`);
 
     // TODO: Add hit effect/particles here
   }

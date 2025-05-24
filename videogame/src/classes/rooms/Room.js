@@ -1,10 +1,16 @@
-import { Vec } from './Vec.js';
-import { Rect } from './Rect.js';
-import { Player } from './Player.js';
-import { Coin } from './Coin.js';
-import { GoblinDagger } from './enemies/floor1/GoblinDagger.js';
-import { GoblinArcher } from './enemies/floor1/GoblinArcher.js';
-import { variables } from '../config.js';
+/**
+ * Room class that represents a single game room
+ * Handles room layout parsing, enemy generation, collision detection,
+ * and manages all objects within the room (walls, enemies, coins, etc.)
+ */
+import { Vec } from '../../utils/Vec.js';
+import { Rect } from '../../utils/Rect.js';
+import { Player } from '../entities/Player.js';
+import { Coin } from '../entities/Coin.js';
+import { GoblinDagger } from '../enemies/floor1/GoblinDagger.js';
+import { GoblinArcher } from '../enemies/floor1/GoblinArcher.js';
+import { variables } from '../../config.js';
+import { log } from '../../utils/Logger.js';
 
 export class Room {
     constructor(layout, isCombatRoom = false) {
@@ -73,6 +79,17 @@ export class Room {
 
     // Draws all room objects
     draw(ctx) {
+        // Draw background first
+        if (variables.backgroundImage && variables.backgroundImage.complete) {
+            ctx.drawImage(
+                variables.backgroundImage,
+                0,
+                0,
+                variables.canvasWidth,
+                variables.canvasHeight
+            );
+        }
+        
         // Draw walls
         ctx.fillStyle = 'gray';
         this.objects.walls.forEach(wall => {
@@ -157,10 +174,6 @@ export class Room {
         const isAtRightEdge = playerHitbox.x >= rightEdge - this.transitionZone;
         const isAtMiddleY = Math.abs(playerHitbox.y + playerHitbox.height/2 - middleY) < playerHitbox.height;
         
-        if (isAtRightEdge && isAtMiddleY) {
-            console.log("Player in right transition zone");
-        }
-        
         return isAtRightEdge && isAtMiddleY;
     }
 
@@ -177,10 +190,6 @@ export class Room {
         const middleY = variables.canvasHeight / 2;
         const isAtLeftEdge = playerHitbox.x <= this.transitionZone;
         const isAtMiddleY = Math.abs(playerHitbox.y + playerHitbox.height/2 - middleY) < playerHitbox.height;
-        
-        if (isAtLeftEdge && isAtMiddleY) {
-            console.log("Player in left transition zone");
-        }
         
         return isAtLeftEdge && isAtMiddleY;
     }
@@ -213,7 +222,7 @@ export class Room {
 
     // Generates procedural enemies for combat rooms
     generateEnemies() {
-        console.log("Starting procedural enemy generation for combat room...");
+        log.info("Starting procedural enemy generation for combat room...");
         
         // Generate 6-10 enemies randomly
         const enemyCount = Math.floor(Math.random() * 5) + 6; // 6 to 10 enemies
@@ -223,7 +232,7 @@ export class Room {
         const commonCount = Math.floor(enemyCount * commonPercentage);
         const rareCount = enemyCount - commonCount;
         
-        console.log(`Enemy distribution: ${enemyCount} total | ${commonCount} GoblinDagger (${Math.round(commonPercentage*100)}%) | ${rareCount} GoblinArcher (${Math.round((1-commonPercentage)*100)}%)`);
+        log.debug(`Enemy distribution: ${enemyCount} total | ${commonCount} GoblinDagger (${Math.round(commonPercentage*100)}%) | ${rareCount} GoblinArcher (${Math.round((1-commonPercentage)*100)}%)`);
         
         // Safe zone definition (128x128 centered on left edge)
         const safeZone = {
@@ -233,12 +242,12 @@ export class Room {
             height: 128
         };
         
-        console.log(`Safe zone: x=${safeZone.x}, y=${safeZone.y}, w=${safeZone.width}, h=${safeZone.height}`);
+        log.verbose(`Safe zone: x=${safeZone.x}, y=${safeZone.y}, w=${safeZone.width}, h=${safeZone.height}`);
         
         let successfulPlacements = 0;
         
         // Generate common enemies (left half, excluding safe zone)
-        console.log("Generating GoblinDagger enemies (left half)...");
+        log.debug("Generating GoblinDagger enemies (left half)...");
         for (let i = 0; i < commonCount; i++) {
             const position = this.getValidEnemyPosition(true, safeZone);
             if (position) {
@@ -246,14 +255,14 @@ export class Room {
                 enemy.setCurrentRoom(this); // Set room reference for collision detection
                 this.objects.enemies.push(enemy);
                 successfulPlacements++;
-                console.log(`  GoblinDagger ${i+1} placed at (${Math.round(position.x)}, ${Math.round(position.y)})`);
+                log.verbose(`  GoblinDagger ${i+1} placed at (${Math.round(position.x)}, ${Math.round(position.y)})`);
             } else {
-                console.warn(`  Failed to place GoblinDagger ${i+1}`);
+                log.warn(`  Failed to place GoblinDagger ${i+1}`);
             }
         }
         
         // Generate rare enemies (right half)
-        console.log("Generating GoblinArcher enemies (right half)...");
+        log.debug("Generating GoblinArcher enemies (right half)...");
         for (let i = 0; i < rareCount; i++) {
             const position = this.getValidEnemyPosition(false, safeZone);
             if (position) {
@@ -261,19 +270,19 @@ export class Room {
                 enemy.setCurrentRoom(this); // Set room reference for collision detection
                 this.objects.enemies.push(enemy);
                 successfulPlacements++;
-                console.log(`  GoblinArcher ${i+1} placed at (${Math.round(position.x)}, ${Math.round(position.y)})`);
+                log.verbose(`  GoblinArcher ${i+1} placed at (${Math.round(position.x)}, ${Math.round(position.y)})`);
             } else {
-                console.warn(`  Failed to place GoblinArcher ${i+1}`);
+                log.warn(`  Failed to place GoblinArcher ${i+1}`);
             }
         }
         
-        console.log(`Enemy generation complete: ${successfulPlacements}/${enemyCount} enemies successfully placed`);
+        log.info(`Enemy generation complete: ${successfulPlacements}/${enemyCount} enemies successfully placed`);
         
         // Validate that all enemies are correct instances
         const goblinDaggerCount = this.objects.enemies.filter(e => e.type === "goblin_dagger").length;
         const goblinArcherCount = this.objects.enemies.filter(e => e.type === "goblin_archer").length;
         
-        console.log(`Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher instances created`);
+        log.debug(`Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher instances created`);
     }
     
     // Gets a valid position for enemy placement
@@ -316,14 +325,14 @@ export class Room {
             attempts++;
         }
         
-        console.warn("Could not find valid position for enemy after", maxAttempts, "attempts");
+        log.warn("Could not find valid position for enemy after", maxAttempts, "attempts");
         return null;
     }
     
     // Checks if the room can transition (no enemies alive)
     canTransition() {
         if (!this.isCombatRoom) {
-            console.log("Transition allowed: Non-combat room");
+            log.debug("Transition allowed: Non-combat room");
             return true; // Non-combat rooms can always transition
         }
         
@@ -335,10 +344,10 @@ export class Room {
         const canTransition = aliveEnemies.length === 0;
         
         if (canTransition) {
-            console.log(`Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`);
+            log.info(`Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`);
         } else {
             const aliveGoblins = aliveEnemies.map(e => e.type).join(", ");
-            console.log(`Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveGoblins})`);
+            log.debug(`Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveGoblins})`);
         }
         
         return canTransition;

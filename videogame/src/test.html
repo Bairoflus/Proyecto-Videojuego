@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Test</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            background: #222; 
+            color: white;
+            font-family: monospace;
+        }
+        #canvas { 
+            border: 2px solid #444; 
+            display: block;
+            margin: 20px auto;
+        }
+        #status {
+            text-align: center;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="status">Loading game...</div>
+    <canvas id="canvas"></canvas>
+    
+    <script type="module">
+        const status = document.getElementById('status');
+        
+        try {
+            status.textContent = 'Loading modules...';
+            
+            // Import main game components
+            const { variables } = await import('./config.js');
+            const { Game } = await import('./classes/game/Game.js');
+            const { log } = await import('./utils/Logger.js');
+            
+            status.textContent = 'Initializing canvas...';
+            
+            // Setup canvas
+            const canvas = document.getElementById("canvas");
+            canvas.width = variables.canvasWidth;
+            canvas.height = variables.canvasHeight;
+            window.ctx = canvas.getContext("2d");
+            window.canvas = canvas;
+            
+            status.textContent = 'Creating game instance...';
+            
+            // Initialize logging
+            log.setLevel(log.LEVELS.DEBUG);
+            
+            // Create game
+            const game = new Game();
+            
+            status.textContent = 'Starting game loop...';
+            
+            // Game loop
+            let previousTime = 0;
+            function frame(currentTime) {
+                const deltaTime = currentTime - previousTime;
+                previousTime = currentTime;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                game.update(deltaTime);
+                game.draw(ctx);
+                requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+            
+            status.textContent = 'Game running! Check console for any errors.';
+            
+        } catch (error) {
+            status.textContent = 'Error: ' + error.message;
+            console.error('Game initialization error:', error);
+        }
+    </script>
+</body>
+</html> 

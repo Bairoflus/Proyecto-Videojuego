@@ -1,4 +1,8 @@
-// Vec.js: 2D Vector with basic operations
+/**
+ * 2D Vector class
+ * Provides vector math operations for position, velocity, and direction calculations
+ * Used throughout the game for movement and physics
+ */
 export class Vec {
   constructor(x, y) {
     this.x = x;

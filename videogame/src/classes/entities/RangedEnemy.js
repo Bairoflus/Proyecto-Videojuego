@@ -1,6 +1,12 @@
+/**
+ * Base class for ranged enemy types
+ * Extends Enemy with projectile attack capabilities,
+ * retreat behavior, and ranged combat AI
+ */
 import { Enemy } from "./Enemy.js";
-import { Vec } from "./Vec.js";
+import { Vec } from "../../utils/Vec.js";
 import { Projectile } from "./Projectile.js";
+import { log } from "../../utils/Logger.js";
 
 export class RangedEnemy extends Enemy {
   constructor(
@@ -134,7 +140,7 @@ export class RangedEnemy extends Enemy {
     
     this.projectiles.push(projectile);
     
-    console.log(`${this.type} fired projectile at player`);
+    log.verbose(`${this.type} fired projectile at player`);
   }
 
   updateAnimation() {

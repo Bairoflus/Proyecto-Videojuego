@@ -1,14 +1,13 @@
 // ASCII layouts for game rooms
 // 'P' = Player
 // 'W' = Wall
-// 'E' = Enemy
 // 'C' = Coin
 // 'S' = Shop
 // 'B' = Boss
 // '.' = Empty space
 
 export const COMBAT_ROOMS = [
-// 1. Almost empty room
+// 1. 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W..........WWW..........W
 W.......................W
@@ -28,7 +27,7 @@ W.......................W
 W.......................W
 W..........WWW..........W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 2. Central vertical wall (leaving 2 tiles of space)
+// 2. 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -48,7 +47,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 3. Two horizontal walls (leaving 2 tiles of space)
+// 3. 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -68,7 +67,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 4. Blocked corners (leaving 2 tiles of space)
+// 4. 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W..........WWWW.........W
 W.......................W
@@ -88,7 +87,7 @@ W.......................W
 W.......................W
 W..........WWWW.........W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 5. Alternating columns (leaving 2 tiles of space)
+// 5.
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -108,7 +107,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 6. Simple maze (leaving 2 tiles of space)
+// 6. 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -128,7 +127,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 7. Cross walls (leaving 2 tiles of space)
+// 7. 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -148,7 +147,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 8. Zigzag walls (leaving 2 tiles of space)
+// 8. 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -168,7 +167,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 9. Internal side walls (leaving 2 tiles of space)
+// 9. 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W......WWWWWWWW.........W
 W............WW.........W
@@ -188,7 +187,7 @@ W.............W.........W
 W............WW.........W
 W......WWWWWWWW.........W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 10. Diagonal walls (leaving 2 tiles of space)
+// 10. 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
@@ -208,7 +207,7 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 11. U-shaped walls (leaving 2 tiles of space)
+// 11.
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W...............WWWWW...W
 W.................WWW...W
@@ -228,7 +227,7 @@ W.......................W
 W.......................W
 W...WWWWW...............W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 12. Scattered walls (leaving 2 tiles of space)
+// 12. 
 `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W

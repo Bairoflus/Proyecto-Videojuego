@@ -1,4 +1,9 @@
+/**
+ * AnimatedObject class extends GameObject with sprite animation support
+ * Handles sprite sheet animation, frame updates, and animation cycling
+ */
 import { GameObject } from "./GameObject.js";
+import { Rect } from "../../utils/Rect.js";
 
 export class AnimatedObject extends GameObject {
   constructor(position, width, height, color, type, sheetCols) {

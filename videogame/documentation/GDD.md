@@ -36,6 +36,7 @@
 7. Background and Style
 8. List of Assets
 9. Schedule
+10. Technical Implementation (Current State)
 
 ---
 
@@ -235,7 +236,7 @@ We aim for players to feel progression and mastery through tough challenges. Com
 
 ## 7. Background and Style
 
-A temporal fracture scattered eras across one world. You are a lone fighter traveling across time to stabilize it. The game’s visuals reflect the era progression, while the soundtrack evolves from organic to digital. The story unfolds subtly through enemy design and world transitions.
+A temporal fracture scattered eras across one world. You are a lone fighter traveling across time to stabilize it. The game's visuals reflect the era progression, while the soundtrack evolves from organic to digital. The story unfolds subtly through enemy design and world transitions.
 
 ---
 
@@ -266,4 +267,104 @@ A temporal fracture scattered eras across one world. You are a lone fighter trav
 5. **Week 8–9**: Level design + bosses
 6. **Week 10**: UI + stats + menus
 7. **Week 11–12**: Polish, audio, bug fixing
+
+---
+
+## 10. Technical Implementation (Current State)
+
+### 10.1 Room System
+
+**Current Implementation:**
+- Each floor contains 6 rooms total (4 combat + 1 shop + 1 boss)
+- Rooms are procedurally selected from a pool of combat room layouts
+- Room state persistence: Enemy positions and health are saved when transitioning between rooms
+- Transition validation: Players can only advance/retreat when all enemies in current room are defeated
+
+**Enemy Generation:**
+- Combat rooms generate 6-10 enemies procedurally
+- Distribution: 60-80% common enemies (GoblinDagger), 20-40% rare enemies (GoblinArcher)
+- Safe zone: 128x128 pixel area at room entrance where enemies cannot spawn
+- Common enemies spawn in left half of room, rare enemies in right half
+
+### 10.2 Combat System
+
+**Implemented Features:**
+- **Melee Combat**: 
+  - Dagger with 75px range (2.5x original design)
+  - Line-of-sight detection prevents attacking through walls
+  - Visual feedback: Red attack area (normal), Orange (wall-limited)
+  - Damage: 10 points per hit
+  
+- **Ranged Combat**:
+  - Slingshot with projectile system
+  - Projectiles stop on wall collision
+  - Damage: 15 points per hit
+  - Speed: 300 pixels/second
+
+- **Dash System**:
+  - Duration: 100ms
+  - Speed multiplier: 3x normal speed
+  - Provides invulnerability during dash
+  - Wall collision respected during dash
+
+### 10.3 Enemy AI
+
+**Current Enemy Types:**
+- **GoblinDagger** (Melee):
+  - Health: 20 HP
+  - Speed: 70% of player speed
+  - Attack range: 32px
+  - Damage: 10 points
+  - Behavior: Constantly pursues player
+
+- **GoblinArcher** (Ranged):
+  - Health: 30 HP
+  - Speed: Static (doesn't move)
+  - Attack range: 200px
+  - Damage: 15 points
+  - Behavior: Fires projectiles at player when in range
+
+### 10.4 Project Structure
+
+```
+src/
+├── assets/          # Game assets
+│   ├── background/  # Background images
+│   └── sprites/     # Character and item sprites
+├── classes/         # Game logic classes
+│   ├── config/      # Configuration files
+│   ├── enemies/     # Enemy implementations
+│   ├── entities/    # Core game entities
+│   ├── game/        # Main game systems
+│   └── rooms/       # Room system
+├── utils/           # Utility functions and helpers
+├── config.js        # Game configuration constants
+├── main.js          # Entry point
+└── index.html       # HTML container
+```
+
+### 10.5 Performance Optimizations
+
+- Event-driven room state updates (only on enemy death or transitions)
+- Configurable logging system with multiple levels
+- Wall collision detection using raycasting for efficient line-of-sight checks
+- Projectile pooling potential (not yet implemented)
+
+### 10.6 Death & Reset System
+
+- Player death triggers complete game reset after 1 second delay
+- Resets to Run 1, Floor 1, Room 1
+- All room states cleared and enemies regenerated
+- Player health and position restored to defaults
+
+### 10.7 Future Implementation Priorities
+
+1. **Stamina System**: Not yet implemented (design specified in 2.3)
+2. **Food System**: Not yet implemented (design specified in 2.3)
+3. **Shop Room**: Layout exists but functionality pending
+4. **Boss Rooms**: Layout exists but boss entities not implemented
+5. **Floor 2 & 3**: Only Floor 1 enemies currently implemented
+6. **Base Hub**: Not yet implemented
+7. **Save System**: Game state persistence between sessions
+8. **Status Effects**: Bleed, Poison, Burn mechanics designed but not coded
 

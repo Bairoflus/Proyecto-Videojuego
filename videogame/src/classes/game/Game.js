@@ -1,14 +1,19 @@
-// Game.js: Main game logic
-import { Vec } from "./Vec.js";
-import { Rect } from "./Rect.js";
-import { Player } from "./Player.js";
-import { Coin } from "./Coin.js";
-import { GoblinArcher } from "./enemies/floor1/GoblinArcher.js";
-import { GoblinDagger } from "./enemies/floor1/GoblinDagger.js";
-import { variables, keyDirections, playerMovement } from "../config.js";
-import { boxOverlap } from "../utils.js";
+/**
+ * Main game controller class
+ * Manages game state, updates, rendering, and player input
+ * Coordinates between all game systems (rooms, enemies, player, etc.)
+ */
+import { Vec } from "../../utils/Vec.js";
+import { Rect } from "../../utils/Rect.js";
+import { Player } from "../entities/Player.js";
+import { Coin } from "../entities/Coin.js";
+import { GoblinArcher } from "../enemies/floor1/GoblinArcher.js";
+import { GoblinDagger } from "../enemies/floor1/GoblinDagger.js";
+import { variables, keyDirections, playerMovement } from "../../config.js";
+import { boxOverlap } from "../../utils/utils.js";
 import { FloorGenerator } from "./FloorGenerator.js";
-import { Room } from "./Room.js";
+import { Room } from "../rooms/Room.js";
+import { log } from "../../utils/Logger.js";
 
 export class Game {
   constructor() {
@@ -414,6 +419,7 @@ export class Game {
     console.log("NEW OPTIMIZATIONS: testPerformanceOptimizations() | testLineOfSight() | testOptimizedCombat()");
     console.log("ULTIMATE: validateEntireGame()");
   }
+
   // Creates initial player and room
   initObjects() {
     // Create initial room using the new method
@@ -432,6 +438,7 @@ export class Game {
     // Update global enemies array
     this.enemies = this.currentRoom.objects.enemies;
   }
+
   // Draws current room and player
   draw(ctx) {
     // Draw current room
@@ -467,6 +474,7 @@ export class Game {
       variables.canvasHeight - 10
     );
   }
+
   // Updates game logic
   update(deltaTime) {
     // Update current room
@@ -567,6 +575,7 @@ export class Game {
       this.player.position.y
     );
   }
+
   // Keyboard events for movement and actions
   createEventListeners() {
     window.addEventListener("keydown", (e) => {
@@ -601,12 +610,14 @@ export class Game {
       }
     });
   }
+
   // Add movement direction
   add_key(direction) {
     if (!this.player.keys.includes(direction)) {
       this.player.keys.push(direction);
     }
   }
+
   // Remove movement direction
   del_key(direction) {
     this.player.keys = this.player.keys.filter((key) => key !== direction);

@@ -1,5 +1,11 @@
+/**
+ * Floor generation and management system
+ * Handles procedural floor creation, room progression, and game run management
+ * Maintains state persistence for rooms across transitions
+ */
 import { COMBAT_ROOMS, SHOP_ROOM_LAYOUT, BOSS_ROOM_LAYOUT } from '../rooms/combatRooms.js';
-import { Room } from './Room.js';
+import { Room } from '../rooms/Room.js';
+import { log } from '../../utils/Logger.js';
 
 export class FloorGenerator {
     constructor() {
@@ -39,8 +45,8 @@ export class FloorGenerator {
         // Reset room index to start of new floor
         this.currentRoomIndex = 0;
         
-        console.log("Generated new floor", this.floorCount, "with", this.currentFloor.length, "rooms");
-        console.log("Room states and visit history cleared for new floor");
+        log.info("Generated new floor", this.floorCount, "with", this.currentFloor.length, "rooms");
+        log.debug("Room states and visit history cleared for new floor");
     }
 
     // Selects n unique random combat rooms
@@ -61,7 +67,7 @@ export class FloorGenerator {
     // Gets current room layout
     getCurrentRoomLayout() {
         if (this.currentRoomIndex >= this.currentFloor.length) {
-            console.log("Warning: Room index out of bounds");
+            log.warn("Warning: Room index out of bounds");
             return null;
         }
         return this.currentFloor[this.currentRoomIndex];
@@ -77,7 +83,7 @@ export class FloorGenerator {
         
         // Check if we already have a saved state for this room
         if (this.roomStates[roomIndex]) {
-            console.log(`Loading saved state for room ${roomIndex}`);
+            log.debug(`Loading saved state for room ${roomIndex}`);
             return this.roomStates[roomIndex];
         }
         
@@ -91,9 +97,9 @@ export class FloorGenerator {
         this.visitedRooms.add(roomIndex);
         
         if (isCombatRoom) {
-            console.log(`Created new combat room ${roomIndex} with ${room.objects.enemies.length} enemies`);
+            log.info(`Created new combat room ${roomIndex} with ${room.objects.enemies.length} enemies`);
         } else {
-            console.log(`Created new ${this.roomTypes[roomIndex]} room ${roomIndex}`);
+            log.info(`Created new ${this.roomTypes[roomIndex]} room ${roomIndex}`);
         }
         
         return room;
@@ -111,10 +117,10 @@ export class FloorGenerator {
     nextRoom() {
         if (this.currentRoomIndex < this.currentFloor.length - 1) {
             this.currentRoomIndex++;
-            console.log("Advanced to room", this.currentRoomIndex);
+            log.debug("Advanced to room", this.currentRoomIndex);
             return true;
         }
-        console.log("Cannot advance: Already at last room");
+        log.debug("Cannot advance: Already at last room");
         return false;
     }
 
@@ -122,10 +128,10 @@ export class FloorGenerator {
     previousRoom() {
         if (this.currentRoomIndex > 0) {
             this.currentRoomIndex--;
-            console.log("Returned to room", this.currentRoomIndex);
+            log.debug("Returned to room", this.currentRoomIndex);
             return true;
         }
-        console.log("Cannot return: Already at first room");
+        log.debug("Cannot return: Already at first room");
         return false;
     }
 
@@ -137,7 +143,7 @@ export class FloorGenerator {
     // Checks if it's the boss room
     isBossRoom() {
         const isBoss = this.currentRoomIndex === this.currentFloor.length - 1;
-        console.log("Is boss room:", isBoss, "Current index:", this.currentRoomIndex, "Total rooms:", this.currentFloor.length);
+        log.verbose("Is boss room:", isBoss, "Current index:", this.currentRoomIndex, "Total rooms:", this.currentFloor.length);
         return isBoss;
     }
 
@@ -147,11 +153,11 @@ export class FloorGenerator {
             // If we're at floor 3, increment run and reset floor
             this.runCount++;
             this.floorCount = 1;
-            console.log("Completed floor 3, starting new run:", this.runCount);
+            log.info("Completed floor 3, starting new run:", this.runCount);
         } else {
             // Otherwise just increment floor
             this.floorCount++;
-            console.log("Advanced to floor", this.floorCount);
+            log.info("Advanced to floor", this.floorCount);
         }
         
         // Generate new floor and reset room index
@@ -192,13 +198,13 @@ export class FloorGenerator {
     updateRoomState(roomIndex = this.currentRoomIndex, room) {
         if (room) {
             this.roomStates[roomIndex] = room;
-            console.log(`Updated room ${roomIndex} state`);
+            log.verbose(`Updated room ${roomIndex} state`);
         }
     }
     
     // DEATH RESET: Complete game state reset
     resetToInitialState() {
-        console.log("=== COMPLETE FLOOR GENERATOR RESET ===");
+        log.info("=== COMPLETE FLOOR GENERATOR RESET ===");
         
         // Reset all counters to initial state
         this.floorCount = 1;
@@ -211,13 +217,13 @@ export class FloorGenerator {
         this.currentFloor = [];
         this.roomTypes = [];
         
-        console.log("Cleared all room states and visit history");
-        console.log("Reset to: Run 1, Floor 1, Room 1");
+        log.debug("Cleared all room states and visit history");
+        log.debug("Reset to: Run 1, Floor 1, Room 1");
         
         // Generate fresh floor
         this.generateFloor();
         
-        console.log("Floor generator completely reset to initial state");
+        log.info("Floor generator completely reset to initial state");
     }
     
     // Get initial game state info

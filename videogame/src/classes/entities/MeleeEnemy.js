@@ -1,5 +1,10 @@
+/**
+ * Base class for melee enemy types
+ * Extends Enemy with close-range combat behavior
+ * Simplifies melee attack patterns for derivative classes
+ */
 import { Enemy } from "./Enemy.js";
-import { Vec } from "./Vec.js";
+import { Vec } from "../../utils/Vec.js";
 
 export class MeleeEnemy extends Enemy {
   constructor(

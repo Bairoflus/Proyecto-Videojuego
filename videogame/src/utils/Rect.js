@@ -1,3 +1,7 @@
+/**
+ * Rectangle class
+ * Represents rectangular areas for collision detection, sprite regions, and boundaries
+ */
 export class Rect {
   constructor(x, y, width, height) {
     this.x = x;

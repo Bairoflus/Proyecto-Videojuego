@@ -5,7 +5,7 @@
 
 /* Estilos del body para centrar contenido y definir layout de grid */
 body {
-  background-color: White;
+  background-color: #1a1a1a;
   width: 100vw;
   height: 100vh;
   box-sizing: border-box;
@@ -38,15 +38,15 @@ h1 {
   margin: 0;
 }
 
-/* Estilos del canvas: borde y fondo por defecto */
+/* Estilos del canvas: borde y sin fondo (el juego lo dibujará) */
 canvas {
-  border: 2px solid black;
-  background-color: #87ceeb;
+  border: 2px solid #333;
+  background-color: transparent;
 }
 
 /* Grid area principal para el canvas */
 #canvas {
-  background-color: #87ceeb;
+  background-color: transparent;
   grid-area: main;
 }
 

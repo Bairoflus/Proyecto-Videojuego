@@ -1,5 +1,10 @@
-import { MeleeEnemy } from "../../MeleeEnemy.js";
-import { Vec } from "../../Vec.js";
+/**
+ * Goblin Dagger enemy class
+ * Melee enemy type that attacks at close range
+ * Found commonly on floor 1
+ */
+import { MeleeEnemy } from "../../entities/MeleeEnemy.js";
+import { Vec } from "../../../utils/Vec.js";
 import { variables } from "../../../config.js";
 
 export class GoblinDagger extends MeleeEnemy {

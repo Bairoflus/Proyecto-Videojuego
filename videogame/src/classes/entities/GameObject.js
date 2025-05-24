@@ -1,5 +1,10 @@
-// GameObject.js: Clase base para objetos del juego
-import { variables } from "../config.js";
+/**
+ * Base GameObject class
+ * Foundation for all game objects with position, size, sprite rendering,
+ * and basic collision detection via hitboxes
+ */
+import { variables } from "../../config.js";
+import { Rect } from "../../utils/Rect.js";
 
 export class GameObject {
   constructor(position, width, height, color, type) {

@@ -1,3 +1,8 @@
+/**
+ * Coin collectible class
+ * Represents in-game currency that can be collected by the player
+ * Animated collectible object
+ */
 import { AnimatedObject } from "./AnimatedObject.js";
 
 export class Coin extends AnimatedObject {

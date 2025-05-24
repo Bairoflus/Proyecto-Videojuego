@@ -1,13 +1,19 @@
+/**
+ * Player character class
+ * Handles player movement, combat, dash mechanics, weapon switching,
+ * health management, and input processing
+ */
 import { AnimatedObject } from "./AnimatedObject.js";
-import { Vec } from "./Vec.js";
-import { Rect } from "./Rect.js";
+import { Vec } from "../../utils/Vec.js";
+import { Rect } from "../../utils/Rect.js";
 import { Projectile } from "./Projectile.js";
 import {
   variables,
   playerMovement,
   playerAttack,
   getAttackFrames,
-} from "../config.js";
+} from "../../config.js";
+import { log } from "../../utils/Logger.js";
 
 // Attack range constants
 // EXTENDED RANGE: Multiplied original range (30) by 2.5 for improved melee combat

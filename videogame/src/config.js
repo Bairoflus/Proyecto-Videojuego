@@ -1,3 +1,12 @@
+// Canvas Variables
+
+// Hitbox scaling constants
+// These control how much smaller the hitbox is compared to the sprite
+export const HITBOX_SCALE = {
+  player: 0.5,  // Player hitbox is 50% of sprite size
+  enemy: 0.6    // Enemy hitbox is 60% of sprite size
+};
+
 export const variables = {
   // Dimensiones del canvas
   canvasWidth: 800, // 25 * 32
@@ -11,7 +20,7 @@ export const variables = {
   backgroundImage: new Image(),
   showHitboxes: true, // Enable hitbox visualization for debugging
 };
-variables.backgroundImage.src = "./assets/background/background.jpg";
+variables.backgroundImage.src = "./assets/background/backgroundfloor1.jpg";
 
 // Base walking animations (shared between weapons)
 const walkingFrames = {

@@ -1,6 +1,12 @@
+/**
+ * Base enemy class
+ * Provides common functionality for all enemy types including movement,
+ * health management, collision detection, and basic AI behavior
+ */
 import { AnimatedObject } from "./AnimatedObject.js";
-import { Vec } from "./Vec.js";
-import { variables } from "../config.js";
+import { Vec } from "../../utils/Vec.js";
+import { variables } from "../../config.js";
+import { log } from "../../utils/Logger.js";
 
 export class Enemy extends AnimatedObject {
   constructor(
@@ -71,11 +77,6 @@ export class Enemy extends AnimatedObject {
       collisionDetected = true;
     }
     
-    // Log collision detection for debugging (only occasionally to avoid spam)
-    if (collisionDetected && Math.random() < 0.01) {
-      console.log(`${this.type} collision detected - movement blocked`);
-    }
-    
     // Return true if we moved at all
     return this.position.x !== originalPosition.x || this.position.y !== originalPosition.y;
   }
@@ -84,7 +85,7 @@ export class Enemy extends AnimatedObject {
     if (this.state === "dead") return;
 
     this.health = Math.max(0, this.health - amount);
-    console.log(`${this.type} health:`, this.health);
+    log.verbose(`${this.type} health:`, this.health);
 
     if (this.health <= 0) {
       this.die();
@@ -93,7 +94,7 @@ export class Enemy extends AnimatedObject {
 
   die() {
     this.state = "dead";
-    console.log(`${this.type} died`);
+    log.debug(`${this.type} died`);
     
     // EVENT-DRIVEN UPDATE: Update room state when enemy dies
     if (window.game && window.game.floorGenerator && this.currentRoom) {
@@ -101,7 +102,7 @@ export class Enemy extends AnimatedObject {
         window.game.floorGenerator.getCurrentRoomIndex(), 
         this.currentRoom
       );
-      console.log("Room state updated due to enemy death");
+      log.verbose("Room state updated due to enemy death");
     }
     
     // TODO: Add death animation and effects

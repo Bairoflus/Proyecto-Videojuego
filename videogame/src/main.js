@@ -1,20 +1,29 @@
-/*
-Punto de entrada de la aplicación
+/**
+ * Main entry point for the game
+ * Initializes the game and starts the main game loop
  */
-
 import { variables } from "./config.js";
-import { drawScene, setCtx, setGame } from "./draw.js";
-import { Game } from "./classes/Game.js";
+import { Game } from "./classes/game/Game.js";
+import { log } from "./utils/Logger.js";
 
-function main() {
-  const canvas = document.getElementById("canvas");
-  canvas.width = variables.canvasWidth;
-  canvas.height = variables.canvasHeight;
+const canvas = document.getElementById("canvas");
+canvas.width = variables.canvasWidth;
+canvas.height = variables.canvasHeight;
+window.ctx = canvas.getContext("2d");
+window.canvas = canvas;
 
-  setCtx(canvas.getContext("2d"));
-  const game = new Game();
-  setGame(game);
-  drawScene(0);
+// Initialize logging system
+log.setLevel(log.LEVELS.INFO); // Set to DEBUG for development, INFO for production
+
+const game = new Game();
+
+let previousTime = 0;
+function frame(currentTime) {
+  const deltaTime = currentTime - previousTime;
+  previousTime = currentTime;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  game.update(deltaTime);
+  game.draw(ctx);
+  requestAnimationFrame(frame);
 }
-
-main();
+requestAnimationFrame(frame);

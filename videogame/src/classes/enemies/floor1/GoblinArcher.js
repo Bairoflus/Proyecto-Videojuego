@@ -1,7 +1,13 @@
-import { RangedEnemy } from "../../RangedEnemy.js";
-import { Projectile } from "../../Projectile.js";
+/**
+ * Goblin Archer enemy class
+ * Ranged enemy type that attacks from a distance with projectiles
+ * Less common but more dangerous enemy type on floor 1
+ */
+import { RangedEnemy } from "../../entities/RangedEnemy.js";
+import { Projectile } from "../../entities/Projectile.js";
 import { variables } from "../../../config.js";
-import { Vec } from "../../Vec.js";
+import { Vec } from "../../../utils/Vec.js";
+import { Rect } from "../../../utils/Rect.js";
 
 export class GoblinArcher extends RangedEnemy {
   constructor(position) {
