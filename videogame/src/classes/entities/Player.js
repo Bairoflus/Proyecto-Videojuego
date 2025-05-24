@@ -276,15 +276,23 @@ export class Player extends AnimatedObject {
 
   // ENHANCED ATTACK: Melee attack with line-of-sight wall detection
   attack() {
+    const staminaCost = this.weaponType === "dagger" ? 8 : 12;
+
+    if (this.stamina < staminaCost) {
+      console.log("Not enough stamina to attack");
+      return;
+    }
+
     if (!this.isAttacking && this.attackCooldown <= 0) {
       this.isAttacking = true;
       this.hasCreatedProjectile = false; // Reset projectile creation flag
       this.hasAppliedMeleeDamage = false; // Reset melee damage flag
       this.attackCooldown = playerAttack.cooldown;
 
-      if (this.weaponType === "dagger") this.stamina -= 8;
-      else if (this.weaponType === "slingshot") this.stamina -= 12;
-      this.staminaRegenCooldown = this.staminaRegenDelay;
+      if (this.weaponType === "dagger") {
+        this.stamina -= staminaCost;
+        this.staminaRegenCooldown = this.staminaRegenDelay;
+      }
 
       console.log(`Player attacking with ${this.weaponType}`);
 
@@ -554,6 +562,9 @@ export class Player extends AnimatedObject {
           this.projectiles.push(projectile);
           this.hasCreatedProjectile = true; // Mark that we've created the projectile
 
+          this.stamina -= 12;
+          this.staminaRegenCooldown = this.staminaRegenDelay;
+
           console.log(
             `Slingshot projectile created (direction: ${this.currentDirection}, damage: ${projectileDamage})`
           );
@@ -588,8 +599,8 @@ export class Player extends AnimatedObject {
         const roomEnemies =
           this.currentRoom && this.currentRoom.objects.enemies
             ? this.currentRoom.objects.enemies.filter(
-                (enemy) => enemy.state !== "dead"
-              )
+              (enemy) => enemy.state !== "dead"
+            )
             : [];
 
         projectile.update(deltaTime, roomEnemies);
@@ -760,6 +771,10 @@ export class Player extends AnimatedObject {
 
   // startDash: start the dash if cooldown is over
   startDash() {
+    if (this.stamina < 10) {
+      console.log("Not enough stamina to dash");
+      return;
+    }
     // Solo permitir dash si no está en cooldown y no está atacando
     if (this.dashCooldownTime <= 0 && this.dashTime <= 0 && !this.isAttacking) {
       // Solo permitir dash si hay teclas presionadas
@@ -820,13 +835,13 @@ export class Player extends AnimatedObject {
           ? v.y > 0
             ? "down"
             : v.y < 0
-            ? "up"
-            : this.currentDirection
+              ? "up"
+              : this.currentDirection
           : v.x > 0
-          ? "right"
-          : v.x < 0
-          ? "left"
-          : this.currentDirection;
+            ? "right"
+            : v.x < 0
+              ? "left"
+              : this.currentDirection;
 
       if (newDirection !== this.currentDirection) {
         this.currentDirection = newDirection;
@@ -850,8 +865,8 @@ export class Player extends AnimatedObject {
     const roomEnemyCount =
       this.currentRoom && this.currentRoom.objects.enemies
         ? this.currentRoom.objects.enemies.filter(
-            (enemy) => enemy.state !== "dead"
-          ).length
+          (enemy) => enemy.state !== "dead"
+        ).length
         : 0;
 
     return {
