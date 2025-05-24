@@ -24,6 +24,7 @@ src/classes/
 │   ├── RangedEnemy.js
 │   ├── Projectile.js
 │   ├── Coin.js
+│   ├── Chest.js     # NEW: Gold chest entity
 │   ├── GameObject.js
 │   └── AnimatedObject.js
 ├── enemies/         # Enemy type implementations
@@ -69,7 +70,53 @@ src/classes/
 - All comments and documentation in English
 - Clear explanation of class relationships and responsibilities
 
-## 5. Benefits of Refactoring
+## 5. Gold Chest System Implementation
+
+### New Features:
+- **Gold Chest Entity**: New `Chest` class that spawns after clearing all enemies in combat rooms
+- **Gold Currency**: Players now collect and accumulate gold (150 per chest)
+- **Persistent Gold**: Gold persists across rooms but resets to 0 on death
+- **Visual Feedback**: Gold counter displayed in top-right corner of screen
+
+### Technical Implementation:
+1. **Chest Spawning**:
+   - Automatically spawns when last enemy dies in combat room
+   - Positioned near transition zone but not blocking it
+   - Only spawns once per room (tracked via `chestSpawned` flag)
+
+2. **Gold Management**:
+   - Player class now has `gold` property
+   - `addGold()` method for collecting rewards
+   - Gold resets to 0 on death via `resetGold()`
+
+3. **Room State Persistence**:
+   - Chest state saved when leaving room (`chestSpawned`, `chestCollected`)
+   - Prevents chest respawning on room re-entry
+   - Integrated with existing room state system
+
+4. **Visual Elements**:
+   - Chest rendered with golden glow effect
+   - Gold counter UI in top-right corner
+   - Debug hitboxes available for testing
+
+### Usage:
+```javascript
+// Player automatically receives gold when touching chest
+player.addGold(150); // Called internally by Chest.collect()
+
+// Check player's current gold
+const currentGold = player.getGold();
+
+// Gold automatically resets on death
+player.resetGold(); // Called during death reset
+```
+
+### Future Expansion:
+- Gold amount is stored in `Chest.goldReward` for easy modification
+- Ready for upgrade system to modify gold rewards
+- Can easily add different chest types with varying rewards
+
+## 6. Benefits of Refactoring
 
 ### Maintainability:
 - Clear folder structure makes finding files easier
@@ -87,7 +134,7 @@ src/classes/
 - Utilities are centralized and reusable
 - Configuration system allows easy tweaking without code changes
 
-## 6. Usage Examples
+## 7. Usage Examples
 
 ### Logging:
 ```javascript
@@ -117,7 +164,7 @@ updateConfig('debug.showHitboxes', true);
 updateConfig('logging.level', 3); // Set to DEBUG
 ```
 
-## 7. Next Steps
+## 8. Next Steps
 
 ### Recommended Future Improvements:
 1. Create separate room type classes (ShopRoom, BossRoom) extending base Room
@@ -126,4 +173,7 @@ updateConfig('logging.level', 3); // Set to DEBUG
 4. Create factory classes for entity creation
 5. Implement proper asset loading system
 6. Add unit tests for utility functions
-7. Create development vs production build configurations 
+7. Create development vs production build configurations
+8. Implement shop system using accumulated gold
+9. Add more chest types with different rewards
+10. Create upgrade system that affects gold rewards 

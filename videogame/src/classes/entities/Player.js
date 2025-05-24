@@ -49,6 +49,9 @@ export class Player extends AnimatedObject {
     this.invulnerabilityDuration = 1000; // 1 second of invulnerability after taking damage
     this.invulnerabilityTimer = 0;
 
+    // Gold system
+    this.gold = 0; // Player's accumulated gold
+
     // Customize hitbox to better match player's feet
     this.hitbox = {
       width: width * 0.6,
@@ -99,6 +102,35 @@ export class Player extends AnimatedObject {
     }
   }
 
+  /**
+   * Adds gold to player's total
+   * @param {number} amount - Amount of gold to add
+   * @returns {number} New gold total
+   */
+  addGold(amount) {
+    if (amount > 0) {
+      this.gold += amount;
+      log.info(`Player collected ${amount} gold. Total: ${this.gold}`);
+    }
+    return this.gold;
+  }
+
+  /**
+   * Gets current gold amount
+   * @returns {number} Current gold
+   */
+  getGold() {
+    return this.gold;
+  }
+
+  /**
+   * Resets gold to zero (called on death)
+   */
+  resetGold() {
+    this.gold = 0;
+    log.debug("Player gold reset to 0");
+  }
+
   // DEATH RESET: Restore player to initial state
   resetToInitialState(startPosition) {
     console.log("=== PLAYER RESET TO INITIAL STATE ===");
@@ -107,6 +139,9 @@ export class Player extends AnimatedObject {
     this.health = this.maxHealth;
     this.isInvulnerable = false;
     this.invulnerabilityTimer = 0;
+    
+    // Reset gold to zero
+    this.gold = 0;
     
     // Reset position
     if (startPosition) {
@@ -150,6 +185,7 @@ export class Player extends AnimatedObject {
     return {
       health: this.health,
       maxHealth: this.maxHealth,
+      gold: this.gold,
       position: { x: Math.round(this.position.x), y: Math.round(this.position.y) },
       weapon: this.weaponType,
       isAttacking: this.isAttacking,
