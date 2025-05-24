@@ -7,29 +7,23 @@
 ## Index
 
 1. Game Design
-
    1. Summary
    2. Gameplay
    3. Mindset
 2. Technical
-
    1. Screens
    2. Controls
    3. Mechanics
 3. Level Design
-
    1. Themes
    2. Game Flow
 4. Development
-
    1. Abstract Classes
    2. Derived Classes
 5. Graphics
-
    1. Style Attributes
    2. Graphics Needed
 6. Sounds/Music
-
    1. Style Attributes
    2. Sounds Needed
    3. Music Needed
@@ -44,24 +38,23 @@
 
 ### 1.1 Summary
 
-**Shattered Timeline** is a top-down action roguelite where players battle across three timelines—past, present, and future—to restore a fractured reality. Players navigate combat rooms, face bosses, and use a central base to craft items and upgrade abilities between runs.
+**Shattered Timeline** is a top-down action roguelite where players fight through three temporal zones—past, present, and future—to restore order. Players traverse procedurally designed rooms, battle evolving enemies and bosses, and gain both temporary and permanent upgrades. Core systems include food-based stamina management, dual-weapon combat, and strategic base development.
 
 ### 1.2 Gameplay
 
-Each run spans three floors, each with 7 rooms: 5 combat rooms, 1 shop, and 1 boss room. Rooms are selected from a pool of 10 designs per floor. Combat involves real-time movement, attacks, dodges, and potential spell use. Players manage **stamina**, **food**, and possibly **mana**, choosing between light/heavy attacks, dashes, or ranged options—all with specific stamina costs. A unique food system alters stamina regeneration rates, and running out causes HP loss. Loot drops from rift portals after clearing a room.
+Each run consists of 3 floors with 5 combat rooms, 1 shop, and 1 boss room. Each combat room auto-awards gold upon enemy defeat. Shops provide temporary weapon upgrades. Post-boss rooms offer permanent stat improvements. The game uses a food system that affects stamina regeneration; without food, players lose health. Gameplay is auto-saved after each room.
 
-**Sample moment-to-moment loop:**
+**Gameplay Loop:**
 
-* Enter combat room
-* Fight 3–6 enemies
-* Clear wave → portal opens with rewards
-* Choose upgrade or resource conservation
-* After 5 rooms, enter boss room → defeat boss → proceed to next floor
-* Return to base after all 3 floors
+- Start in Base
+- Portal to Floor 1
+- Progress through 4 combat rooms + 1 shop + 1 boss
+- Gain permanent upgrade, proceed to next floor
+- After Floor 3 boss, run ends, stats updated, loop restarts with increased difficulty (damage/health x1.08)
 
 ### 1.3 Mindset
 
-We aim for players to feel progression and mastery through tough challenges. Combat brings tension, exploration yields surprise, and base upgrades provide relief. The layered system encourages experimentation, adaptability, and replayability.
+Shattered Timeline is built to reward mastery, adaptability, and persistence. Its loop emphasizes tension, progression, and surprise. Players are encouraged to experiment with builds and tactics across dynamic, escalating challenges.
 
 ---
 
@@ -69,68 +62,69 @@ We aim for players to feel progression and mastery through tough challenges. Com
 
 ### 2.1 Screens
 
-1. **Title Screen**
+1. **Web Login Screens**
+   - Logo + color-themed background
+   - Buttons: Login, Create Account
+   - Form validation: usernames, emails, password checks
 
-   * Start
-   * Options (Controls, Audio)
-   * Statistics
-   * Credits
-2. **Game Start**
+2. **Main UI after login**
+   - Canvas with: "Welcome, *username*", Logout button
+   - Options: Start Game, Options, Player Statistics, Credits
 
-   * New Game
-   * Continue Game (3 slots max)
 3. **Game Screens**
+   - Inventory
+   - HUD: Health, Stamina, Weapons, Gold, Permanent Upgrades
 
-   * Inventory
-   * HUD (Health, Map, Weapons, Gold, Items, Stamina, Food, Mana \[optional])
 4. **Pause Menu**
+   - Resume, Options, Player Stats, Return to Main Menu
 
-   * Resume
-   * Save
-   * Options
-   * Statistics
-   * Return to Main Menu
-5. **End Credits**
+5. **Options Menu**
+   - Controls, Audio Sliders
+
+6. **Statistics Pop-up**
+   - Deaths, Enemies Killed, Runs Played/Completed, Time Played, Max Kills/Damage/Run, Gold Spent/Earned
 
 ### 2.2 Controls
 
-* 8-direction movement using keyboard or controller
-* Dash for evasive maneuvers
-* Action button to attack or interact
-* Controls are remappable
+- 8-direction movement (WASD)
+- Dash (Spacebar) – 1u movement
+- Actions: Attack, Interact
+- All controls are remappable
 
 ### 2.3 Mechanics
 
-**Stamina** governs player actions:
+**Stamina (Max 150):**
 
-* Light Melee Attack: 15
-* Heavy Melee Attack: 40
-* Light Ranged Attack: 10
-* Charged Ranged Attack: 30
-* Dash: 20
+| Action            | Cost  |
+|-------------------|--------|
+| Melee Attack       | 8 pts |
+| Projectile Attack  | 12 pts |
+| Dash               | 10 pts |
 
-**Food-Based Regeneration:**
+**Stamina Regen by Food Level:**
 
-* Full (100–76%): 15 pts/s
-* Well Fed (75–51%): 10 pts/s
-* Hungry (50–26%): 6 pts/s
-* Weak (25–1%): 3 pts/s
-* Malnourished (0%): 1 pts/s + lose 5 HP/s
+| Food Level       | Regen Multiplier | Regen Rate | Penalty    |
+|------------------|------------------|------------|------------|
+| Satiated         | 1.5x             | 30 pts/s   | -          |
+| Well Fed         | 1x               | 20 pts/s   | -          |
+| Hungry           | 0.6x             | 12 pts/s   | -          |
+| Weak             | 0.3x             | 6 pts/s    | -          |
+| Malnourished     | 0.1x             | 2 pts/s    | -5 HP/s    |
 
-**Status Effects (DoTs):**
+**Food Types:**
 
-* Bleed: Moderate damage, lasts long, can heal with bandages
-* Poison: Long duration, cured only by antidotes, dash causes damage
-* Burn: Highest damage, shortest duration, cured faster by dashing
-* Secondary states: Hemorrhage (bleed x2) and Toxicity (poison x2)
+| Food                     | Effect  |
+|--------------------------|---------|
+| Watermelon, Meat         | +50%    |
+| Apple, Salad             | +25%    |
+| Grapes, Spicy Snacks     | +10%    |
 
-**Mana:** Is used for spell casting (non-regenerative)
+**Upgrades:**
 
-**Combat Notes:**
-
-* Enemies track players to get within attack range
-* All attacks can be dodged
-* Bosses have unique attack phases
+- Health: +15 HP (100 gold)
+- Stamina: +20 (100 gold)
+- Melee/Ranged Damage: +4 (100 gold)
+- Speed: +0.02u (100 gold)
 
 ---
 
@@ -138,19 +132,17 @@ We aim for players to feel progression and mastery through tough challenges. Com
 
 ### 3.1 Themes
 
-1. **Floor 1 - Past**: Swamps, forests, caves. Primitive enemies like goblins and wolves.
-2. **Floor 2 - Present**: Destroyed cities, factories, schools. Human enemies (bandidos, police).
-3. **Floor 3 - Future**: Spaceships, sci-fi zones. Robots and aliens.
-
-**Base**: A central hub in a forest. Players cook, rest, cultivate, craft food and weapons.
+- **Past**: Swamp, Forest, Caves, Plains
+- **Present**: Destroyed City, Abandoned Factory, Schools, Park
+- **Future**: Metal Deck, Spaceship, Mars, Alien Landscape
 
 ### 3.2 Game Flow
 
-1. Begin at Base
-2. Portal to Floor 1 → 5 rooms → Boss
-3. Floor 2 → Repeat
-4. Floor 3 → Repeat
-5. Return to Base → Upgrade/Prepare for next run
+1. Base Hub
+2. Floor 1: 4 rooms + shop + boss → permanent upgrade
+3. Floor 2: 4 rooms + shop + boss → permanent upgrade
+4. Floor 3: 4 rooms + shop + boss → permanent upgrade
+5. Loop reset: Floors reshuffle, enemies buffed
 
 ---
 
@@ -158,33 +150,21 @@ We aim for players to feel progression and mastery through tough challenges. Com
 
 ### 4.1 Abstract Classes
 
-* BaseEntity
-* BasePlayer
-* BaseEnemy
-* BaseWeapon
-* BaseItem
-* BaseRoom
-* BaseBoss
+- BaseEntity, BasePlayer, BaseEnemy, BaseWeapon, BaseItem, BaseRoom, BaseBoss
 
 ### 4.2 Derived Classes
 
-**Player:** Movement, Stats, Inventory, Combat, Dash
-
-**Enemies:**
-
-* Floor 1: Goblins (dagger, bow, mage, shaman), Ogres
-* Floor 2: Bandids, Snipers, Cops, Mutants
-* Floor 3: Robots, Drones, Alien Slaves, Alien Warriors
-
-**Bosses:**
-
-* Floor 1: Dragon / Ogre Boss
-* Floor 2: Supersoldier / Criminal Boss
-* Floor 3: Alien / Mecha
-
-**Items:** Potions, Scrolls, Bandages, Antidotes
-
-**Weapons:** Katana, Bow, Shield, Laser Pistol, Assault Rifle, Lightsaber
+- **Player**: Inventory, Movement, Dash, Combat, Stats
+- **Enemies** (per floor):
+  - Past: Goblin variants (dagger, archer, mage, sword)
+  - Present: Bandits, Snipers, Police, Mutants
+  - Future: Robots, Drones, Alien Slaves, Warriors
+- **Bosses** (per floor):
+  - Past: Dragon, Ogre
+  - Present: Supersoldier, Criminal
+  - Future: Alien, Mecha
+- **Items**: Bandages, Antidotes, Potions, Scrolls
+- **Weapons**: Dagger, Katana, Lightsaber, Bows, Recurve Bow
 
 ---
 
@@ -192,18 +172,14 @@ We aim for players to feel progression and mastery through tough challenges. Com
 
 ### 5.1 Style Attributes
 
-* Pixel-art
-* Dark environments + vibrant highlights
-* Clear visual feedback for hits/status effects
+- Pixel-art with dark base tones and vivid highlights
+- Visual clarity for feedback (hits, statuses)
 
 ### 5.2 Graphics Needed
 
-* Characters (idle, attack, dash)
-* Enemies by tier and floor
-* Bosses (unique sprites)
-* UI (HUD, menus)
-* Items and weapons
-* Environmental tiles (swamp, city, futuristic)
+- Characters (player, enemies, bosses)
+- Items, Weapons, UI, Tilesets (environment-specific)
+- Shop & Base Elements
 
 ---
 
@@ -211,32 +187,24 @@ We aim for players to feel progression and mastery through tough challenges. Com
 
 ### 6.1 Style Attributes
 
-* Floor 1: Natural ambiance
-* Floor 2: Industrial noise
-* Floor 3: Digital/sci-fi
-* Battle music: Intense per floor
-* Boss music: Dramatic with unique motifs
+- Floor 1: Nature sounds
+- Floor 2: Industrial ambiance
+- Floor 3: Sci-fi tones
+- Boss: Thematic variations
 
 ### 6.2 Sounds Needed
 
-* Footsteps (terrain-based)
-* Attack/damage sounds
-* Object pickups
-* Status effects (burn, poison, bleed)
-* Boss attack audio
+- Footsteps (terrain based), Combat SFX, UI, Environmental sounds
 
 ### 6.3 Music Needed
 
-* Base theme
-* Floor 1, 2, 3 themes
-* Boss themes (at least 3 variations)
-* Ending theme
+- Themes for base + each floor + bosses + ending
 
 ---
 
 ## 7. Background and Style
 
-A temporal fracture scattered eras across one world. You are a lone fighter traveling across time to stabilize it. The game's visuals reflect the era progression, while the soundtrack evolves from organic to digital. The story unfolds subtly through enemy design and world transitions.
+The game world is fractured by time. The player, a lone warrior, must traverse divergent eras to stabilize the timeline. Progression is felt through environment, enemy types, and evolving music. Storytelling is embedded in the setting and design, not explicit narrative.
 
 ---
 
@@ -244,127 +212,40 @@ A temporal fracture scattered eras across one world. You are a lone fighter trav
 
 ### Graphical
 
-* Characters: Player + 10+ enemy types + 6 bosses
-* Weapons: 8 (melee + ranged)
-* Items: Bandages, antidotes, scrolls, potions
-* UI Elements: HUD bars, menus
-* Tilesets: Swamp, city, factory, spaceship
-* Shop + Base: Cultivation, beds, crafting tables
+- Characters: 10+ enemy types, 6 bosses, player
+- Weapons: 6+ tiers (melee/ranged)
+- Items: Healing, Buffs, Status Cures
+- UI: HUD, Menus
+- Environments: Swamp, City, Mars, etc.
+- Structures: Base Hub, Shops
 
 ### Audio
 
-* 4–5 music tracks (1 base, 3 floor, 1 boss, 1 ending)
-* Sound FX for attacks, footsteps, pickups, UI
+- 5+ music tracks (base, floors, bosses, end)
+- Full SFX suite (combat, UI, ambient)
 
 ---
 
 ## 9. Schedule
 
-1. **Week 1–2**: Base entity and player setup
-2. **Week 3–4**: Enemy behavior and physics
-3. **Week 5**: Room selection + procedural logic
-4. **Week 6–7**: Combat + upgrade system
-5. **Week 8–9**: Level design + bosses
-6. **Week 10**: UI + stats + menus
-7. **Week 11–12**: Polish, audio, bug fixing
+1. Week 1–2: Entity and Player Framework
+2. Week 3–4: Enemy AI + Movement
+3. Week 5: Room System + Procedural Logic
+4. Week 6–7: Combat, Weapons, Stats
+5. Week 8–9: Level Themes + Boss Design
+6. Week 10: UI/UX + Data Systems
+7. Week 11–12: Final Polish, Debug, Balance
 
 ---
 
 ## 10. Technical Implementation (Current State)
 
-### 10.1 Room System
-
-**Current Implementation:**
-- Each floor contains 6 rooms total (4 combat + 1 shop + 1 boss)
-- Rooms are procedurally selected from a pool of combat room layouts
-- Room state persistence: Enemy positions and health are saved when transitioning between rooms
-- Transition validation: Players can only advance/retreat when all enemies in current room are defeated
-
-**Enemy Generation:**
-- Combat rooms generate 6-10 enemies procedurally
-- Distribution: 60-80% common enemies (GoblinDagger), 20-40% rare enemies (GoblinArcher)
-- Safe zone: 128x128 pixel area at room entrance where enemies cannot spawn
-- Common enemies spawn in left half of room, rare enemies in right half
-
-### 10.2 Combat System
-
-**Implemented Features:**
-- **Melee Combat**: 
-  - Dagger with 75px range (2.5x original design)
-  - Line-of-sight detection prevents attacking through walls
-  - Visual feedback: Red attack area (normal), Orange (wall-limited)
-  - Damage: 10 points per hit
-  
-- **Ranged Combat**:
-  - Slingshot with projectile system
-  - Projectiles stop on wall collision
-  - Damage: 15 points per hit
-  - Speed: 300 pixels/second
-
-- **Dash System**:
-  - Duration: 100ms
-  - Speed multiplier: 3x normal speed
-  - Provides invulnerability during dash
-  - Wall collision respected during dash
-
-### 10.3 Enemy AI
-
-**Current Enemy Types:**
-- **GoblinDagger** (Melee):
-  - Health: 20 HP
-  - Speed: 70% of player speed
-  - Attack range: 32px
-  - Damage: 10 points
-  - Behavior: Constantly pursues player
-
-- **GoblinArcher** (Ranged):
-  - Health: 30 HP
-  - Speed: Static (doesn't move)
-  - Attack range: 200px
-  - Damage: 15 points
-  - Behavior: Fires projectiles at player when in range
-
-### 10.4 Project Structure
-
-```
-src/
-├── assets/          # Game assets
-│   ├── background/  # Background images
-│   └── sprites/     # Character and item sprites
-├── classes/         # Game logic classes
-│   ├── config/      # Configuration files
-│   ├── enemies/     # Enemy implementations
-│   ├── entities/    # Core game entities
-│   ├── game/        # Main game systems
-│   └── rooms/       # Room system
-├── utils/           # Utility functions and helpers
-├── config.js        # Game configuration constants
-├── main.js          # Entry point
-└── index.html       # HTML container
-```
-
-### 10.5 Performance Optimizations
-
-- Event-driven room state updates (only on enemy death or transitions)
-- Configurable logging system with multiple levels
-- Wall collision detection using raycasting for efficient line-of-sight checks
-- Projectile pooling potential (not yet implemented)
-
-### 10.6 Death & Reset System
-
-- Player death triggers complete game reset after 1 second delay
-- Resets to Run 1, Floor 1, Room 1
-- All room states cleared and enemies regenerated
-- Player health and position restored to defaults
-
-### 10.7 Future Implementation Priorities
-
-1. **Stamina System**: Not yet implemented (design specified in 2.3)
-2. **Food System**: Not yet implemented (design specified in 2.3)
-3. **Shop Room**: Layout exists but functionality pending
-4. **Boss Rooms**: Layout exists but boss entities not implemented
-5. **Floor 2 & 3**: Only Floor 1 enemies currently implemented
-6. **Base Hub**: Not yet implemented
-7. **Save System**: Game state persistence between sessions
-8. **Status Effects**: Bleed, Poison, Burn mechanics designed but not coded
-
+- Room System: Procedural, with autosave per room
+- Enemy AI: Tracking, range checks, dodge mechanics
+- Combat: Melee/Ranged with distinct timing, range, feedback
+- Dash: Invulnerability, wall-aware
+- Stats: Gold tracking, food system, upgrades implemented
+- Boss Design: Multi-phase with telegraphed attacks
+- Web Integration: Login/Account systems with validation
+- Save System: Session persistence per room, with autosave icon
+- Performance: Event-driven room updates, raycasting, projectile pooling (planned)
