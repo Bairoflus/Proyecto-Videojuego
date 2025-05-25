@@ -24,44 +24,54 @@ const DAGGER_ATTACK_DAMAGE = 1000;
 export class Player extends AnimatedObject {
   constructor(position, width, height, color, sheetCols = 13) {
     super(position, width, height, color, "player", sheetCols);
+
+    // Movement properties
     this.velocity = new Vec(0, 0);
     this.keys = [];
     this.previousDirection = "down";
     this.currentDirection = "down";
-    // ——— DASH PROPERTIES ———
-    this.dashDuration = 100; // ms que dura el dash
-    this.dashSpeed = variables.playerSpeed * 3; // velocidad durante dash
-    this.dashTime = 0; // tiempo restante de dash
-    this.dashCooldown = 0; // ms de cooldown entre dashes
-    this.dashCooldownTime = 0; // timer de cooldown
-    this.dashDirection = new Vec(0, 0); // dirección fijada al dash
-    this.weaponType = "dagger"; // Default weapon
+
+    // Dash properties
+    this.dashDuration = 100;
+    this.dashSpeed = variables.playerSpeed * 3;
+    this.dashTime = 0;
+    this.dashCooldown = 0;
+    this.dashCooldownTime = 0;
+    this.dashDirection = new Vec(0, 0);
+
+    // Combat properties
+    this.weaponType = "dagger";
     this.isAttacking = false;
     this.attackCooldown = 0;
-    this.projectiles = []; // Array to store active projectiles
-    this.hasCreatedProjectile = false; // Flag to track if projectile was created
-    this.hasAppliedMeleeDamage = false; // Flag to track if melee damage was applied
+    this.projectiles = [];
+    this.hasCreatedProjectile = false;
+    this.hasAppliedMeleeDamage = false;
 
     // Player stats
-    this.maxHealth = 10000;
-    this.health = this.maxHealth;
+    this.health = 100;
+    this.maxHealth = 100;
+    this.stamina = 100;
+    this.maxStamina = 100;
+    this.staminaRegenRate = 15;
+    this.staminaRegenDelay = 1000;
+    this.staminaRegenCooldown = 0;
+
+    // Gold and shop system
+    this.gold = 0;
+    this.meleeDamageBonus = 0;
+    this.rangedDamageBonus = 0;
+
+    // Invulnerability
     this.isInvulnerable = false;
-    this.invulnerabilityDuration = 1000; // 1 second of invulnerability after taking damage
+    this.invulnerabilityDuration = 1000;
     this.invulnerabilityTimer = 0;
 
-    // Gold system
-    this.gold = 0; // Player's accumulated gold
-
-    // Shop upgrade bonuses
-    this.meleeDamageBonus = 0; // Bonus damage from shop upgrades
-    this.rangedDamageBonus = 0; // Bonus damage from shop upgrades
-
-    // Customize hitbox to better match player's feet
+    // Hitbox configuration
     this.hitbox = {
       width: width * 0.6,
       height: height * 0.6,
-      offsetX: width * 0.2, // Center horizontally (20% margin on each side)
-      offsetY: height * 0.3, // Move hitbox down (30% margin at top, 10% at bottom)
+      offsetX: width * 0.2,
+      offsetY: height * 0.3,
     };
   }
 
@@ -141,19 +151,18 @@ export class Player extends AnimatedObject {
   resetToInitialState(startPosition) {
     console.log("=== PLAYER RESET TO INITIAL STATE ===");
 
-    // Reset health and stats
+    // Reset health and stamina
     this.health = this.maxHealth;
+    this.stamina = this.maxStamina;
     this.isInvulnerable = false;
     this.invulnerabilityTimer = 0;
 
-    // Reset gold to zero
+    // Reset gold and shop upgrades
     this.gold = 0;
-
-    // Reset shop upgrades
     this.meleeDamageBonus = 0;
     this.rangedDamageBonus = 0;
 
-    // Reset position
+    // Reset position if provided
     if (startPosition) {
       this.position = new Vec(startPosition.x, startPosition.y);
     }
@@ -170,7 +179,6 @@ export class Player extends AnimatedObject {
     this.dashTime = 0;
     this.dashCooldownTime = 0;
     this.dashDirection = new Vec(0, 0);
-    this.isInvulnerable = false;
 
     // Clear all projectiles
     this.projectiles = [];
@@ -278,11 +286,23 @@ export class Player extends AnimatedObject {
 
   // ENHANCED ATTACK: Melee attack with line-of-sight wall detection
   attack() {
+    const staminaCost = this.weaponType === "dagger" ? 8 : 12;
+
+    if (this.stamina < staminaCost) {
+      console.log("Not enough stamina to attack");
+      return;
+    }
+
     if (!this.isAttacking && this.attackCooldown <= 0) {
       this.isAttacking = true;
       this.hasCreatedProjectile = false; // Reset projectile creation flag
       this.hasAppliedMeleeDamage = false; // Reset melee damage flag
       this.attackCooldown = playerAttack.cooldown;
+
+      if (this.weaponType === "dagger") {
+        this.stamina -= staminaCost;
+        this.staminaRegenCooldown = this.staminaRegenDelay;
+      }
 
       console.log(`Player attacking with ${this.weaponType}`);
 
@@ -552,6 +572,9 @@ export class Player extends AnimatedObject {
           this.projectiles.push(projectile);
           this.hasCreatedProjectile = true; // Mark that we've created the projectile
 
+          this.stamina -= 12;
+          this.staminaRegenCooldown = this.staminaRegenDelay;
+
           console.log(
             `Slingshot projectile created (direction: ${this.currentDirection}, damage: ${projectileDamage})`
           );
@@ -593,6 +616,15 @@ export class Player extends AnimatedObject {
         projectile.update(deltaTime, roomEnemies);
         return projectile.isActive;
       });
+
+      if (this.staminaRegenCooldown > 0) {
+        this.staminaRegenCooldown -= deltaTime;
+      } else {
+        this.stamina = Math.min(
+          this.maxStamina,
+          this.stamina + (this.staminaRegenRate * deltaTime) / 1000
+        );
+      }
 
       this.setVelocity();
 
@@ -750,6 +782,10 @@ export class Player extends AnimatedObject {
 
   // startDash: start the dash if cooldown is over
   startDash() {
+    if (this.stamina < 10) {
+      console.log("Not enough stamina to dash");
+      return;
+    }
     // Solo permitir dash si no está en cooldown y no está atacando
     if (this.dashCooldownTime <= 0 && this.dashTime <= 0 && !this.isAttacking) {
       // Solo permitir dash si hay teclas presionadas
@@ -767,6 +803,8 @@ export class Player extends AnimatedObject {
         if (currentVelocity.magnitude() > 0) {
           this.dashDirection = currentVelocity.normalize();
           this.dashTime = this.dashDuration;
+          this.stamina -= 10;
+          this.staminaCooldown = this.staminaRegenDelay;
           this.dashCooldownTime = this.dashCooldown;
           this.isInvulnerable = true;
           this.invulnerabilityTimer = this.dashDuration;
