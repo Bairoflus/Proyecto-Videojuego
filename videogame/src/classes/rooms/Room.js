@@ -13,15 +13,16 @@ import { GoblinDagger } from "../enemies/floor1/GoblinDagger.js";
 import { GoblinArcher } from "../enemies/floor1/GoblinArcher.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
+import { ROOM_CONSTANTS, PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
 
 export class Room {
   constructor(layout, isCombatRoom = false, roomType = "combat") {
     this.layout = layout;
     this.isCombatRoom = isCombatRoom;
     this.roomType = roomType; // 'combat', 'shop', or 'boss'
-    this.tileSize = 32; // Size of each cell in pixels
-    this.transitionZone = 64; // Activation zone for transition
-    this.minSafeDistance = 16; // Minimum distance to avoid immediate activation
+    this.tileSize = ROOM_CONSTANTS.TILE_SIZE;
+    this.transitionZone = ROOM_CONSTANTS.TRANSITION_ZONE_SIZE;
+    this.minSafeDistance = ROOM_CONSTANTS.MIN_SAFE_DISTANCE;
     this.objects = {
       walls: [],
       enemies: [],
@@ -300,14 +301,17 @@ export class Room {
   // Checks for wall collisions using hitboxes
   checkWallCollision(obj) {
     const objHitbox = obj.getHitboxBounds();
-    return this.objects.walls.some((wall) => {
-      return (
-        objHitbox.x + objHitbox.width > wall.x &&
-        objHitbox.x < wall.x + wall.width &&
-        objHitbox.y + objHitbox.height > wall.y &&
-        objHitbox.y < wall.y + wall.height
-      );
-    });
+    return this.objects.walls.some((wall) => this.checkRectangleCollision(objHitbox, wall));
+  }
+
+  // Helper method for rectangle collision detection
+  checkRectangleCollision(rect1, rect2) {
+    return (
+      rect1.x + rect1.width > rect2.x &&
+      rect1.x < rect2.x + rect2.width &&
+      rect1.y + rect1.height > rect2.y &&
+      rect1.y < rect2.y + rect2.height
+    );
   }
 
   // Checks if player is near the central right edge
@@ -383,11 +387,11 @@ export class Room {
   generateEnemies() {
     log.info("Starting procedural enemy generation for combat room...");
 
-    // Generate 6-10 enemies randomly
-    const enemyCount = Math.floor(Math.random() * 5) + 6; // 6 to 10 enemies
+    // Generate enemies randomly within defined range
+    const enemyCount = Math.floor(Math.random() * (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)) + ROOM_CONSTANTS.MIN_ENEMIES;
 
-    // Random proportion: 60%-80% common, 20%-40% rare
-    const commonPercentage = Math.random() * 0.2 + 0.6; // 0.6 to 0.8
+    // Random proportion using constants
+    const commonPercentage = Math.random() * (ROOM_CONSTANTS.COMMON_ENEMY_RATIO.max - ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min) + ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min;
     const commonCount = Math.floor(enemyCount * commonPercentage);
     const rareCount = enemyCount - commonCount;
 
@@ -399,12 +403,12 @@ export class Room {
       )}%)`
     );
 
-    // Safe zone definition (128x128 centered on left edge)
+    // Safe zone definition using constants
     const safeZone = {
       x: 0,
-      y: variables.canvasHeight / 2 - 64,
-      width: 128,
-      height: 128,
+      y: variables.canvasHeight / 2 - ROOM_CONSTANTS.SAFE_ZONE_SIZE.height / 2,
+      width: ROOM_CONSTANTS.SAFE_ZONE_SIZE.width,
+      height: ROOM_CONSTANTS.SAFE_ZONE_SIZE.height,
     };
 
     log.verbose(
@@ -468,56 +472,61 @@ export class Room {
     );
   }
 
-  // Gets a valid position for enemy placement
+  // Improved method to get valid enemy position with better organization
   getValidEnemyPosition(isCommon, safeZone) {
-    const maxAttempts = 50; // Prevent infinite loops
     let attempts = 0;
 
-    while (attempts < maxAttempts) {
-      let x, y;
-
-      if (isCommon) {
-        // Common enemies: left half (excluding safe zone)
-        x = Math.random() * (variables.canvasWidth / 2 - 32);
-        y = Math.random() * (variables.canvasHeight - 32);
-
-        // Check if position overlaps with safe zone
-        if (
-          x < safeZone.x + safeZone.width &&
-          x + 32 > safeZone.x &&
-          y < safeZone.y + safeZone.height &&
-          y + 32 > safeZone.y
-        ) {
-          attempts++;
-          continue;
-        }
-      } else {
-        // Rare enemies: right half
-        x =
-          Math.random() * (variables.canvasWidth / 2 - 32) +
-          variables.canvasWidth / 2;
-        y = Math.random() * (variables.canvasHeight - 32);
-      }
-
-      const position = new Vec(x, y);
-
-      // Create a temporary enemy to test collision
-      const tempEnemy = new GoblinDagger(position);
-
-      // Check if position is valid (no wall collision)
-      if (!this.checkWallCollision(tempEnemy)) {
+    while (attempts < ROOM_CONSTANTS.MAX_PLACEMENT_ATTEMPTS) {
+      const position = this.generateRandomPosition(isCommon, safeZone);
+      
+      if (position && this.isValidEnemyPosition(position)) {
         return position;
       }
-
+      
       attempts++;
     }
 
-    log.warn(
-      "Could not find valid position for enemy after",
-      maxAttempts,
-      "attempts"
-    );
+    log.warn("Could not find valid position for enemy after", ROOM_CONSTANTS.MAX_PLACEMENT_ATTEMPTS, "attempts");
     return null;
+  }
+
+  // Helper method to generate random position based on enemy type
+  generateRandomPosition(isCommon, safeZone) {
+    let x, y;
+
+    if (isCommon) {
+      // Common enemies: left half (excluding safe zone)
+      x = Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE);
+      y = Math.random() * (variables.canvasHeight - ROOM_CONSTANTS.TILE_SIZE);
+
+      // Check if position overlaps with safe zone
+      if (this.overlapsWithSafeZone(x, y, safeZone)) {
+        return null; // Invalid position
+      }
+    } else {
+      // Rare enemies: right half
+      x = Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE) + variables.canvasWidth / 2;
+      y = Math.random() * (variables.canvasHeight - ROOM_CONSTANTS.TILE_SIZE);
+    }
+
+    return new Vec(x, y);
+  }
+
+  // Helper method to check safe zone overlap
+  overlapsWithSafeZone(x, y, safeZone) {
+    return (
+      x < safeZone.x + safeZone.width &&
+      x + ROOM_CONSTANTS.TILE_SIZE > safeZone.x &&
+      y < safeZone.y + safeZone.height &&
+      y + ROOM_CONSTANTS.TILE_SIZE > safeZone.y
+    );
+  }
+
+  // Helper method to validate enemy position
+  isValidEnemyPosition(position) {
+    // Create a temporary enemy to test collision
+    const tempEnemy = new GoblinDagger(position);
+    return !this.checkWallCollision(tempEnemy);
   }
 
   // Checks if the room can transition (no enemies alive)
@@ -556,34 +565,33 @@ export class Room {
   spawnChest() {
     if (this.chestSpawned || !this.isCombatRoom) return;
 
-    // Calculate safe spawn position near transition zone
-    const transitionZoneWidth = 64;
-    const safeMargin = 32;
-    const chestSize = 64;
-
-    const x =
-      variables.canvasWidth - transitionZoneWidth - chestSize - safeMargin;
-    const y = variables.canvasHeight / 2 - chestSize / 2;
+    // Calculate safe spawn position near transition zone using constants
+    const x = variables.canvasWidth - this.transitionZone - ROOM_CONSTANTS.CHEST_SIZE - ROOM_CONSTANTS.CHEST_SAFE_MARGIN;
+    const y = variables.canvasHeight / 2 - ROOM_CONSTANTS.CHEST_SIZE / 2;
 
     // Create chest at calculated position
     const chestPosition = new Vec(x, y);
 
-    // Check if position would collide with a wall
-    const testChest = new Chest(chestPosition);
+    // Try primary position first
+    if (this.trySpawnChestAtPosition(chestPosition)) {
+      return;
+    }
+
+    // Try alternate position if wall collision
+    chestPosition.y = variables.canvasHeight / 2 - ROOM_CONSTANTS.CHEST_SIZE - ROOM_CONSTANTS.CHEST_SIZE;
+    this.trySpawnChestAtPosition(chestPosition);
+  }
+
+  // Helper method to attempt chest spawn at a position
+  trySpawnChestAtPosition(position) {
+    const testChest = new Chest(position);
     if (!this.checkWallCollision(testChest)) {
       this.objects.chest = testChest;
       this.chestSpawned = true;
       log.info("Gold chest spawned in combat room");
-    } else {
-      // Try alternate position if wall collision
-      chestPosition.y = variables.canvasHeight / 2 - chestSize - 64;
-      testChest.position = chestPosition;
-      if (!this.checkWallCollision(testChest)) {
-        this.objects.chest = testChest;
-        this.chestSpawned = true;
-        log.info("Gold chest spawned in combat room (alternate position)");
-      }
+      return true;
     }
+    return false;
   }
 
   /**
@@ -597,12 +605,7 @@ export class Room {
     const playerHitbox = player.getHitboxBounds();
     const chestHitbox = this.objects.chest.getHitboxBounds();
 
-    return (
-      playerHitbox.x < chestHitbox.x + chestHitbox.width &&
-      playerHitbox.x + playerHitbox.width > chestHitbox.x &&
-      playerHitbox.y < chestHitbox.y + chestHitbox.height &&
-      playerHitbox.y + playerHitbox.height > chestHitbox.y
-    );
+    return this.checkRectangleCollision(playerHitbox, chestHitbox);
   }
 
   /**
@@ -650,13 +653,6 @@ export class Room {
   checkShopActivation(playerHitbox) {
     if (!this.shopActivationArea) return false;
 
-    return (
-      playerHitbox.x <
-        this.shopActivationArea.x + this.shopActivationArea.width &&
-      playerHitbox.x + playerHitbox.width > this.shopActivationArea.x &&
-      playerHitbox.y <
-        this.shopActivationArea.y + this.shopActivationArea.height &&
-      playerHitbox.y + playerHitbox.height > this.shopActivationArea.y
-    );
+    return this.checkRectangleCollision(playerHitbox, this.shopActivationArea);
   }
 }

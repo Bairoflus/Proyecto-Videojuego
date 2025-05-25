@@ -14,12 +14,14 @@ import {
   getAttackFrames,
 } from "../../config.js";
 import { log } from "../../utils/Logger.js";
+import { PLAYER_CONSTANTS, PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
 
-// Attack range constants
-// EXTENDED RANGE: Multiplied original range (30) by 2.5 for improved melee combat
-const DAGGER_ATTACK_RANGE = 45; // Extended from 30 to 75 (2.5x increase)
-const DAGGER_ATTACK_WIDTH = 30;
-const DAGGER_ATTACK_DAMAGE = 1000;
+// Constants for Player class
+const DASH_STAMINA_COST = PLAYER_CONSTANTS.DAGGER_STAMINA_COST; // Reuse for dash
+const RAYCAST_STEP_SIZE = PLAYER_CONSTANTS.RAYCAST_STEP_SIZE;
+const DAGGER_ATTACK_RANGE = PLAYER_CONSTANTS.DAGGER_ATTACK_RANGE;
+const DAGGER_ATTACK_WIDTH = PLAYER_CONSTANTS.DAGGER_ATTACK_WIDTH;
+const DAGGER_ATTACK_DAMAGE = PLAYER_CONSTANTS.DAGGER_ATTACK_DAMAGE;
 
 export class Player extends AnimatedObject {
   constructor(position, width, height, color, sheetCols = 13) {
@@ -32,8 +34,8 @@ export class Player extends AnimatedObject {
     this.currentDirection = "down";
 
     // Dash properties
-    this.dashDuration = 100;
-    this.dashSpeed = variables.playerSpeed * 3;
+    this.dashDuration = PLAYER_CONSTANTS.DASH_DURATION;
+    this.dashSpeed = variables.playerSpeed * PLAYER_CONSTANTS.DASH_MULTIPLIER;
     this.dashTime = 0;
     this.dashCooldown = 0;
     this.dashCooldownTime = 0;
@@ -48,12 +50,12 @@ export class Player extends AnimatedObject {
     this.hasAppliedMeleeDamage = false;
 
     // Player stats
-    this.health = 100;
-    this.maxHealth = 100;
-    this.stamina = 100;
-    this.maxStamina = 100;
-    this.staminaRegenRate = 15;
-    this.staminaRegenDelay = 1000;
+    this.health = PLAYER_CONSTANTS.MAX_HEALTH;
+    this.maxHealth = PLAYER_CONSTANTS.MAX_HEALTH;
+    this.stamina = PLAYER_CONSTANTS.MAX_STAMINA;
+    this.maxStamina = PLAYER_CONSTANTS.MAX_STAMINA;
+    this.staminaRegenRate = PLAYER_CONSTANTS.STAMINA_REGEN_RATE;
+    this.staminaRegenDelay = PLAYER_CONSTANTS.STAMINA_REGEN_DELAY;
     this.staminaRegenCooldown = 0;
 
     // Gold and shop system
@@ -63,15 +65,15 @@ export class Player extends AnimatedObject {
 
     // Invulnerability
     this.isInvulnerable = false;
-    this.invulnerabilityDuration = 1000;
+    this.invulnerabilityDuration = PLAYER_CONSTANTS.INVULNERABILITY_DURATION;
     this.invulnerabilityTimer = 0;
 
     // Hitbox configuration
     this.hitbox = {
-      width: width * 0.6,
-      height: height * 0.6,
-      offsetX: width * 0.2,
-      offsetY: height * 0.3,
+      width: width * PHYSICS_CONSTANTS.PLAYER_HITBOX_SCALE,
+      height: height * PHYSICS_CONSTANTS.PLAYER_HITBOX_SCALE,
+      offsetX: width * PHYSICS_CONSTANTS.PLAYER_HITBOX_OFFSET_X,
+      offsetY: height * PHYSICS_CONSTANTS.PLAYER_HITBOX_OFFSET_Y,
     };
   }
 
@@ -240,7 +242,7 @@ export class Player extends AnimatedObject {
   }
 
   // LINE OF SIGHT: Raycast to detect walls between player and target
-  raycastToWall(startPos, direction, maxDistance, stepSize = 4) {
+  raycastToWall(startPos, direction, maxDistance) {
     if (!this.currentRoom) return maxDistance;
 
     let currentDistance = 0;
@@ -257,14 +259,12 @@ export class Player extends AnimatedObject {
         position: currentPos,
         width: 4,
         height: 4,
-        getHitboxBounds: () => {
-          return {
-            x: currentPos.x - 2,
-            y: currentPos.y - 2,
-            width: 4,
-            height: 4,
-          };
-        },
+        getHitboxBounds: () => ({
+          x: currentPos.x - 2,
+          y: currentPos.y - 2,
+          width: 4,
+          height: 4,
+        }),
       };
 
       // Check if this position collides with a wall
@@ -277,7 +277,7 @@ export class Player extends AnimatedObject {
         return currentDistance;
       }
 
-      currentDistance += stepSize;
+      currentDistance += RAYCAST_STEP_SIZE;
     }
 
     // No wall found within max distance
@@ -286,7 +286,7 @@ export class Player extends AnimatedObject {
 
   // ENHANCED ATTACK: Melee attack with line-of-sight wall detection
   attack() {
-    const staminaCost = this.weaponType === "dagger" ? 8 : 12;
+    const staminaCost = this.weaponType === "dagger" ? PLAYER_CONSTANTS.DAGGER_STAMINA_COST : PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST;
 
     if (this.stamina < staminaCost) {
       console.log("Not enough stamina to attack");
@@ -306,85 +306,19 @@ export class Player extends AnimatedObject {
 
       console.log(`Player attacking with ${this.weaponType}`);
 
-      // Apply melee damage immediately for dagger attacks
       if (this.weaponType === "dagger") {
-        // Using constants defined at the top of the file
-        const baseAttackRange = DAGGER_ATTACK_RANGE;
-        const attackWidth = DAGGER_ATTACK_WIDTH;
-        const attackDamage = DAGGER_ATTACK_DAMAGE + this.meleeDamageBonus; // Add shop bonus
-
-        // Calculate player center position
-        const playerCenterX = this.position.x + this.width / 2;
-        const playerCenterY = this.position.y + this.height / 2;
-        const playerCenter = new Vec(playerCenterX, playerCenterY);
-
-        // Calculate attack direction vector
-        let attackDirection;
-        switch (this.currentDirection) {
-          case "right":
-            attackDirection = new Vec(1, 0);
-            break;
-          case "left":
-            attackDirection = new Vec(-1, 0);
-            break;
-          case "up":
-            attackDirection = new Vec(0, -1);
-            break;
-          case "down":
-            attackDirection = new Vec(0, 1);
-            break;
-          default:
-            attackDirection = new Vec(0, 1);
-        }
-
-        // WALL DETECTION: Check for walls and limit attack range
-        const actualAttackRange = this.raycastToWall(
+        const playerCenter = new Vec(
+          this.position.x + this.width / 2,
+          this.position.y + this.height / 2
+        );
+        const attackDirection = this.getAttackDirection();
+        const attackArea = this.calculateAttackArea(
           playerCenter,
           attackDirection,
-          baseAttackRange
+          DAGGER_ATTACK_RANGE,
+          DAGGER_ATTACK_WIDTH
         );
 
-        if (actualAttackRange < baseAttackRange) {
-          console.log(
-            `Attack range limited by wall: ${baseAttackRange} → ${Math.round(
-              actualAttackRange
-            )}`
-          );
-        }
-
-        // Define attack area based on direction with actual range
-        let attackArea = {
-          x: playerCenterX,
-          y: playerCenterY,
-          width: actualAttackRange,
-          height: attackWidth,
-        };
-
-        // Position attack area based on direction
-        switch (this.currentDirection) {
-          case "right":
-            attackArea.x = playerCenterX;
-            attackArea.y = playerCenterY - attackWidth / 2;
-            break;
-          case "left":
-            attackArea.x = playerCenterX - actualAttackRange;
-            attackArea.y = playerCenterY - attackWidth / 2;
-            break;
-          case "up":
-            attackArea.width = attackWidth;
-            attackArea.height = actualAttackRange;
-            attackArea.x = playerCenterX - attackWidth / 2;
-            attackArea.y = playerCenterY - actualAttackRange;
-            break;
-          case "down":
-            attackArea.width = attackWidth;
-            attackArea.height = actualAttackRange;
-            attackArea.x = playerCenterX - attackWidth / 2;
-            attackArea.y = playerCenterY;
-            break;
-        }
-
-        // Get enemies from current room instead of window.game.enemies
         if (this.currentRoom && this.currentRoom.objects.enemies) {
           const enemies = this.currentRoom.objects.enemies.filter(
             (enemy) => enemy.state !== "dead"
@@ -392,49 +326,24 @@ export class Player extends AnimatedObject {
           let enemiesHit = 0;
 
           enemies.forEach((enemy) => {
-            // Get enemy hitbox in world coordinates
             const enemyHitbox = enemy.getHitboxBounds();
 
-            // Check collision between attack area and enemy hitbox
             if (
               attackArea.x < enemyHitbox.x + enemyHitbox.width &&
               attackArea.x + attackArea.width > enemyHitbox.x &&
               attackArea.y < enemyHitbox.y + enemyHitbox.height &&
               attackArea.y + attackArea.height > enemyHitbox.y
             ) {
-              // ADDITIONAL CHECK: Verify line of sight to enemy center
-              const enemyCenterX = enemyHitbox.x + enemyHitbox.width / 2;
-              const enemyCenterY = enemyHitbox.y + enemyHitbox.height / 2;
-              const enemyCenter = new Vec(enemyCenterX, enemyCenterY);
-
-              const distanceToEnemy = enemyCenter
-                .minus(playerCenter)
-                .magnitude();
-              const raycastToEnemy = this.raycastToWall(
-                playerCenter,
-                enemyCenter.minus(playerCenter),
-                distanceToEnemy
-              );
-
-              // Only hit if there's clear line of sight to enemy
-              if (raycastToEnemy >= distanceToEnemy - 5) {
-                // 5px tolerance
-                enemy.takeDamage(attackDamage);
-                enemiesHit++;
-                console.log(
-                  `Dagger hit ${enemy.type} for ${attackDamage} damage (clear line of sight)`
-                );
-              } else {
-                console.log(`${enemy.type} blocked by wall - no damage dealt`);
-              }
+              enemy.takeDamage(DAGGER_ATTACK_DAMAGE + this.meleeDamageBonus);
+              enemiesHit++;
             }
           });
 
-          if (enemiesHit === 0) {
-            console.log("Dagger attack missed all enemies");
-          } else {
-            console.log(`Dagger attack hit ${enemiesHit} enemies`);
-          }
+          console.log(
+            enemiesHit === 0
+              ? "Dagger attack missed all enemies"
+              : `Dagger attack hit ${enemiesHit} enemies`
+          );
         } else {
           console.warn("No current room or enemies found for dagger attack");
         }
@@ -459,15 +368,13 @@ export class Player extends AnimatedObject {
       );
       this.frame = this.minFrame;
     } else {
-      if (this.isAttacking) {
-        console.log("Attack blocked: Already attacking");
-      } else if (this.attackCooldown > 0) {
-        console.log(
-          `Attack blocked: Cooldown remaining ${Math.round(
-            this.attackCooldown
-          )}ms`
-        );
-      }
+      console.log(
+        this.isAttacking
+          ? "Attack blocked: Already attacking"
+          : `Attack blocked: Cooldown remaining ${Math.round(
+              this.attackCooldown
+            )}ms`
+      );
     }
   }
 
@@ -533,8 +440,8 @@ export class Player extends AnimatedObject {
           !this.hasCreatedProjectile &&
           this.frame === Math.floor((this.minFrame + this.maxFrame) / 2)
         ) {
-          const projectileSpeed = 300;
-          const projectileDamage = 15 + this.rangedDamageBonus; // Add shop bonus
+          const projectileSpeed = PLAYER_CONSTANTS.SLINGSHOT_PROJECTILE_SPEED;
+          const projectileDamage = PLAYER_CONSTANTS.SLINGSHOT_DAMAGE + this.rangedDamageBonus; // Add shop bonus
 
           // Calculate spawn position at the center of the player
           const spawnPos = new Vec(
@@ -572,7 +479,7 @@ export class Player extends AnimatedObject {
           this.projectiles.push(projectile);
           this.hasCreatedProjectile = true; // Mark that we've created the projectile
 
-          this.stamina -= 12;
+          this.stamina -= PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST;
           this.staminaRegenCooldown = this.staminaRegenDelay;
 
           console.log(
@@ -673,96 +580,187 @@ export class Player extends AnimatedObject {
     this.updateFrame(deltaTime);
   }
 
+  // Extracted helper method to calculate attack direction based on current direction
+  getAttackDirection() {
+    switch (this.currentDirection) {
+      case "right":
+        return new Vec(1, 0);
+      case "left":
+        return new Vec(-1, 0);
+      case "up":
+        return new Vec(0, -1);
+      case "down":
+      default:
+        return new Vec(0, 1);
+    }
+  }
+
+  // Extracted helper method to calculate attack area
+  calculateAttackArea(playerCenter, attackDirection, baseAttackRange, attackWidth) {
+    const actualAttackRange = this.raycastToWall(playerCenter, attackDirection, baseAttackRange);
+
+    let attackArea = {
+      x: playerCenter.x,
+      y: playerCenter.y,
+      width: attackWidth,
+      height: attackWidth,
+    };
+
+    switch (this.currentDirection) {
+      case "right":
+        attackArea.x = playerCenter.x;
+        attackArea.y = playerCenter.y - attackWidth / 2;
+        attackArea.width = actualAttackRange;
+        break;
+      case "left":
+        attackArea.x = playerCenter.x - actualAttackRange;
+        attackArea.y = playerCenter.y - attackWidth / 2;
+        attackArea.width = actualAttackRange;
+        break;
+      case "up":
+        attackArea.width = attackWidth;
+        attackArea.height = actualAttackRange;
+        attackArea.x = playerCenter.x - attackWidth / 2;
+        attackArea.y = playerCenter.y - actualAttackRange;
+        break;
+      case "down":
+        attackArea.width = attackWidth;
+        attackArea.height = actualAttackRange;
+        attackArea.x = playerCenter.x - attackWidth / 2;
+        attackArea.y = playerCenter.y;
+        break;
+    }
+
+    return attackArea;
+  }
+
+  // Updated attack method to use helper methods
+  attack() {
+    const staminaCost = this.weaponType === "dagger" ? 8 : 12;
+
+    if (this.stamina < staminaCost) {
+      console.log("Not enough stamina to attack");
+      return;
+    }
+
+    if (!this.isAttacking && this.attackCooldown <= 0) {
+      this.isAttacking = true;
+      this.hasCreatedProjectile = false; // Reset projectile creation flag
+      this.hasAppliedMeleeDamage = false; // Reset melee damage flag
+      this.attackCooldown = playerAttack.cooldown;
+
+      if (this.weaponType === "dagger") {
+        this.stamina -= staminaCost;
+        this.staminaRegenCooldown = this.staminaRegenDelay;
+      }
+
+      console.log(`Player attacking with ${this.weaponType}`);
+
+      if (this.weaponType === "dagger") {
+        const playerCenter = new Vec(
+          this.position.x + this.width / 2,
+          this.position.y + this.height / 2
+        );
+        const attackDirection = this.getAttackDirection();
+        const attackArea = this.calculateAttackArea(
+          playerCenter,
+          attackDirection,
+          DAGGER_ATTACK_RANGE,
+          DAGGER_ATTACK_WIDTH
+        );
+
+        if (this.currentRoom && this.currentRoom.objects.enemies) {
+          const enemies = this.currentRoom.objects.enemies.filter(
+            (enemy) => enemy.state !== "dead"
+          );
+          let enemiesHit = 0;
+
+          enemies.forEach((enemy) => {
+            const enemyHitbox = enemy.getHitboxBounds();
+
+            if (
+              attackArea.x < enemyHitbox.x + enemyHitbox.width &&
+              attackArea.x + attackArea.width > enemyHitbox.x &&
+              attackArea.y < enemyHitbox.y + enemyHitbox.height &&
+              attackArea.y + attackArea.height > enemyHitbox.y
+            ) {
+              enemy.takeDamage(DAGGER_ATTACK_DAMAGE + this.meleeDamageBonus);
+              enemiesHit++;
+            }
+          });
+
+          console.log(
+            enemiesHit === 0
+              ? "Dagger attack missed all enemies"
+              : `Dagger attack hit ${enemiesHit} enemies`
+          );
+        } else {
+          console.warn("No current room or enemies found for dagger attack");
+        }
+
+        this.hasAppliedMeleeDamage = true;
+      }
+
+      // Store current frame and direction before attacking
+      this.preAttackFrame = this.frame;
+      this.preAttackDirection = this.currentDirection;
+      this.preAttackMinFrame = this.minFrame;
+      this.preAttackMaxFrame = this.maxFrame;
+      const attackFrames = getAttackFrames(
+        this.weaponType,
+        this.currentDirection
+      );
+      this.setAnimation(
+        attackFrames[0],
+        attackFrames[1],
+        playerAttack.repeat,
+        playerAttack.duration
+      );
+      this.frame = this.minFrame;
+    } else {
+      console.log(
+        this.isAttacking
+          ? "Attack blocked: Already attacking"
+          : `Attack blocked: Cooldown remaining ${Math.round(
+              this.attackCooldown
+            )}ms`
+      );
+    }
+  }
+
+  // Updated draw method to use helper methods
   draw(ctx) {
     super.draw(ctx);
-    // Draw projectiles
     this.projectiles.forEach((projectile) => projectile.draw(ctx));
 
-    // Draw attack range visualization for melee attacks (dagger) - only when attacking
     if (
       this.weaponType === "dagger" &&
       this.isAttacking &&
       variables.showHitboxes
     ) {
-      const baseAttackRange = DAGGER_ATTACK_RANGE;
-      const attackWidth = DAGGER_ATTACK_WIDTH;
-
-      // Calculate player center position
-      const playerCenterX = this.position.x + this.width / 2;
-      const playerCenterY = this.position.y + this.height / 2;
-      const playerCenter = new Vec(playerCenterX, playerCenterY);
-
-      // Calculate attack direction for wall detection
-      let attackDirection;
-      switch (this.currentDirection) {
-        case "right":
-          attackDirection = new Vec(1, 0);
-          break;
-        case "left":
-          attackDirection = new Vec(-1, 0);
-          break;
-        case "up":
-          attackDirection = new Vec(0, -1);
-          break;
-        case "down":
-          attackDirection = new Vec(0, 1);
-          break;
-        default:
-          attackDirection = new Vec(0, 1);
-      }
-
-      // Get actual attack range limited by walls
-      const actualAttackRange = this.raycastToWall(
+      const playerCenter = new Vec(
+        this.position.x + this.width / 2,
+        this.position.y + this.height / 2
+      );
+      const attackDirection = this.getAttackDirection();
+      const attackArea = this.calculateAttackArea(
         playerCenter,
         attackDirection,
-        baseAttackRange
+        DAGGER_ATTACK_RANGE,
+        DAGGER_ATTACK_WIDTH
       );
 
-      // Define attack area based on direction with actual range
-      let attackArea = {
-        x: playerCenterX,
-        y: playerCenterY,
-        width: actualAttackRange,
-        height: attackWidth,
-      };
-
-      // Position attack area based on direction
-      switch (this.currentDirection) {
-        case "right":
-          attackArea.x = playerCenterX;
-          attackArea.y = playerCenterY - attackWidth / 2;
-          break;
-        case "left":
-          attackArea.x = playerCenterX - actualAttackRange;
-          attackArea.y = playerCenterY - attackWidth / 2;
-          break;
-        case "up":
-          attackArea.width = attackWidth;
-          attackArea.height = actualAttackRange;
-          attackArea.x = playerCenterX - attackWidth / 2;
-          attackArea.y = playerCenterY - actualAttackRange;
-          break;
-        case "down":
-          attackArea.width = attackWidth;
-          attackArea.height = actualAttackRange;
-          attackArea.x = playerCenterX - attackWidth / 2;
-          attackArea.y = playerCenterY;
-          break;
-      }
-
-      // Draw the attack area with different colors based on whether it's limited by walls
-      const isLimited = actualAttackRange < baseAttackRange;
+      const isLimited =
+        this.raycastToWall(playerCenter, attackDirection, DAGGER_ATTACK_RANGE) <
+        DAGGER_ATTACK_RANGE;
       const pulseIntensity = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
 
-      if (isLimited) {
-        // Red/orange for wall-limited attacks
-        ctx.strokeStyle = `rgba(255, 165, 0, ${pulseIntensity})`;
-        ctx.fillStyle = `rgba(255, 165, 0, ${pulseIntensity * 0.3})`;
-      } else {
-        // Red for normal attacks
-        ctx.strokeStyle = `rgba(255, 0, 0, ${pulseIntensity})`;
-        ctx.fillStyle = `rgba(255, 0, 0, ${pulseIntensity * 0.3})`;
-      }
+      ctx.strokeStyle = isLimited
+        ? `rgba(255, 165, 0, ${pulseIntensity})`
+        : `rgba(255, 0, 0, ${pulseIntensity})`;
+      ctx.fillStyle = isLimited
+        ? `rgba(255, 165, 0, ${pulseIntensity * 0.3})`
+        : `rgba(255, 0, 0, ${pulseIntensity * 0.3})`;
 
       ctx.lineWidth = 3;
       ctx.fillRect(
@@ -782,7 +780,7 @@ export class Player extends AnimatedObject {
 
   // startDash: start the dash if cooldown is over
   startDash() {
-    if (this.stamina < 10) {
+    if (this.stamina < DASH_STAMINA_COST) {
       console.log("Not enough stamina to dash");
       return;
     }
@@ -803,7 +801,7 @@ export class Player extends AnimatedObject {
         if (currentVelocity.magnitude() > 0) {
           this.dashDirection = currentVelocity.normalize();
           this.dashTime = this.dashDuration;
-          this.stamina -= 10;
+          this.stamina -= DASH_STAMINA_COST;
           this.staminaCooldown = this.staminaRegenDelay;
           this.dashCooldownTime = this.dashCooldown;
           this.isInvulnerable = true;

@@ -6,9 +6,10 @@
 import { Vec } from "../../utils/Vec.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
+import { PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
 
 export class Projectile {
-  constructor(position, target, speed, damage, radius = 5) {
+  constructor(position, target, speed, damage, radius = PHYSICS_CONSTANTS.PROJECTILE_RADIUS) {
     this.position = position;
     this.radius = radius;
     this.speed = speed;
@@ -82,6 +83,26 @@ export class Projectile {
     ctx.closePath();
   }
 
+  // Helper method to get projectile bounds for collision detection
+  getProjectileBounds() {
+    return {
+      x: this.position.x - this.radius,
+      y: this.position.y - this.radius,
+      width: this.radius * 2,
+      height: this.radius * 2,
+    };
+  }
+
+  // Helper method for rectangle collision detection
+  checkRectangleCollision(rect1, rect2) {
+    return (
+      rect1.x < rect2.x + rect2.width &&
+      rect1.x + rect1.width > rect2.x &&
+      rect1.y < rect2.y + rect2.height &&
+      rect1.y + rect1.height > rect2.y
+    );
+  }
+
   checkCollision(entity) {
     if (!this.isActive || this.hasHit || entity.state === "dead") return false;
 
@@ -94,19 +115,10 @@ export class Projectile {
           width: entity.width,
           height: entity.height,
         };
-    // Treat projectile as a small box for collision
-    const projBox = {
-      x: this.position.x - this.radius,
-      y: this.position.y - this.radius,
-      width: this.radius * 2,
-      height: this.radius * 2,
-    };
-    return (
-      projBox.x < hitbox.x + hitbox.width &&
-      projBox.x + projBox.width > hitbox.x &&
-      projBox.y < hitbox.y + hitbox.height &&
-      projBox.y + projBox.height > hitbox.y
-    );
+    
+    // Get projectile bounds using helper method
+    const projBox = this.getProjectileBounds();
+    return this.checkRectangleCollision(projBox, hitbox);
   }
 
   handleCollision(entity) {
@@ -133,14 +145,7 @@ export class Projectile {
       position: this.position,
       width: this.radius * 2,
       height: this.radius * 2,
-      getHitboxBounds: () => {
-        return {
-          x: this.position.x - this.radius,
-          y: this.position.y - this.radius,
-          width: this.radius * 2,
-          height: this.radius * 2
-        };
-      }
+      getHitboxBounds: () => this.getProjectileBounds()
     };
     
     return this.currentRoom.checkWallCollision(tempProjectile);

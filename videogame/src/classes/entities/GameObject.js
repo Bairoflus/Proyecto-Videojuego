@@ -5,6 +5,7 @@
  */
 import { variables } from "../../config.js";
 import { Rect } from "../../utils/Rect.js";
+import { PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
 
 export class GameObject {
   constructor(position, width, height, color, type) {
@@ -14,10 +15,10 @@ export class GameObject {
     this.color = color;
     this.type = type;
 
-    // Initialize hitbox with default values (60% of sprite size, centered)
+    // Initialize hitbox with default values from constants
     this.hitbox = {
-      width: width * 0.6,
-      height: height * 0.6,
+      width: width * PHYSICS_CONSTANTS.DEFAULT_HITBOX_SCALE,
+      height: height * PHYSICS_CONSTANTS.DEFAULT_HITBOX_SCALE,
       offsetX: width * 0.2, // Centers the hitbox horizontally (20% margin on each side)
       offsetY: height * 0.2, // Centers the hitbox vertically (20% margin on each side)
     };

@@ -4,33 +4,35 @@
  * Less common but more dangerous enemy type on floor 1
  */
 import { RangedEnemy } from "../../entities/RangedEnemy.js";
-import { Projectile } from "../../entities/Projectile.js";
-import { variables } from "../../../config.js";
+import { ENEMY_CONSTANTS } from "../../../constants/gameConstants.js";
 import { Vec } from "../../../utils/Vec.js";
-import { Rect } from "../../../utils/Rect.js";
 
 export class GoblinArcher extends RangedEnemy {
   constructor(position) {
+    const config = ENEMY_CONSTANTS.GOBLIN_ARCHER;
+    
     super(
       position,
-      32, // width (same as player)
-      32, // height (same as player)
+      config.size.width,
+      config.size.height,
       "red", // color (temporary, will be replaced by sprite)
       4, // sheetCols
       "goblin_archer", // type
-      0, // movementSpeed (0 to stay static)
-      15, // baseDamage
-      30 // maxHealth
+      config.speed,
+      config.damage,
+      config.health
     );
 
-    // Goblin Archer specific properties
-    this.attackRange = 200;
-    this.attackDuration = 2000; // 2 seconds between attacks
-    this.projectileSpeed = 300;
+    // Set specific properties
+    this.attackRange = config.attackRange;
+    this.attackDuration = config.attackCooldown;
+    this.projectileSpeed = config.projectileSpeed;
+    this.retreatDistance = config.retreatDistance;
   }
 
+  // Override moveTo for static behavior
   moveTo(targetPosition) {
-    // Do nothing - stay static
+    // Goblin Archers are static - they don't move
     this.velocity = new Vec(0, 0);
     this.state = "idle";
   }
@@ -49,20 +51,8 @@ export class GoblinArcher extends RangedEnemy {
     if (distance <= this.attackRange) {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
-      this.fireProjectile(targetCenter);
+      this.fireProjectile(target);
     }
-  }
-
-  fireProjectile(targetCenter) {
-    // targetCenter is already a Vec with the hitbox center coordinates
-
-    const projectile = new Projectile(
-      this.position,
-      targetCenter,
-      this.projectileSpeed,
-      this.baseDamage
-    );
-    this.projectiles.push(projectile);
   }
 
   updateAnimation() {

@@ -4,6 +4,7 @@
  */
 import { GameObject } from "./GameObject.js";
 import { Rect } from "../../utils/Rect.js";
+import { ANIMATION_CONSTANTS } from "../../constants/gameConstants.js";
 
 export class AnimatedObject extends GameObject {
   constructor(position, width, height, color, type, sheetCols) {
@@ -14,7 +15,7 @@ export class AnimatedObject extends GameObject {
     this.maxFrame = 0;
     this.sheetCols = sheetCols;
     this.repeat = true;
-    this.frameDuration = 100;
+    this.frameDuration = ANIMATION_CONSTANTS.DEFAULT_DELAY;
     this.totalTime = 0;
   }
 

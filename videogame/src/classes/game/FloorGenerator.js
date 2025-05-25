@@ -6,14 +6,15 @@
 import { COMBAT_ROOMS, SHOP_ROOM_LAYOUT, BOSS_ROOM_LAYOUT } from '../rooms/combatRooms.js';
 import { Room } from '../rooms/Room.js';
 import { log } from '../../utils/Logger.js';
+import { FLOOR_CONSTANTS } from '../../constants/gameConstants.js';
 
 export class FloorGenerator {
     constructor() {
         this.currentFloor = [];
         this.currentRoomIndex = 0;
         this.floorCount = 1;
-        // Load persistent run count from localStorage or start at 1
-        this.runCount = parseInt(localStorage.getItem('gameRunCount') || '1', 10);
+        // Load persistent run count from localStorage or start at initial value
+        this.runCount = parseInt(localStorage.getItem('gameRunCount') || FLOOR_CONSTANTS.INITIAL_RUN_COUNT.toString(), 10);
         this.roomTypes = []; // Track room types: 'combat', 'shop', 'boss'
         this.roomStates = []; // Store room instances with enemy states for persistence
         this.visitedRooms = new Set(); // Track which rooms have been visited
@@ -22,8 +23,8 @@ export class FloorGenerator {
 
     // Generates a new floor with random rooms
     generateFloor() {
-        // Select 4 random combat rooms
-        const combatRoomLayouts = this.selectRandomCombatRooms(4);
+        // Select random combat rooms using constants
+        const combatRoomLayouts = this.selectRandomCombatRooms(FLOOR_CONSTANTS.ROOMS_PER_FLOOR.COMBAT);
         
         // Create floor layout: 4 combat rooms + shop + boss
         this.currentFloor = [
@@ -34,9 +35,9 @@ export class FloorGenerator {
         
         // Track room types
         this.roomTypes = [
-            'combat', 'combat', 'combat', 'combat', // 4 combat rooms
-            'shop',                                 // 1 shop room
-            'boss'                                  // 1 boss room
+            ...Array(FLOOR_CONSTANTS.ROOMS_PER_FLOOR.COMBAT).fill('combat'),
+            'shop',
+            'boss'
         ];
         
         // Reset room states and visited rooms for new floor
@@ -153,11 +154,11 @@ export class FloorGenerator {
 
     // Advances to next floor
     nextFloor() {
-        if (this.floorCount >= 3) {
-            // If we're at floor 3, increment run and reset floor
+        if (this.floorCount >= FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN) {
+            // If we're at the max floor, increment run and reset floor
             this.runCount++;
             this.floorCount = 1;
-            log.info("Completed floor 3, starting new run:", this.runCount);
+            log.info(`Completed floor ${FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN}, starting new run:`, this.runCount);
         } else {
             // Otherwise just increment floor
             this.floorCount++;

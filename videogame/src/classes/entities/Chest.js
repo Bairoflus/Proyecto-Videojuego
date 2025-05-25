@@ -7,13 +7,14 @@ import { GameObject } from "./GameObject.js";
 import { Vec } from "../../utils/Vec.js";
 import { Rect } from "../../utils/Rect.js";
 import { variables } from "../../config.js";
+import { ROOM_CONSTANTS, ANIMATION_CONSTANTS } from "../../constants/gameConstants.js";
 
 export class Chest extends GameObject {
     constructor(position) {
-        super(position, 64, 64, "gold", "chest");
+        super(position, ROOM_CONSTANTS.CHEST_SIZE, ROOM_CONSTANTS.CHEST_SIZE, "gold", "chest");
         
         // Chest properties
-        this.goldReward = 50; // Base gold reward amount
+        this.goldReward = ROOM_CONSTANTS.CHEST_GOLD_REWARD;
         this.isCollected = false;
         this.isOpen = false;
         
@@ -49,9 +50,9 @@ export class Chest extends GameObject {
      */
     update(deltaTime) {
         if (!this.isCollected) {
-            // Gentle glow animation for uncollected chest
+            // Gentle glow animation for uncollected chest using constants
             this.animationTimer += deltaTime;
-            this.glowIntensity = Math.sin(this.animationTimer * 0.003) * 0.3 + 0.7;
+            this.glowIntensity = Math.sin(this.animationTimer * ANIMATION_CONSTANTS.GLOW_PULSE_SPEED) * ANIMATION_CONSTANTS.GLOW_INTENSITY_VARIATION + ANIMATION_CONSTANTS.GLOW_INTENSITY_BASE;
         }
     }
     
@@ -123,11 +124,8 @@ export class Chest extends GameObject {
      */
     static getSafeSpawnPosition(canvasWidth, canvasHeight) {
         // Spawn chest near right edge but not in transition zone
-        const transitionZoneWidth = 64;
-        const safeMargin = 32;
-        
-        const x = canvasWidth - transitionZoneWidth - this.width - safeMargin;
-        const y = canvasHeight / 2 - this.height / 2;
+        const x = canvasWidth - ROOM_CONSTANTS.TRANSITION_ZONE_SIZE - ROOM_CONSTANTS.CHEST_SIZE - ROOM_CONSTANTS.CHEST_SAFE_MARGIN;
+        const y = canvasHeight / 2 - ROOM_CONSTANTS.CHEST_SIZE / 2;
         
         return new Vec(x, y);
     }

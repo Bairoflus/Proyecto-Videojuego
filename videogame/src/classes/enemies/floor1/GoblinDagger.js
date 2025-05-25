@@ -5,63 +5,46 @@
  */
 import { MeleeEnemy } from "../../entities/MeleeEnemy.js";
 import { Vec } from "../../../utils/Vec.js";
-import { variables } from "../../../config.js";
+import { ENEMY_CONSTANTS } from "../../../constants/gameConstants.js";
 
 export class GoblinDagger extends MeleeEnemy {
   constructor(position) {
+    const config = ENEMY_CONSTANTS.GOBLIN_DAGGER;
+    
     super(
       position,
-      32, // width (same as player)
-      32, // height (same as player)
+      config.size.width,
+      config.size.height,
       "red", // color (temporary, will be replaced by sprite)
       4, // sheetCols
       "goblin_dagger", // type
-      variables.playerSpeed * 0.7, // movementSpeed (70% of player speed)
-      10, // baseDamage
-      20 // maxHealth
+      config.speed,
+      config.damage,
+      config.health
     );
 
-    // Goblin Dagger specific properties
-    this.attackRange = 32; // Attack when touching the player
-    this.attackDuration = 1000; // 1 second between attacks
+    // Set specific properties
+    this.attackRange = config.attackRange;
+    this.attackDuration = config.attackCooldown;
   }
 
+  // Override moveTo for aggressive chase behavior
   moveTo(targetPosition) {
     if (this.state === "dead") return;
 
-    // targetPosition is already the player's hitbox center from Game.js
+    // Always chase the player aggressively
     const direction = targetPosition.minus(this.position);
     const distance = direction.magnitude();
 
-    // Always chase the player
     this.state = "chasing";
     this.velocity = direction.normalize().times(this.movementSpeed);
     
-    // Calculate new position and use safe movement that respects walls
     const newPosition = this.position.plus(this.velocity);
     this.moveToPosition(newPosition);
 
     // Attack if in range
     if (distance <= this.attackRange) {
       this.attack(this.target);
-    }
-  }
-
-  attack(target) {
-    if (this.state === "dead" || this.attackCooldown > 0) return;
-
-    // Calculate target hitbox center position
-    const targetHitbox = target.getHitboxBounds();
-    const targetCenter = new Vec(
-      targetHitbox.x + targetHitbox.width / 2,
-      targetHitbox.y + targetHitbox.height / 2
-    );
-
-    const distance = targetCenter.minus(this.position).magnitude();
-    if (distance <= this.attackRange) {
-      this.isAttacking = true;
-      this.attackCooldown = this.attackDuration;
-      target.takeDamage(this.baseDamage);
     }
   }
 

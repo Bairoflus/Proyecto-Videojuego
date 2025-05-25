@@ -1,7 +1,7 @@
 /**
  * Base class for melee enemy types
  * Extends Enemy with close-range combat behavior
- * Simplifies melee attack patterns for derivative classes
+ * Provides simple chase-and-attack behavior for melee enemies
  */
 import { Enemy } from "./Enemy.js";
 import { Vec } from "../../utils/Vec.js";
@@ -18,24 +18,13 @@ export class MeleeEnemy extends Enemy {
     baseDamage,
     maxHealth
   ) {
-    super(position, width, height, color, "enemy", sheetCols);
-
-    // Core stats
-    this.maxHealth = maxHealth;
-    this.health = this.maxHealth;
-    this.movementSpeed = movementSpeed;
-    this.baseDamage = baseDamage;
-    this.type = type;
-
-    // State
-    this.state = "idle"; // idle, chasing, attacking, dead
-    this.target = null;
-    this.velocity = new Vec(0, 0);
-    this.currentDirection = "down";
-    this.isAttacking = false;
-    this.attackCooldown = 0;
+    super(position, width, height, color, sheetCols, type, movementSpeed, baseDamage, maxHealth);
+    
+    // Melee-specific properties can be set here if needed
+    this.attackRange = this.attackRange || 50; // Default melee range
   }
 
+  // Override moveTo for simple chase behavior
   moveTo(targetPosition) {
     if (this.state === "dead") return;
 
@@ -45,30 +34,13 @@ export class MeleeEnemy extends Enemy {
     if (distance > this.attackRange) {
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
-      this.position = this.position.plus(this.velocity);
+      
+      // Use parent's safe movement method
+      const newPosition = this.position.plus(this.velocity);
+      this.moveToPosition(newPosition);
     } else {
       this.state = "attacking";
       this.velocity = new Vec(0, 0);
     }
-  }
-
-  update(deltaTime) {
-    if (this.state === "dead") return;
-
-    if (this.attackCooldown > 0) {
-      this.attackCooldown -= deltaTime;
-    }
-
-    this.updateAnimation();
-    this.constrainToCanvas();
-  }
-
-  draw(ctx) {
-    // Call parent class draw method for health bar and sprite
-    super.draw(ctx);
-  }
-
-  updateAnimation() {
-    // To be implemented by specific enemy types
   }
 }

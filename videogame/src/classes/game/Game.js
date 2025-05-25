@@ -65,6 +65,28 @@ export class Game {
     const barWidth = 200;
     const barHeight = 20;
 
+    // Draw Run/Floor/Room info in bottom-right corner
+    const currentRun = this.floorGenerator.getCurrentRun();
+    const currentFloor = this.floorGenerator.getCurrentFloor();
+    const currentRoom = this.floorGenerator.getCurrentRoomIndex() + 1; // Convert to 1-based
+    const totalRooms = this.floorGenerator.getTotalRooms();
+    
+    // Set text properties
+    ctx.font = "18px Arial";
+    ctx.textAlign = "right";
+    const runFloorRoomText = `Run ${currentRun} | Floor ${currentFloor} | Room ${currentRoom}/${totalRooms}`;
+    
+    // Draw text with outline for better visibility in bottom-right
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 3;
+    ctx.strokeText(runFloorRoomText, variables.canvasWidth - 10, variables.canvasHeight - 10);
+    
+    ctx.fillStyle = "white";
+    ctx.fillText(runFloorRoomText, variables.canvasWidth - 10, variables.canvasHeight - 10);
+    
+    // Reset text alignment for other UI elements
+    ctx.textAlign = "left";
+
     // Draw weapon icons
     const icons = [
       { type: "dagger", img: "Sword.png" },
@@ -134,6 +156,51 @@ export class Game {
     }
   }
 
+  // Extracted helper method to handle room transitions
+  handleRoomTransition(direction) {
+    const isBossRoom = this.floorGenerator.isBossRoom();
+    const transitionMethod = direction === "right" ? "nextRoom" : "previousRoom";
+    const edgePositionMethod =
+      direction === "right"
+        ? "getPlayerStartPosition"
+        : "getPlayerRightEdgePosition";
+
+    if (direction === "left" && this.floorGenerator.isFirstRoom()) {
+      console.log("Cannot retreat: Already in the first room");
+      return;
+    }
+
+    if (this.currentRoom.canTransition()) {
+      this.floorGenerator.updateRoomState(
+        this.floorGenerator.getCurrentRoomIndex(),
+        this.currentRoom
+      );
+
+      if (isBossRoom && direction === "right") {
+        console.log("Transitioning to next floor");
+        this.floorGenerator.nextFloor();
+      } else if (!this.floorGenerator[transitionMethod]()) {
+        console.log("Room transition failed");
+        return;
+      }
+
+      this.currentRoom = this.floorGenerator.getCurrentRoom();
+      if (this.currentRoom) {
+        this.player.setCurrentRoom(this.currentRoom);
+        this.player.position = this.currentRoom[edgePositionMethod]();
+        this.player.velocity = new Vec(0, 0);
+        this.player.keys = [];
+        this.enemies = this.currentRoom.objects.enemies;
+      }
+    } else {
+      console.log(
+        direction === "right"
+          ? "Cannot advance: Enemies still alive in combat room"
+          : "Cannot retreat: Enemies still alive in current room"
+      );
+    }
+  }
+
   update(deltaTime) {
     // Check if shop is open - if so, don't update game state
     if (this.currentRoom?.objects.shop?.isOpen) {
@@ -148,84 +215,9 @@ export class Game {
 
     // Check room transition
     if (this.currentRoom.isPlayerAtRightEdge(this.player)) {
-      // Only allow transition if room requirements are met
-      if (this.currentRoom.canTransition()) {
-        // Save room state before transitioning
-        this.floorGenerator.updateRoomState(
-          this.floorGenerator.getCurrentRoomIndex(),
-          this.currentRoom
-        );
-
-        // If it's the boss room, advance to next floor
-        if (this.floorGenerator.isBossRoom()) {
-          console.log("Transitioning to next floor");
-          this.floorGenerator.nextFloor();
-
-          // Create new room using the new method
-          this.currentRoom = this.floorGenerator.getCurrentRoom();
-          if (this.currentRoom) {
-            // Update room reference in player
-            this.player.setCurrentRoom(this.currentRoom);
-            // Reposition player at left side of new room
-            this.player.position = this.currentRoom.getPlayerStartPosition();
-            // Ensure player can't move during transition
-            this.player.velocity = new Vec(0, 0);
-            this.player.keys = [];
-            // Update global enemies array
-            this.enemies = this.currentRoom.objects.enemies;
-          }
-        } else {
-          // Normal room transition
-          if (this.floorGenerator.nextRoom()) {
-            // Create new room using the new method
-            this.currentRoom = this.floorGenerator.getCurrentRoom();
-            if (this.currentRoom) {
-              // Update room reference in player
-              this.player.setCurrentRoom(this.currentRoom);
-              // Reposition player at left side of new room
-              this.player.position = this.currentRoom.getPlayerStartPosition();
-              // Ensure player can't move during transition
-              this.player.velocity = new Vec(0, 0);
-              this.player.keys = [];
-              // Update global enemies array
-              this.enemies = this.currentRoom.objects.enemies;
-            }
-          }
-        }
-      } else {
-        console.log("Cannot advance: Enemies still alive in combat room");
-      }
+      this.handleRoomTransition("right");
     } else if (this.currentRoom.isPlayerAtLeftEdge(this.player)) {
-      // Check if we can go back to previous room
-      if (!this.floorGenerator.isFirstRoom()) {
-        // Only allow backward transition if current room can be left
-        if (this.currentRoom.canTransition()) {
-          // Save room state before transitioning
-          this.floorGenerator.updateRoomState(
-            this.floorGenerator.getCurrentRoomIndex(),
-            this.currentRoom
-          );
-
-          if (this.floorGenerator.previousRoom()) {
-            // Create previous room using the new method
-            this.currentRoom = this.floorGenerator.getCurrentRoom();
-            if (this.currentRoom) {
-              // Update room reference in player
-              this.player.setCurrentRoom(this.currentRoom);
-              // Reposition player at right side of previous room
-              this.player.position =
-                this.currentRoom.getPlayerRightEdgePosition();
-              // Ensure player can't move during transition
-              this.player.velocity = new Vec(0, 0);
-              this.player.keys = [];
-              // Update global enemies array
-              this.enemies = this.currentRoom.objects.enemies;
-            }
-          }
-        } else {
-          console.log("Cannot retreat: Enemies still alive in current room");
-        }
-      }
+      this.handleRoomTransition("left");
     }
 
     // Update player

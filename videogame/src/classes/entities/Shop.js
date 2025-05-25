@@ -4,6 +4,7 @@
  * Displays when player enters a shop room
  */
 import { log } from '../../utils/Logger.js';
+import { SHOP_CONSTANTS } from '../../constants/gameConstants.js';
 
 export class Shop {
     constructor() {
@@ -12,57 +13,54 @@ export class Shop {
         this.selectedIndex = 0;
         this.onCloseCallback = null; // Callback for when shop closes
         
-        // Purchase options configuration
-        this.options = [
-            {
-                id: 'melee_upgrade',
-                name: 'Primary Weapon Upgrade',
-                description: 'Increases melee damage by +3',
-                cost: 35,
-                maxPurchases: 15,
-                purchased: 0,
-                damageIncrease: 3,
-                type: 'melee'
-            },
-            {
-                id: 'ranged_upgrade',
-                name: 'Secondary Weapon Upgrade',
-                description: 'Increases ranged damage by +4',
-                cost: 40,
-                maxPurchases: 15,
-                purchased: 0,
-                damageIncrease: 4,
-                type: 'ranged'
-            },
-            {
-                id: 'health_restore',
-                name: 'Full Health Restoration',
-                description: 'Restores HP to maximum',
-                cost: 50,
-                maxPurchases: Infinity,
-                purchased: 0,
-                type: 'health'
-            }
-        ];
-        
-        // UI configuration
-        this.uiConfig = {
-            backgroundColor: 'rgba(20, 20, 30, 0.95)',
-            borderColor: '#444',
-            textColor: '#fff',
-            selectedColor: '#4CAF50',
-            disabledColor: '#666',
-            width: 600,
-            height: 400,
-            optionHeight: 100,
-            padding: 20
-        };
+        // Purchase options configuration using constants
+        this.options = this.createShopOptions();
         
         // Track upgrade counters globally for the run
         this.runUpgrades = {
             melee: 0,
             ranged: 0
         };
+    }
+
+    /**
+     * Creates shop options using constants
+     * @returns {Array} Array of shop option objects
+     */
+    createShopOptions() {
+        const { MELEE, RANGED, HEALTH } = SHOP_CONSTANTS.UPGRADES;
+        
+        return [
+            {
+                id: 'melee_upgrade',
+                name: MELEE.NAME,
+                description: MELEE.DESCRIPTION,
+                cost: MELEE.COST,
+                maxPurchases: MELEE.MAX_PURCHASES,
+                purchased: 0,
+                damageIncrease: MELEE.DAMAGE_INCREASE,
+                type: 'melee'
+            },
+            {
+                id: 'ranged_upgrade',
+                name: RANGED.NAME,
+                description: RANGED.DESCRIPTION,
+                cost: RANGED.COST,
+                maxPurchases: RANGED.MAX_PURCHASES,
+                purchased: 0,
+                damageIncrease: RANGED.DAMAGE_INCREASE,
+                type: 'ranged'
+            },
+            {
+                id: 'health_restore',
+                name: HEALTH.NAME,
+                description: HEALTH.DESCRIPTION,
+                cost: HEALTH.COST,
+                maxPurchases: HEALTH.MAX_PURCHASES,
+                purchased: 0,
+                type: 'health'
+            }
+        ];
     }
     
     /**
@@ -188,92 +186,126 @@ export class Shop {
     draw(ctx, canvasWidth, canvasHeight, player) {
         if (!this.isOpen) return;
         
-        const ui = this.uiConfig;
-        const x = (canvasWidth - ui.width) / 2;
-        const y = (canvasHeight - ui.height) / 2;
+        const { UI, FONTS } = SHOP_CONSTANTS;
+        const x = (canvasWidth - UI.WIDTH) / 2;
+        const y = (canvasHeight - UI.HEIGHT) / 2;
         
         // Draw background
-        ctx.fillStyle = ui.backgroundColor;
-        ctx.fillRect(x, y, ui.width, ui.height);
+        ctx.fillStyle = UI.BACKGROUND_COLOR;
+        ctx.fillRect(x, y, UI.WIDTH, UI.HEIGHT);
         
         // Draw border
-        ctx.strokeStyle = ui.borderColor;
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x, y, ui.width, ui.height);
+        ctx.strokeStyle = UI.BORDER_COLOR;
+        ctx.lineWidth = UI.BORDER_WIDTH;
+        ctx.strokeRect(x, y, UI.WIDTH, UI.HEIGHT);
         
         // Draw title
-        ctx.fillStyle = ui.textColor;
-        ctx.font = 'bold 32px Arial';
+        ctx.fillStyle = UI.TEXT_COLOR;
+        ctx.font = FONTS.TITLE;
         ctx.textAlign = 'center';
         ctx.fillText('SHOP', canvasWidth / 2, y + 40);
         
         // Draw player gold
-        ctx.font = '20px Arial';
-        ctx.fillStyle = '#FFD700';
+        ctx.font = FONTS.GOLD;
+        ctx.fillStyle = UI.GOLD_COLOR;
         ctx.fillText(`Gold: ${player.gold}`, canvasWidth / 2, y + 70);
         
         // Draw options
+        this.drawShopOptions(ctx, x, y, player);
+        
+        // Draw instructions
+        ctx.fillStyle = UI.TEXT_COLOR;
+        ctx.font = FONTS.INSTRUCTIONS;
+        ctx.textAlign = 'center';
+        ctx.fillText('W/S or ↑/↓: Navigate | Enter: Purchase | ESC: Exit', canvasWidth / 2, y + UI.HEIGHT - 20);
+    }
+
+    /**
+     * Draws individual shop options
+     * @param {CanvasRenderingContext2D} ctx - The canvas context
+     * @param {number} x - Base x coordinate
+     * @param {number} y - Base y coordinate
+     * @param {Player} player - The player object
+     */
+    drawShopOptions(ctx, x, y, player) {
+        const { UI, FONTS } = SHOP_CONSTANTS;
         const optionStartY = y + 100;
+        
         this.options.forEach((option, index) => {
-            const optionY = optionStartY + (index * ui.optionHeight);
+            const optionY = optionStartY + (index * UI.OPTION_HEIGHT);
             const isSelected = index === this.selectedIndex;
-            const canAfford = player.gold >= option.cost;
-            const isMaxed = (option.type === 'melee' && this.runUpgrades.melee >= option.maxPurchases) ||
-                           (option.type === 'ranged' && this.runUpgrades.ranged >= option.maxPurchases);
-            const isHealthFull = option.type === 'health' && player.health >= player.maxHealth;
-            const isDisabled = !canAfford || isMaxed || isHealthFull;
+            const { canAfford, isMaxed, isHealthFull, isDisabled } = this.getOptionAvailability(option, player);
             
-            // Draw option background
+            // Draw option background and border if selected
             if (isSelected) {
                 ctx.fillStyle = 'rgba(76, 175, 80, 0.3)';
-                ctx.fillRect(x + ui.padding, optionY, ui.width - (ui.padding * 2), ui.optionHeight - 10);
-            }
-            
-            // Draw option border if selected
-            if (isSelected) {
-                ctx.strokeStyle = ui.selectedColor;
+                ctx.fillRect(x + UI.PADDING, optionY, UI.WIDTH - (UI.PADDING * 2), UI.OPTION_HEIGHT - 10);
+                
+                ctx.strokeStyle = UI.SELECTED_COLOR;
                 ctx.lineWidth = 2;
-                ctx.strokeRect(x + ui.padding, optionY, ui.width - (ui.padding * 2), ui.optionHeight - 10);
+                ctx.strokeRect(x + UI.PADDING, optionY, UI.WIDTH - (UI.PADDING * 2), UI.OPTION_HEIGHT - 10);
             }
             
             // Set text color based on availability
-            ctx.fillStyle = isDisabled ? ui.disabledColor : (isSelected ? ui.selectedColor : ui.textColor);
+            ctx.fillStyle = isDisabled ? UI.DISABLED_COLOR : (isSelected ? UI.SELECTED_COLOR : UI.TEXT_COLOR);
             
             // Draw option name
-            ctx.font = 'bold 20px Arial';
+            ctx.font = FONTS.OPTION_NAME;
             ctx.textAlign = 'left';
-            ctx.fillText(option.name, x + ui.padding + 10, optionY + 25);
+            ctx.fillText(option.name, x + UI.PADDING + 10, optionY + 25);
             
             // Draw option description
-            ctx.font = '16px Arial';
-            let description = option.description;
-            if (isHealthFull) {
-                description = 'Already at full health';
-            } else if (isMaxed) {
-                description = 'Maximum upgrades reached';
-            }
-            ctx.fillText(description, x + ui.padding + 10, optionY + 50);
+            ctx.font = FONTS.DESCRIPTION;
+            let description = this.getOptionDescription(option, isHealthFull, isMaxed);
+            ctx.fillText(description, x + UI.PADDING + 10, optionY + 50);
             
             // Draw cost
             ctx.textAlign = 'right';
-            ctx.font = 'bold 20px Arial';
-            ctx.fillStyle = canAfford ? '#FFD700' : '#FF6B6B';
-            ctx.fillText(`${option.cost} gold`, x + ui.width - ui.padding - 10, optionY + 25);
+            ctx.font = FONTS.OPTION_NAME;
+            ctx.fillStyle = canAfford ? UI.GOLD_COLOR : UI.ERROR_COLOR;
+            ctx.fillText(`${option.cost} gold`, x + UI.WIDTH - UI.PADDING - 10, optionY + 25);
             
             // Draw purchase count / limit for upgrades
             if (option.type === 'melee' || option.type === 'ranged') {
                 const currentUpgrades = this.runUpgrades[option.type];
-                ctx.font = '14px Arial';
-                ctx.fillStyle = isMaxed ? '#FF6B6B' : '#888';
-                ctx.fillText(`${currentUpgrades}/${option.maxPurchases}`, x + ui.width - ui.padding - 10, optionY + 50);
+                ctx.font = FONTS.PURCHASE_COUNT;
+                ctx.fillStyle = isMaxed ? UI.ERROR_COLOR : '#888';
+                ctx.fillText(`${currentUpgrades}/${option.maxPurchases}`, x + UI.WIDTH - UI.PADDING - 10, optionY + 50);
             }
         });
+    }
+
+    /**
+     * Gets option availability status
+     * @param {Object} option - The shop option
+     * @param {Player} player - The player object
+     * @returns {Object} Availability status flags
+     */
+    getOptionAvailability(option, player) {
+        const canAfford = player.gold >= option.cost;
+        const isMaxed = (option.type === 'melee' && this.runUpgrades.melee >= option.maxPurchases) ||
+                       (option.type === 'ranged' && this.runUpgrades.ranged >= option.maxPurchases);
+        const isHealthFull = option.type === 'health' && player.health >= player.maxHealth;
+        const isDisabled = !canAfford || isMaxed || isHealthFull;
         
-        // Draw instructions
-        ctx.fillStyle = ui.textColor;
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('W/S or ↑/↓: Navigate | Enter: Purchase | ESC: Exit', canvasWidth / 2, y + ui.height - 20);
+        return { canAfford, isMaxed, isHealthFull, isDisabled };
+    }
+
+    /**
+     * Gets the appropriate description for an option
+     * @param {Object} option - The shop option
+     * @param {boolean} isHealthFull - Whether health is full
+     * @param {boolean} isMaxed - Whether upgrade is maxed
+     * @returns {string} The description text
+     */
+    getOptionDescription(option, isHealthFull, isMaxed) {
+        if (isHealthFull) {
+            return 'Already at full health';
+        }
+        if (isMaxed) {
+            return 'Maximum upgrades reached';
+        }
+        return option.description;
     }
     
     /**
