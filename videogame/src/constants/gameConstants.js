@@ -6,7 +6,7 @@
 // Player constants
 export const PLAYER_CONSTANTS = {
   // Base stats
-  MAX_HEALTH: 1000,
+  MAX_HEALTH: 20,
   BASE_SPEED: 0.3,
   BASE_SIZE: { width: 64, height: 64 },
 
@@ -139,58 +139,58 @@ export const FLOOR_CONSTANTS = {
     COMBAT: 4,
     SHOP: 1,
     BOSS: 1,
-    TOTAL: 6
+    TOTAL: 6,
   },
   MAX_FLOORS_PER_RUN: 3,
-  INITIAL_RUN_COUNT: 1
+  INITIAL_RUN_COUNT: 1,
 };
 
 // Shop constants
 export const SHOP_CONSTANTS = {
   UI: {
-    BACKGROUND_COLOR: 'rgba(20, 20, 30, 0.95)',
-    BORDER_COLOR: '#444',
-    TEXT_COLOR: '#fff',
-    SELECTED_COLOR: '#4CAF50',
-    DISABLED_COLOR: '#666',
-    GOLD_COLOR: '#FFD700',
-    ERROR_COLOR: '#FF6B6B',
+    BACKGROUND_COLOR: "rgba(20, 20, 30, 0.95)",
+    BORDER_COLOR: "#444",
+    TEXT_COLOR: "#fff",
+    SELECTED_COLOR: "#4CAF50",
+    DISABLED_COLOR: "#666",
+    GOLD_COLOR: "#FFD700",
+    ERROR_COLOR: "#FF6B6B",
     WIDTH: 600,
     HEIGHT: 400,
     OPTION_HEIGHT: 100,
     PADDING: 20,
-    BORDER_WIDTH: 3
+    BORDER_WIDTH: 3,
   },
   FONTS: {
-    TITLE: 'bold 32px Arial',
-    GOLD: '20px Arial',
-    OPTION_NAME: 'bold 20px Arial',
-    DESCRIPTION: '16px Arial',
-    INSTRUCTIONS: '16px Arial',
-    PURCHASE_COUNT: '14px Arial'
+    TITLE: "bold 32px Arial",
+    GOLD: "20px Arial",
+    OPTION_NAME: "bold 20px Arial",
+    DESCRIPTION: "16px Arial",
+    INSTRUCTIONS: "16px Arial",
+    PURCHASE_COUNT: "14px Arial",
   },
   UPGRADES: {
     MELEE: {
-      NAME: 'Primary Weapon Upgrade',
-      DESCRIPTION: 'Increases melee damage by +3',
+      NAME: "Primary Weapon Upgrade",
+      DESCRIPTION: "Increases melee damage by +3",
       COST: 35,
       MAX_PURCHASES: 15,
-      DAMAGE_INCREASE: 3
+      DAMAGE_INCREASE: 3,
     },
     RANGED: {
-      NAME: 'Secondary Weapon Upgrade',
-      DESCRIPTION: 'Increases ranged damage by +4',
+      NAME: "Secondary Weapon Upgrade",
+      DESCRIPTION: "Increases ranged damage by +4",
       COST: 40,
       MAX_PURCHASES: 15,
-      DAMAGE_INCREASE: 4
+      DAMAGE_INCREASE: 4,
     },
     HEALTH: {
-      NAME: 'Full Health Restoration',
-      DESCRIPTION: 'Restores HP to maximum',
+      NAME: "Full Health Restoration",
+      DESCRIPTION: "Restores HP to maximum",
       COST: 50,
-      MAX_PURCHASES: Infinity
-    }
-  }
+      MAX_PURCHASES: Infinity,
+    },
+  },
 };
 
 // Debug constants
