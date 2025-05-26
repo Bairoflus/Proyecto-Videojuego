@@ -3,8 +3,8 @@
 // Hitbox scaling constants
 // These control how much smaller the hitbox is compared to the sprite
 export const HITBOX_SCALE = {
-  player: 0.5,  // Player hitbox is 50% of sprite size
-  enemy: 0.6    // Enemy hitbox is 60% of sprite size
+  player: 0.5, // Player hitbox is 50% of sprite size
+  enemy: 0.6, // Enemy hitbox is 60% of sprite size
 };
 
 export const variables = {
@@ -20,7 +20,7 @@ export const variables = {
   backgroundImage: new Image(),
   showHitboxes: true, // Enable hitbox visualization for debugging
 };
-variables.backgroundImage.src = "./assets/background/backgroundfloor1.jpg";
+variables.backgroundImage.src = "../assets/background/backgroundfloor1.jpg";
 
 // Base walking animations (shared between weapons)
 const walkingFrames = {
@@ -56,9 +56,16 @@ export function getActiveFrames() {
 export function getAttackFrames(weaponType, direction) {
   // If direction is idle, use down attack frames
   const attackDirection = direction === "idle" ? "down" : direction;
-  return (
-    attackFrames[weaponType]?.[attackDirection] || attackFrames.dagger.down
-  );
+  const frames = attackFrames[weaponType]?.[attackDirection];
+
+  if (!frames) {
+    console.log(
+      `Warning: No attack frames found for weapon ${weaponType} in direction ${attackDirection}, using fallback`
+    );
+    return attackFrames.dagger.down;
+  }
+
+  return frames;
 }
 
 export const keyDirections = {
@@ -69,7 +76,7 @@ export const keyDirections = {
   " ": "attack",
   1: "dagger",
   2: "slingshot",
-  shift: "dash"
+  shift: "dash",
 };
 
 export const playerMovement = {

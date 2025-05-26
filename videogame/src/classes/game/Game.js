@@ -27,7 +27,7 @@ export class Game {
 
     this.player = new Player(startPos, 64, 64, "red", 13);
     this.player.setSprite(
-      "./assets/sprites/dagger-sprite-sheet.png",
+      "../assets/sprites/dagger-sprite-sheet.png",
       new Rect(0, 0, 64, 64)
     );
     this.player.setAnimation(130, 130, false, variables.animationDelay);
@@ -70,20 +70,28 @@ export class Game {
     const currentFloor = this.floorGenerator.getCurrentFloor();
     const currentRoom = this.floorGenerator.getCurrentRoomIndex() + 1; // Convert to 1-based
     const totalRooms = this.floorGenerator.getTotalRooms();
-    
+
     // Set text properties
     ctx.font = "18px Arial";
     ctx.textAlign = "right";
     const runFloorRoomText = `Run ${currentRun} | Floor ${currentFloor} | Room ${currentRoom}/${totalRooms}`;
-    
+
     // Draw text with outline for better visibility in bottom-right
     ctx.strokeStyle = "black";
     ctx.lineWidth = 3;
-    ctx.strokeText(runFloorRoomText, variables.canvasWidth - 10, variables.canvasHeight - 10);
-    
+    ctx.strokeText(
+      runFloorRoomText,
+      variables.canvasWidth - 10,
+      variables.canvasHeight - 10
+    );
+
     ctx.fillStyle = "white";
-    ctx.fillText(runFloorRoomText, variables.canvasWidth - 10, variables.canvasHeight - 10);
-    
+    ctx.fillText(
+      runFloorRoomText,
+      variables.canvasWidth - 10,
+      variables.canvasHeight - 10
+    );
+
     // Reset text alignment for other UI elements
     ctx.textAlign = "left";
 
@@ -95,7 +103,7 @@ export class Game {
 
     icons.forEach((icon, i) => {
       const iconImg = new Image();
-      iconImg.src = `./assets/sprites/${icon.img}`;
+      iconImg.src = `../assets/sprites/${icon.img}`;
       const x = startX + i * (iconSize + 10);
       const y = startY;
 
@@ -125,7 +133,7 @@ export class Game {
 
     // Draw gold counter
     const goldIcon = new Image();
-    goldIcon.src = "./assets/sprites/gold_coin.png";
+    goldIcon.src = "../assets/sprites/gold_coin.png";
     ctx.drawImage(goldIcon, 40, 100, 20, 20);
     ctx.fillStyle = "white";
     ctx.font = "16px monospace";
@@ -159,7 +167,8 @@ export class Game {
   // Extracted helper method to handle room transitions
   handleRoomTransition(direction) {
     const isBossRoom = this.floorGenerator.isBossRoom();
-    const transitionMethod = direction === "right" ? "nextRoom" : "previousRoom";
+    const transitionMethod =
+      direction === "right" ? "nextRoom" : "previousRoom";
     const edgePositionMethod =
       direction === "right"
         ? "getPlayerStartPosition"

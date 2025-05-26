@@ -14,7 +14,10 @@ import {
   getAttackFrames,
 } from "../../config.js";
 import { log } from "../../utils/Logger.js";
-import { PLAYER_CONSTANTS, PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
+import {
+  PLAYER_CONSTANTS,
+  PHYSICS_CONSTANTS,
+} from "../../constants/gameConstants.js";
 
 // Constants for Player class
 const DASH_STAMINA_COST = PLAYER_CONSTANTS.DAGGER_STAMINA_COST; // Reuse for dash
@@ -224,12 +227,13 @@ export class Player extends AnimatedObject {
 
   setWeapon(type) {
     if (type === "dagger" || type === "slingshot") {
+      console.log(`Switching weapon to ${type}`);
       this.weaponType = type;
       // Update sprite sheet based on weapon type
       const spritePath =
         type === "dagger"
-          ? "./assets/sprites/dagger-sprite-sheet.png"
-          : "./assets/sprites/slingshot-sprite-sheet.png";
+          ? "../assets/sprites/dagger-sprite-sheet.png"
+          : "../assets/sprites/slingshot-sprite-sheet.png";
       this.setSprite(spritePath, new Rect(0, 0, 64, 64));
 
       // Reset to idle animation in current direction
@@ -286,7 +290,10 @@ export class Player extends AnimatedObject {
 
   // ENHANCED ATTACK: Melee attack with line-of-sight wall detection
   attack() {
-    const staminaCost = this.weaponType === "dagger" ? PLAYER_CONSTANTS.DAGGER_STAMINA_COST : PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST;
+    const staminaCost =
+      this.weaponType === "dagger"
+        ? PLAYER_CONSTANTS.DAGGER_STAMINA_COST
+        : PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST;
 
     if (this.stamina < staminaCost) {
       console.log("Not enough stamina to attack");
@@ -441,7 +448,8 @@ export class Player extends AnimatedObject {
           this.frame === Math.floor((this.minFrame + this.maxFrame) / 2)
         ) {
           const projectileSpeed = PLAYER_CONSTANTS.SLINGSHOT_PROJECTILE_SPEED;
-          const projectileDamage = PLAYER_CONSTANTS.SLINGSHOT_DAMAGE + this.rangedDamageBonus; // Add shop bonus
+          const projectileDamage =
+            PLAYER_CONSTANTS.SLINGSHOT_DAMAGE + this.rangedDamageBonus; // Add shop bonus
 
           // Calculate spawn position at the center of the player
           const spawnPos = new Vec(
@@ -596,8 +604,17 @@ export class Player extends AnimatedObject {
   }
 
   // Extracted helper method to calculate attack area
-  calculateAttackArea(playerCenter, attackDirection, baseAttackRange, attackWidth) {
-    const actualAttackRange = this.raycastToWall(playerCenter, attackDirection, baseAttackRange);
+  calculateAttackArea(
+    playerCenter,
+    attackDirection,
+    baseAttackRange,
+    attackWidth
+  ) {
+    const actualAttackRange = this.raycastToWall(
+      playerCenter,
+      attackDirection,
+      baseAttackRange
+    );
 
     let attackArea = {
       x: playerCenter.x,
