@@ -6,7 +6,7 @@
 // Player constants
 export const PLAYER_CONSTANTS = {
   // Base stats
-  MAX_HEALTH: 200,
+  MAX_HEALTH: 20000,
   BASE_SPEED: 0.3,
   BASE_SIZE: { width: 64, height: 64 },
 
