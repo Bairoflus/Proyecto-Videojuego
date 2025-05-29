@@ -1,9 +1,11 @@
 import express from 'express';
 import { 
   register, 
-  login
+  login,
+  logout
 } from '../controllers/authController.js';
 import { validateBody } from '../middleware/validation.js';
+import { extractBearerToken } from '../middleware/auth.js';
 import { 
   registerSchema, 
   loginSchema
@@ -24,5 +26,12 @@ router.post('/register', validateBody(registerSchema), register);
  * @access  Public
  */
 router.post('/login', validateBody(loginSchema), login);
+
+/**
+ * @route   POST /api/auth/logout
+ * @desc    User logout - Close active session
+ * @access  Private (requires Bearer token)
+ */
+router.post('/logout', extractBearerToken, logout);
 
 export default router; 

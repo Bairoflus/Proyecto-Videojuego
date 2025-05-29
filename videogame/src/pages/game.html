@@ -18,6 +18,8 @@
   </main>
 
   <script type="module">
+    import { API_CONFIG } from './config.js';
+    
     const status = document.getElementById('status');
     const welcomeMsg = document.getElementById('welcome-msg');
     const gameCanvas = document.getElementById('gameCanvas');
@@ -36,23 +38,60 @@
         return false;
       }
 
-      // Keep generic welcome message until we implement user profile endpoint
-      welcomeMsg.textContent = 'Welcome to Shattered Timeline';
       return true;
     }
 
-    // Logout function
-    window.handleLogout = function() {
+    // Logout function using API endpoint
+    window.handleLogout = async function() {
+      const sessionToken = localStorage.getItem('sessionToken');
+      
+      if (!sessionToken) {
+        // If no token, just clear local storage and redirect
+        clearLocalSession();
+        window.location.href = './login.html';
+        return;
+      }
+
+      try {
+        status.textContent = 'Logging out...';
+        
+        // Call logout endpoint with Bearer token
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LOGOUT}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+            'Content-Type': 'application/json',
+          }
+        });
+
+        // Handle successful logout (204 No Content)
+        if (response.status === 204) {
+          console.log('Logout successful');
+        } else if (response.status === 401) {
+          console.log('Session was already invalid');
+        } else {
+          console.warn('Unexpected logout response:', response.status);
+        }
+        
+      } catch (error) {
+        console.error('Logout request failed:', error);
+        // Continue with local cleanup even if API call fails
+      } finally {
+        // Always clear local storage and redirect, regardless of API response
+        clearLocalSession();
+        setTimeout(() => {
+          window.location.href = './login.html';
+        }, 1000);
+      }
+    };
+
+    // Clear local session data
+    function clearLocalSession() {
       localStorage.removeItem('sessionToken');
       localStorage.removeItem('sessionId');
       localStorage.removeItem('userId');
       localStorage.removeItem('isLoggedIn');
-      
-      status.textContent = 'Logging out...';
-      setTimeout(() => {
-        window.location.href = './login.html';
-      }, 1000);
-    };
+    }
 
     // Initialize game
     async function initializeGame() {

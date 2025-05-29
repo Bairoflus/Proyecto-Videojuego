@@ -66,4 +66,30 @@ export const login = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+/**
+ * User logout
+ * Closes the active session by marking it as closed
+ */
+export const logout = async (req, res, next) => {
+  try {
+    // Session token is extracted by extractBearerToken middleware
+    const sessionToken = req.sessionToken;
+    
+    // Close the session (idempotent operation)
+    const sessionClosed = await User.closeSession(sessionToken);
+    
+    // If session doesn't exist, respond with 401 Unauthorized
+    if (!sessionClosed) {
+      return next(createError('Invalid or expired session', 401));
+    }
+    
+    // Respond with 204 No Content (successful logout, no body)
+    res.status(204).send();
+    
+  } catch (error) {
+    console.error('Logout error:', error);
+    next(error);
+  }
 }; 
