@@ -1,10 +1,10 @@
 /**
- * Middleware de manejo de errores centralizado
+ * Centralized error handling middleware
  */
 export const errorHandler = (err, req, res, next) => {
-  console.error('Error capturado:', err);
+  console.error('Error captured:', err);
 
-  // Error de validación de Joi
+  // Joi validation error
   if (err.isJoi) {
     const errorMessages = err.details.map(detail => ({
       field: detail.path.join('.'),
@@ -13,76 +13,76 @@ export const errorHandler = (err, req, res, next) => {
 
     return res.status(400).json({
       success: false,
-      message: 'Errores de validación',
+      message: 'Validation errors',
       errors: errorMessages
     });
   }
 
-  // Error de MySQL
+  // MySQL error
   if (err.code) {
     switch (err.code) {
       case 'ER_DUP_ENTRY':
         return res.status(409).json({
           success: false,
-          message: 'El recurso ya existe',
+          message: 'Resource already exists',
           error: 'Duplicate entry'
         });
       
       case 'ER_NO_REFERENCED_ROW_2':
         return res.status(400).json({
           success: false,
-          message: 'Referencia inválida',
+          message: 'Invalid reference',
           error: 'Foreign key constraint'
         });
       
       case 'ECONNREFUSED':
         return res.status(503).json({
           success: false,
-          message: 'Servicio no disponible',
+          message: 'Service unavailable',
           error: 'Database connection refused'
         });
       
       default:
-        console.error('Error de base de datos:', err);
+        console.error('Database error:', err);
         return res.status(500).json({
           success: false,
-          message: 'Error de base de datos',
+          message: 'Database error',
           error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
         });
     }
   }
 
-  // Error personalizado con status
+  // Custom error with status
   if (err.status) {
     return res.status(err.status).json({
       success: false,
-      message: err.message || 'Error del servidor',
+      message: err.message || 'Server error',
       error: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
 
-  // Error genérico
+  // Generic error
   return res.status(500).json({
     success: false,
-    message: 'Error interno del servidor',
+    message: 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
   });
 };
 
 /**
- * Middleware para manejar rutas no encontradas (404)
+ * Middleware to handle routes not found (404)
  */
-export const notFoundHandler = (req, res) => {
+export const notFoundHandler = (req, res, next) => {
   res.status(404).json({
     success: false,
-    message: `Ruta ${req.method} ${req.originalUrl} no encontrada`
+    message: `Route ${req.method} ${req.originalUrl} not found`
   });
 };
 
 /**
- * Función para crear errores personalizados
- * @param {string} message - Mensaje del error
- * @param {number} status - Código de estado HTTP
+ * Function to create custom errors
+ * @param {string} message - Error message
+ * @param {number} status - HTTP status code
  */
 export const createError = (message, status = 500) => {
   const error = new Error(message);

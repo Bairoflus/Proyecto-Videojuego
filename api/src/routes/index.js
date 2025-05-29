@@ -1,16 +1,15 @@
 import express from 'express';
 import authRoutes from './auth.js';
-import gameRoutes from './game.js';
 
 const router = express.Router();
 
 /**
- * Ruta de salud del API
+ * API health route
  */
 router.get('/health', (req, res) => {
   res.json({
     success: true,
-    message: 'API funcionando correctamente',
+    message: 'API working correctly',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     database: 'ShatteredTimeline'
@@ -18,13 +17,8 @@ router.get('/health', (req, res) => {
 });
 
 /**
- * Rutas de autenticación
+ * Authentication routes
  */
 router.use('/auth', authRoutes);
-
-/**
- * Rutas del juego
- */
-router.use('/game', gameRoutes);
 
 export default router; 

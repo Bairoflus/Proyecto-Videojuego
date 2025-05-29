@@ -13,8 +13,13 @@ const mockUser = {
   created_at: new Date()
 };
 
+const mockSession = {
+  sessionId: 1,
+  sessionToken: 'mock-session-token-uuid',
+  userId: 1
+};
+
 describe('Auth Endpoints', () => {
-  let authToken;
   let testUser = {
     username: 'testuser',
     email: 'test@example.com',
@@ -47,7 +52,7 @@ describe('Auth Endpoints', () => {
         .send(testUser)
         .expect(201);
 
-      // Verificar el formato de respuesta según las instrucciones
+      // Verify response format according to instructions
       expect(response.body.user_id).toBe(1);
       expect(response.body.username).toBe(testUser.username);
       expect(response.body.email).toBe(testUser.email);
@@ -93,7 +98,7 @@ describe('Auth Endpoints', () => {
         .expect(409);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('usuario');
+      expect(response.body.message).toContain('username');
     });
 
     it('should not register user with invalid email', async () => {
@@ -193,6 +198,14 @@ describe('Auth Endpoints', () => {
 
   describe('POST /api/auth/login', () => {
     it('should login with valid credentials', async () => {
+      // Mock database responses for successful login
+      executeQuery
+        .mockResolvedValueOnce([mockUser]) // Find user by email
+        .mockResolvedValueOnce({ insertId: 1 }); // Create session
+
+      // Mock password verification
+      verifyPassword.mockResolvedValueOnce(true);
+
       const loginData = {
         email: testUser.email,
         password: testUser.password
@@ -203,28 +216,17 @@ describe('Auth Endpoints', () => {
         .send(loginData)
         .expect(200);
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.user.email).toBe(testUser.email);
-      expect(response.body.data.token).toBeDefined();
-      
-      authToken = response.body.data.token;
-    });
-
-    it('should not login with invalid credentials', async () => {
-      const invalidLogin = {
-        email: testUser.email,
-        password: 'wrongpassword'
-      };
-
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send(invalidLogin)
-        .expect(401);
-
-      expect(response.body.success).toBe(false);
+      // Verify exact response format according to specifications
+      expect(response.body.session_id).toBe(1);
+      expect(response.body.session_token).toBeDefined();
+      expect(response.body.user_id).toBe(1);
+      expect(typeof response.body.session_token).toBe('string');
     });
 
     it('should not login with non-existent email', async () => {
+      // Mock no user found
+      executeQuery.mockResolvedValueOnce([]);
+
       const nonExistentLogin = {
         email: 'nonexistent@example.com',
         password: testUser.password
@@ -236,55 +238,87 @@ describe('Auth Endpoints', () => {
         .expect(401);
 
       expect(response.body.success).toBe(false);
-    });
-  });
-
-  describe('GET /api/auth/profile', () => {
-    it('should get user profile with valid token', async () => {
-      const response = await request(app)
-        .get('/api/auth/profile')
-        .set('Authorization', `Bearer ${authToken}`)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.user.email).toBe(testUser.email);
-      expect(response.body.data.user.password).toBeUndefined();
+      expect(response.body.message).toContain('Invalid credentials');
     });
 
-    it('should not get profile without token', async () => {
+    it('should not login with incorrect password', async () => {
+      // Mock user found but password verification fails
+      executeQuery.mockResolvedValueOnce([mockUser]);
+      verifyPassword.mockResolvedValueOnce(false);
+
+      const invalidLogin = {
+        email: testUser.email,
+        password: 'wrongpassword'
+      };
+
       const response = await request(app)
-        .get('/api/auth/profile')
+        .post('/api/auth/login')
+        .send(invalidLogin)
         .expect(401);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('Invalid credentials');
     });
 
-    it('should not get profile with invalid token', async () => {
+    it('should not login with invalid email format', async () => {
+      const invalidEmailLogin = {
+        email: 'invalid-email-format',
+        password: testUser.password
+      };
+
       const response = await request(app)
-        .get('/api/auth/profile')
-        .set('Authorization', 'Bearer invalid-token')
-        .expect(401);
+        .post('/api/auth/login')
+        .send(invalidEmailLogin)
+        .expect(400);
 
       expect(response.body.success).toBe(false);
-    });
-  });
-
-  describe('POST /api/auth/logout', () => {
-    it('should logout successfully', async () => {
-      const response = await request(app)
-        .post('/api/auth/logout')
-        .set('Authorization', `Bearer ${authToken}`)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
+      expect(response.body.errors).toBeDefined();
     });
 
-    it('should logout even without token', async () => {
-      const response = await request(app)
-        .post('/api/auth/logout')
-        .expect(200);
+    it('should not login with short password', async () => {
+      const shortPasswordLogin = {
+        email: testUser.email,
+        password: '123'
+      };
 
-      expect(response.body.success).toBe(true);
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send(shortPasswordLogin)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.errors).toBeDefined();
+    });
+
+    it('should not login with missing fields', async () => {
+      const incompleteLogin = {
+        email: testUser.email
+      };
+
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send(incompleteLogin)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.errors).toBeDefined();
+    });
+
+    it('should handle database errors gracefully', async () => {
+      // Mock database error
+      executeQuery.mockRejectedValueOnce(new Error('Database connection failed'));
+
+      const loginData = {
+        email: testUser.email,
+        password: testUser.password
+      };
+
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send(loginData)
+        .expect(500);
+
+      expect(response.body.success).toBe(false);
     });
   });
 });
@@ -296,7 +330,7 @@ describe('API Health', () => {
       .expect(200);
 
     expect(response.body.success).toBe(true);
-    expect(response.body.message).toContain('funcionando');
+    expect(response.body.message).toContain('working');
   });
 
   it('should return API info on root endpoint', async () => {
