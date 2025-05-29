@@ -9,31 +9,90 @@
 
 <body class="game-page">
   <header class="game-header">
-    <span id="welcome-msg">Welcome, username</span>
-    <button onclick="location.href='landing.html'">Logout</button>
+    <span id="welcome-msg">Welcome to Shattered Timeline</span>
+    <button id="logout-btn" onclick="handleLogout()">Logout</button>
   </header>
   <main>
-    <div id="status">Loading game...</div>
-    <canvas id="gameCanvas"></canvas>
+    <div id="status">Checking authentication...</div>
+    <canvas id="gameCanvas" style="display: none;"></canvas>
   </main>
 
   <script type="module">
     const status = document.getElementById('status');
+    const welcomeMsg = document.getElementById('welcome-msg');
+    const gameCanvas = document.getElementById('gameCanvas');
 
-    try {
-      status.textContent = 'Loading modules...';
+    // Check authentication first
+    function checkAuthentication() {
+      const isLoggedIn = localStorage.getItem('isLoggedIn');
+      const userId = localStorage.getItem('userId');
+      const sessionToken = localStorage.getItem('sessionToken');
 
-      // Import main game module
-      const { main } = await import('../main.js');
+      if (isLoggedIn !== 'true' || !userId || !sessionToken) {
+        status.textContent = 'Not authenticated. Redirecting to login...';
+        setTimeout(() => {
+          window.location.href = './login.html';
+        }, 2000);
+        return false;
+      }
 
-      status.textContent = 'Starting game...';
-      main();
-      status.style.display = 'none'; // Hide status once game is running
-
-    } catch (error) {
-      status.textContent = 'Error loading game: ' + error.message;
-      console.error('Game initialization error:', error);
+      // Keep generic welcome message until we implement user profile endpoint
+      welcomeMsg.textContent = 'Welcome to Shattered Timeline';
+      return true;
     }
+
+    // Logout function
+    window.handleLogout = function() {
+      localStorage.removeItem('sessionToken');
+      localStorage.removeItem('sessionId');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('isLoggedIn');
+      
+      status.textContent = 'Logging out...';
+      setTimeout(() => {
+        window.location.href = './login.html';
+      }, 1000);
+    };
+
+    // Initialize game
+    async function initializeGame() {
+      if (!checkAuthentication()) {
+        return;
+      }
+
+      try {
+        status.textContent = 'Loading game modules...';
+
+        // Check if main.js exists before trying to import
+        const mainJsPath = '../main.js';
+        console.log('Attempting to import:', mainJsPath);
+
+        // Try to import the main game module
+        const gameModule = await import(mainJsPath);
+        console.log('Game module loaded:', gameModule);
+
+        status.textContent = 'Initializing game...';
+        gameCanvas.style.display = 'block';
+        
+        // Since main.js already calls main() automatically, we don't need to call it again
+        // The game should start automatically when the module is imported
+        status.style.display = 'none'; // Hide status once game is running
+
+      } catch (error) {
+        console.error('Detailed game loading error:', error);
+        status.textContent = `Error loading game: ${error.message}`;
+        status.innerHTML += `<br><small>Check console for more details</small>`;
+        
+        // Show some debugging info
+        const currentPath = window.location.href;
+        const expectedMainPath = new URL('../main.js', currentPath).href;
+        console.log('Current page URL:', currentPath);
+        console.log('Expected main.js URL:', expectedMainPath);
+      }
+    }
+
+    // Start initialization
+    initializeGame();
   </script>
 </body>
 

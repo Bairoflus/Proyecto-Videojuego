@@ -3,11 +3,11 @@
  * Connects the HTML form with the Shattered Timeline API
  */
 
-// API configuration
-const API_BASE_URL = 'http://localhost:3002/api';
+// Import API configuration
+import { API_CONFIG } from './config.js';
 
 // DOM elements
-let form, usernameInput, emailInput, passwordInput, confirmPasswordInput, submitButton;
+let form, usernameInput, emailInput, passwordInput, confirmPasswordInput, submitButton, messageContainer;
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
@@ -19,12 +19,13 @@ document.addEventListener('DOMContentLoaded', function() {
  * Initialize DOM element references
  */
 function initializeElements() {
-    form = document.querySelector('form');
-    usernameInput = document.querySelector('input[placeholder="Username"]');
-    emailInput = document.querySelector('input[placeholder="Email"]');
-    passwordInput = document.querySelector('input[placeholder="Password"]');
-    confirmPasswordInput = document.querySelector('input[placeholder="Confirm Password"]');
-    submitButton = document.querySelector('button[type="submit"]');
+    form = document.getElementById('registerForm');
+    usernameInput = document.getElementById('username');
+    emailInput = document.getElementById('email');
+    passwordInput = document.getElementById('password');
+    confirmPasswordInput = document.getElementById('confirmPassword');
+    submitButton = document.getElementById('registerButton');
+    messageContainer = document.getElementById('messageContainer');
 }
 
 /**
@@ -98,7 +99,7 @@ async function handleSubmit(event) {
  * Send registration data to API
  */
 async function registerUser(userData) {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/auth/register`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -193,41 +194,26 @@ function validatePasswordMatch() {
  * Show error message
  */
 function showError(message) {
-    removeExistingMessages();
-    
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'message error-message';
-    errorDiv.textContent = message;
-    
-    form.insertBefore(errorDiv, submitButton);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (errorDiv.parentNode) {
-            errorDiv.remove();
-        }
-    }, 5000);
+    messageContainer.innerHTML = `
+        <div class="message error">
+            <span class="message-icon">✗</span>
+            <span class="message-text">${message}</span>
+        </div>
+    `;
+    messageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 /**
  * Show success message
  */
 function showSuccess(message) {
-    removeExistingMessages();
-    
-    const successDiv = document.createElement('div');
-    successDiv.className = 'message success-message';
-    successDiv.textContent = message;
-    
-    form.insertBefore(successDiv, submitButton);
-}
-
-/**
- * Remove existing messages
- */
-function removeExistingMessages() {
-    const existingMessages = form.querySelectorAll('.message');
-    existingMessages.forEach(msg => msg.remove());
+    messageContainer.innerHTML = `
+        <div class="message success">
+            <span class="message-icon">✓</span>
+            <span class="message-text">${message}</span>
+        </div>
+    `;
+    messageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 /**

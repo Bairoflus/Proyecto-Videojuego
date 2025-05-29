@@ -116,95 +116,49 @@ User login.
 **Request Body:**
 ```json
 {
-  "email": "string",
-  "password": "string"
+  "email": "string (valid email format)",
+  "password": "string (min 6 chars)"
 }
 ```
 
-**Response (200):**
+**Response (200) - Success:**
 ```json
 {
-  "success": true,
-  "message": "Login successful",
-  "data": {
-    "user": {
-      "id": 1,
-      "username": "testuser",
-      "email": "test@example.com"
-    },
-    "token": "session_token",
-    "expiresAt": "2023-01-02T00:00:00.000Z"
-  }
+  "session_id": 1,
+  "session_token": "uuid-v4-token",
+  "user_id": 1
 }
 ```
 
-#### POST /api/auth/logout
-User logout.
-
-**Headers:**
-```
-Authorization: Bearer <session_token>
-```
-
-**Response (200):**
+**Response (400) - Validation Error:**
 ```json
 {
-  "success": true,
-  "message": "Logout successful"
-}
-```
-
-#### GET /api/auth/profile
-Get authenticated user profile.
-
-**Headers:**
-```
-Authorization: Bearer <session_token>
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": 1,
-      "username": "testuser",
-      "email": "test@example.com",
-      "created_at": "2023-01-01T00:00:00.000Z"
+  "success": false,
+  "message": "Validation errors",
+  "errors": [
+    {
+      "field": "email",
+      "message": "Please provide a valid email"
     }
-  }
+  ]
 }
 ```
 
-### Game
+**Response (401) - Invalid Credentials:**
+```json
+{
+  "success": false,
+  "message": "Invalid credentials"
+}
+```
 
-#### GET /api/game/stats
-Get player statistics.
-
-#### GET /api/game/settings
-Get player settings.
-
-#### PUT /api/game/settings
-Update player settings.
-
-#### POST /api/game/run/start
-Start a new game run.
-
-#### PUT /api/game/run/end
-End a game run.
-
-#### GET /api/game/run/history
-Get run history.
-
-#### POST /api/game/event
-Record a player event.
-
-#### POST /api/game/shop/purchase
-Record a shop purchase.
-
-#### POST /api/game/chest/collect
-Record a chest collection.
+**Response (500) - Server Error:**
+```json
+{
+  "success": false,
+  "message": "Internal server error"
+}
+```
 
 ### Health
 

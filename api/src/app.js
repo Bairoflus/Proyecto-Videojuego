@@ -77,10 +77,6 @@ const startServer = async () => {
       console.log(`   GET  /api/health          - Server status`);
       console.log(`   POST /api/auth/register   - Register user`);
       console.log(`   POST /api/auth/login      - Login`);
-      console.log(`   POST /api/auth/logout     - Logout`);
-      console.log(`   GET  /api/auth/profile    - Get profile`);
-      console.log(`   PUT  /api/auth/profile    - Update profile`);
-      console.log(`   PUT  /api/auth/change-password - Change password`);
     });
   } catch (error) {
     console.error('Error starting server:', error);

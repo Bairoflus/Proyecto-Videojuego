@@ -1,5 +1,5 @@
 import { executeQuery, executeTransaction } from '../config/database.js';
-import { hashPassword, verifyPassword, generateSessionToken, generateExpirationDate } from '../utils/auth.js';
+import { hashPassword, verifyPassword as bcryptVerifyPassword, generateSessionToken, generateExpirationDate } from '../utils/auth.js';
 
 export class User {
   constructor(data = {}) {
@@ -156,7 +156,7 @@ export class User {
         return null;
       }
       
-      const isValidPassword = await verifyPassword(password, user.password_hash);
+      const isValidPassword = await bcryptVerifyPassword(password, user.password_hash);
       
       if (!isValidPassword) {
         return null;
@@ -170,6 +170,27 @@ export class User {
   }
 
   /**
+   * Verify password for a specific user
+   * @param {string} email - User email
+   * @param {string} password - Plain text password
+   * @returns {Promise<boolean>} True if password is valid
+   */
+  static async verifyPassword(email, password) {
+    try {
+      const user = await User.findByEmail(email);
+      
+      if (!user) {
+        return false;
+      }
+      
+      return await bcryptVerifyPassword(password, user.password_hash);
+    } catch (error) {
+      console.error('Error verifying password:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create session for user
    * @param {number} userId - User ID
    * @returns {Promise<Object>} Session data
@@ -177,9 +198,8 @@ export class User {
   static async createSession(userId) {
     try {
       const sessionToken = generateSessionToken();
-      const expiresAt = generateExpirationDate(24); // 24 hours
       
-      // First create the basic session
+      // Create session with started_at and last_active timestamps
       const sessionQuery = `
         INSERT INTO sessions (user_id, session_token, started_at, last_active)
         VALUES (?, ?, NOW(), NOW())
@@ -188,9 +208,9 @@ export class User {
       const result = await executeQuery(sessionQuery, [userId, sessionToken]);
       
       return {
-        sessionToken,
-        expiresAt,
-        sessionId: result.insertId
+        sessionId: result.insertId,
+        sessionToken: sessionToken,
+        userId: userId
       };
     } catch (error) {
       console.error('Error creating session:', error);
