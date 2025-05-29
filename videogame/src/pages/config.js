@@ -5,6 +5,7 @@ export const API_CONFIG = {
         REGISTER: '/auth/register',
         LOGIN: '/auth/login',
         LOGOUT: '/auth/logout',
+        SESSIONS: '/sessions',
         HEALTH: '/health'
     },
     TIMEOUT: 10000 // 10 seconds

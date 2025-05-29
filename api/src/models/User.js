@@ -308,6 +308,38 @@ export class User {
   }
 
   /**
+   * Create a new game session for authenticated user
+   * @param {number} userId - User ID from validated session
+   * @param {string} deviceInfo - Optional device information
+   * @returns {Promise<Object>} Game session data
+   */
+  static async createGameSession(userId, deviceInfo = null) {
+    try {
+      const sessionToken = generateSessionToken();
+      
+      // Create game session with active status
+      const sessionQuery = `
+        INSERT INTO sessions (user_id, session_token, device_info, started_at, last_active, status)
+        VALUES (?, ?, ?, NOW(), NOW(), 'active')
+      `;
+      
+      const result = await executeQuery(sessionQuery, [userId, sessionToken, deviceInfo]);
+      
+      return {
+        session_id: result.insertId,
+        session_token: sessionToken,
+        user_id: userId,
+        device_info: deviceInfo,
+        started_at: new Date().toISOString(),
+        status: 'active'
+      };
+    } catch (error) {
+      console.error('Error creating game session:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Update user information
    * @param {Object} updateData - Data to update
    * @returns {Promise<User>} Updated user

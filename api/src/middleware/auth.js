@@ -13,6 +13,7 @@ import { User } from '../models/User.js';
  */
 export const extractBearerToken = (req, res, next) => {
   try {
+    // Search header Authorization
     const authHeader = req.headers.authorization;
     
     // Check if Authorization header exists
