@@ -91,6 +91,8 @@
       localStorage.removeItem('sessionId');
       localStorage.removeItem('userId');
       localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('gameSessionId');
+      localStorage.removeItem('gameSessionToken');
     }
 
     // Initialize game
@@ -100,6 +102,20 @@
       }
 
       try {
+        status.textContent = 'Creating game session...';
+
+        // Create game session before loading game modules
+        const gameSession = await createGameSession();
+        
+        if (!gameSession) {
+          status.textContent = 'Failed to create game session. Please try again.';
+          return;
+        }
+
+        // Store game session data
+        localStorage.setItem('gameSessionId', gameSession.session_id);
+        localStorage.setItem('gameSessionToken', gameSession.session_token);
+        
         status.textContent = 'Loading game modules...';
 
         // Check if main.js exists before trying to import
@@ -127,6 +143,53 @@
         const expectedMainPath = new URL('../main.js', currentPath).href;
         console.log('Current page URL:', currentPath);
         console.log('Expected main.js URL:', expectedMainPath);
+      }
+    }
+
+    // Create game session
+    async function createGameSession() {
+      const sessionToken = localStorage.getItem('sessionToken');
+      
+      if (!sessionToken) {
+        console.error('No session token available for game session creation');
+        return null;
+      }
+
+      try {
+        // Get basic device info
+        const deviceInfo = `${navigator.userAgent.substring(0, 100)} - ${navigator.platform}`;
+        
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SESSIONS}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            device_info: deviceInfo
+          })
+        });
+
+        if (response.status === 201) {
+          const data = await response.json();
+          console.log('Game session created successfully:', data.data);
+          return data.data;
+        } else if (response.status === 401) {
+          console.error('Authentication failed for game session creation');
+          // Redirect to login if session is invalid
+          setTimeout(() => {
+            window.location.href = './login.html';
+          }, 2000);
+          return null;
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to create game session:', errorData);
+          return null;
+        }
+        
+      } catch (error) {
+        console.error('Error creating game session:', error);
+        return null;
       }
     }
 

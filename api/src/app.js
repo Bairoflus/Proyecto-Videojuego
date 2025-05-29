@@ -77,6 +77,8 @@ const startServer = async () => {
       console.log(`   GET  /api/health          - Server status`);
       console.log(`   POST /api/auth/register   - Register user`);
       console.log(`   POST /api/auth/login      - Login`);
+      console.log(`   POST /api/auth/logout     - Logout`);
+      console.log(`   POST /api/sessions        - Create game session`);
     });
   } catch (error) {
     console.error('Error starting server:', error);
