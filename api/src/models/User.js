@@ -236,6 +236,78 @@ export class User {
   }
 
   /**
+   * Find active session by token
+   * @param {string} sessionToken - Session token
+   * @returns {Promise<Object|null>} Session data if active, null otherwise
+   */
+  static async findActiveSession(sessionToken) {
+    try {
+      const query = `
+        SELECT session_id, user_id, session_token, started_at, last_active, closed_at
+        FROM sessions 
+        WHERE session_token = ? AND closed_at IS NULL
+      `;
+      
+      const results = await executeQuery(query, [sessionToken]);
+      
+      if (results.length === 0) {
+        return null;
+      }
+      
+      return results[0];
+    } catch (error) {
+      console.error('Error finding active session:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Close session by marking it as closed (idempotent operation)
+   * @param {string} sessionToken - Session token
+   * @returns {Promise<boolean>} True if session was found and processed
+   */
+  static async closeSession(sessionToken) {
+    try {
+      // First, check if session exists
+      const sessionQuery = `
+        SELECT session_id, closed_at 
+        FROM sessions 
+        WHERE session_token = ?
+      `;
+      
+      const sessionResults = await executeQuery(sessionQuery, [sessionToken]);
+      
+      // If session doesn't exist, return false
+      if (sessionResults.length === 0) {
+        return false;
+      }
+      
+      const session = sessionResults[0];
+      
+      // If session is already closed, operation is idempotent - return true
+      if (session.closed_at !== null) {
+        return true;
+      }
+      
+      // Close the session by setting closed_at timestamp
+      const closeQuery = `
+        UPDATE sessions 
+        SET closed_at = NOW() 
+        WHERE session_token = ? AND closed_at IS NULL
+      `;
+      
+      const result = await executeQuery(closeQuery, [sessionToken]);
+      
+      // Return true if session was found and updated, or if it was already closed
+      return result.affectedRows > 0;
+      
+    } catch (error) {
+      console.error('Error closing session:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Update user information
    * @param {Object} updateData - Data to update
    * @returns {Promise<User>} Updated user

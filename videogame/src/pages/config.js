@@ -4,6 +4,7 @@ export const API_CONFIG = {
     ENDPOINTS: {
         REGISTER: '/auth/register',
         LOGIN: '/auth/login',
+        LOGOUT: '/auth/logout',
         HEALTH: '/health'
     },
     TIMEOUT: 10000 // 10 seconds
