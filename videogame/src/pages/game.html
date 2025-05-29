@@ -24,6 +24,12 @@
     const welcomeMsg = document.getElementById('welcome-msg');
     const gameCanvas = document.getElementById('gameCanvas');
 
+    // Session management variables
+    let gameSessionId = null;
+    let gameSessionToken = null;
+    let sessionHeartbeatInterval = null;
+    let isGameActive = false;
+
     // Check authentication first
     function checkAuthentication() {
       const isLoggedIn = localStorage.getItem('isLoggedIn');
@@ -41,9 +47,118 @@
       return true;
     }
 
-    // Logout function using API endpoint
+    // ==================== SESSION MANAGEMENT FUNCTIONS ====================
+
+    /**
+     * Update game session with keep_alive or close action
+     * @param {string} action - 'keep_alive' or 'close'
+     * @returns {Promise<boolean>} Success status
+     */
+    async function updateGameSession(action) {
+      if (!gameSessionId || !gameSessionToken) {
+        console.warn('No game session to update');
+        return false;
+      }
+
+      const sessionToken = localStorage.getItem('sessionToken');
+      if (!sessionToken) {
+        console.warn('No auth token available for session update');
+        return false;
+      }
+
+      try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SESSIONS}/${gameSessionId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action })
+        });
+
+        if (response.status === 200) {
+          const data = await response.json();
+          console.log(`Game session ${action} successful:`, data);
+          return true;
+        } else {
+          const errorData = await response.json();
+          console.error(`Failed to ${action} game session:`, errorData);
+          return false;
+        }
+        
+      } catch (error) {
+        console.error(`Error during session ${action}:`, error);
+        return false;
+      }
+    }
+
+    /**
+     * Keep game session alive (heartbeat)
+     */
+    async function keepSessionAlive() {
+      if (isGameActive) {
+        const success = await updateGameSession('keep_alive');
+        if (success) {
+          console.log('Session heartbeat sent successfully');
+        }
+      }
+    }
+
+    /**
+     * Close game session
+     */
+    async function closeGameSession() {
+      if (gameSessionId) {
+        console.log('Closing game session...');
+        const success = await updateGameSession('close');
+        if (success) {
+          console.log('Game session closed successfully');
+        }
+        // Clear session data regardless of API response
+        gameSessionId = null;
+        gameSessionToken = null;
+        localStorage.removeItem('gameSessionId');
+        localStorage.removeItem('gameSessionToken');
+      }
+    }
+
+    /**
+     * Start session heartbeat (every 30 seconds)
+     */
+    function startSessionHeartbeat() {
+      if (sessionHeartbeatInterval) {
+        clearInterval(sessionHeartbeatInterval);
+      }
+      
+      sessionHeartbeatInterval = setInterval(keepSessionAlive, 30000); // 30 seconds
+      console.log('Session heartbeat started (30s intervals)');
+    }
+
+    /**
+     * Stop session heartbeat
+     */
+    function stopSessionHeartbeat() {
+      if (sessionHeartbeatInterval) {
+        clearInterval(sessionHeartbeatInterval);
+        sessionHeartbeatInterval = null;
+        console.log('Session heartbeat stopped');
+      }
+    }
+
+    // ==================== GAME LIFECYCLE FUNCTIONS ====================
+
+    /**
+     * Enhanced logout function that closes both auth and game sessions
+     */
     window.handleLogout = async function() {
       const sessionToken = localStorage.getItem('sessionToken');
+      
+      // Stop heartbeat immediately
+      stopSessionHeartbeat();
+      isGameActive = false;
+      
+      // Close game session first
+      await closeGameSession();
       
       if (!sessionToken) {
         // If no token, just clear local storage and redirect
@@ -55,7 +170,7 @@
       try {
         status.textContent = 'Logging out...';
         
-        // Call logout endpoint with Bearer token
+        // Call logout endpoint with Bearer token (closes auth session)
         const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LOGOUT}`, {
           method: 'POST',
           headers: {
@@ -66,9 +181,9 @@
 
         // Handle successful logout (204 No Content)
         if (response.status === 204) {
-          console.log('Logout successful');
+          console.log('Auth session logout successful');
         } else if (response.status === 401) {
-          console.log('Session was already invalid');
+          console.log('Auth session was already invalid');
         } else {
           console.warn('Unexpected logout response:', response.status);
         }
@@ -85,68 +200,83 @@
       }
     };
 
-    // Clear local session data
+    /**
+     * Enhanced session clearing function
+     */
     function clearLocalSession() {
+      stopSessionHeartbeat();
       localStorage.removeItem('sessionToken');
       localStorage.removeItem('sessionId');
       localStorage.removeItem('userId');
       localStorage.removeItem('isLoggedIn');
       localStorage.removeItem('gameSessionId');
       localStorage.removeItem('gameSessionToken');
+      gameSessionId = null;
+      gameSessionToken = null;
+      isGameActive = false;
     }
 
-    // Initialize game
-    async function initializeGame() {
-      if (!checkAuthentication()) {
-        return;
-      }
+    /**
+     * Game over handler (to be called when player dies or completes game)
+     */
+    window.handleGameOver = async function(reason = 'game_ended') {
+      console.log(`Game over: ${reason}`);
+      isGameActive = false;
+      stopSessionHeartbeat();
+      await closeGameSession();
+    };
 
-      try {
-        status.textContent = 'Creating game session...';
+    // ==================== BROWSER EVENT HANDLERS ====================
 
-        // Create game session before loading game modules
-        const gameSession = await createGameSession();
-        
-        if (!gameSession) {
-          status.textContent = 'Failed to create game session. Please try again.';
-          return;
+    /**
+     * Handle page unload (browser close, tab close, navigation away)
+     */
+    window.addEventListener('beforeunload', async (event) => {
+      // This needs to be synchronous for beforeunload
+      // Use sendBeacon for reliable delivery
+      if (gameSessionId) {
+        const sessionToken = localStorage.getItem('sessionToken');
+        if (sessionToken) {
+          const payload = JSON.stringify({ action: 'close' });
+          const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SESSIONS}/${gameSessionId}`;
+          
+          // sendBeacon is more reliable for page unload
+          const headers = new Headers();
+          headers.set('Authorization', `Bearer ${sessionToken}`);
+          headers.set('Content-Type', 'application/json');
+          
+          // Create a Blob for sendBeacon
+          const blob = new Blob([payload], { type: 'application/json' });
+          navigator.sendBeacon(url + '?method=PUT', blob);
+          console.log('Game session close beacon sent');
         }
-
-        // Store game session data
-        localStorage.setItem('gameSessionId', gameSession.session_id);
-        localStorage.setItem('gameSessionToken', gameSession.session_token);
-        
-        status.textContent = 'Loading game modules...';
-
-        // Check if main.js exists before trying to import
-        const mainJsPath = '../main.js';
-        console.log('Attempting to import:', mainJsPath);
-
-        // Try to import the main game module
-        const gameModule = await import(mainJsPath);
-        console.log('Game module loaded:', gameModule);
-
-        status.textContent = 'Initializing game...';
-        gameCanvas.style.display = 'block';
-        
-        // Since main.js already calls main() automatically, we don't need to call it again
-        // The game should start automatically when the module is imported
-        status.style.display = 'none'; // Hide status once game is running
-
-      } catch (error) {
-        console.error('Detailed game loading error:', error);
-        status.textContent = `Error loading game: ${error.message}`;
-        status.innerHTML += `<br><small>Check console for more details</small>`;
-        
-        // Show some debugging info
-        const currentPath = window.location.href;
-        const expectedMainPath = new URL('../main.js', currentPath).href;
-        console.log('Current page URL:', currentPath);
-        console.log('Expected main.js URL:', expectedMainPath);
       }
-    }
+    });
 
-    // Create game session
+    /**
+     * Handle visibility change (tab switching)
+     */
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // Tab became hidden - pause heartbeat
+        console.log('Tab hidden - pausing session heartbeat');
+        stopSessionHeartbeat();
+      } else {
+        // Tab became visible - resume heartbeat if game is active
+        if (isGameActive && gameSessionId) {
+          console.log('Tab visible - resuming session heartbeat');
+          startSessionHeartbeat();
+          // Send immediate keep_alive
+          keepSessionAlive();
+        }
+      }
+    });
+
+    // ==================== GAME INITIALIZATION ====================
+
+    /**
+     * Create game session
+     */
     async function createGameSession() {
       const sessionToken = localStorage.getItem('sessionToken');
       
@@ -192,6 +322,85 @@
         return null;
       }
     }
+
+    /**
+     * Initialize game with session management
+     */
+    async function initializeGame() {
+      if (!checkAuthentication()) {
+        return;
+      }
+
+      try {
+        status.textContent = 'Creating game session...';
+
+        // Create game session before loading game modules
+        const gameSession = await createGameSession();
+        
+        if (!gameSession) {
+          status.textContent = 'Failed to create game session. Please try again.';
+          return;
+        }
+
+        // Store game session data
+        gameSessionId = gameSession.session_id;
+        gameSessionToken = gameSession.session_token;
+        localStorage.setItem('gameSessionId', gameSessionId);
+        localStorage.setItem('gameSessionToken', gameSessionToken);
+        
+        // Mark game as active and start heartbeat
+        isGameActive = true;
+        startSessionHeartbeat();
+        
+        status.textContent = 'Loading game modules...';
+
+        // Check if main.js exists before trying to import
+        const mainJsPath = '../main.js';
+        console.log('Attempting to import:', mainJsPath);
+
+        // Try to import the main game module
+        const gameModule = await import(mainJsPath);
+        console.log('Game module loaded:', gameModule);
+
+        status.textContent = 'Initializing game...';
+        gameCanvas.style.display = 'block';
+        
+        // Since main.js already calls main() automatically, we don't need to call it again
+        // The game should start automatically when the module is imported
+        status.style.display = 'none'; // Hide status once game is running
+
+        console.log('Game initialized with session management');
+        console.log(`Game Session ID: ${gameSessionId}`);
+        console.log('Session heartbeat active every 30 seconds');
+
+      } catch (error) {
+        console.error('Detailed game loading error:', error);
+        status.textContent = `Error loading game: ${error.message}`;
+        status.innerHTML += `<br><small>Check console for more details</small>`;
+        
+        // Show some debugging info
+        const currentPath = window.location.href;
+        const expectedMainPath = new URL('../main.js', currentPath).href;
+        console.log('Current page URL:', currentPath);
+        console.log('Expected main.js URL:', expectedMainPath);
+        
+        // Stop heartbeat if game failed to load
+        isGameActive = false;
+        stopSessionHeartbeat();
+        await closeGameSession();
+      }
+    }
+
+    // ==================== EXPOSE GLOBAL FUNCTIONS ====================
+    
+    // Make session management functions available globally for game modules
+    window.gameSessionManager = {
+      keepAlive: keepSessionAlive,
+      close: closeGameSession,
+      gameOver: window.handleGameOver,
+      isActive: () => isGameActive,
+      getSessionId: () => gameSessionId
+    };
 
     // Start initialization
     initializeGame();

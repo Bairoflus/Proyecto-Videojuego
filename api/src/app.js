@@ -79,6 +79,7 @@ const startServer = async () => {
       console.log(`   POST /api/auth/login      - Login`);
       console.log(`   POST /api/auth/logout     - Logout`);
       console.log(`   POST /api/sessions        - Create game session`);
+      console.log(`   PUT  /api/sessions/:id    - Update session (keep_alive/close)`);
     });
   } catch (error) {
     console.error('Error starting server:', error);

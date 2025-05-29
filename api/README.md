@@ -311,6 +311,65 @@ Authorization: Bearer {auth_session_token}
 
 **Middleware Chain**: `extractBearerToken → validateActiveSession → validateBody → createSession`
 
+#### PUT /api/sessions/:session_id
+Update an existing session (keep_alive or close action).
+
+**Headers Required:**
+```
+Authorization: Bearer {auth_session_token}
+```
+
+**Path Parameters:**
+- `session_id` (integer): Valid session ID that belongs to the authenticated user
+
+**Request Body:**
+```json
+{
+  "action": "keep_alive" | "close"
+}
+```
+
+**Response (200) - Success:**
+```json
+{
+  "session_id": 34,
+  "last_active": "2025-05-29T18:52:11.000Z",
+  "status": "active"
+}
+```
+
+**Actions:**
+- **`keep_alive`**: Updates `last_active` timestamp to current time and ensures status is 'active'
+- **`close`**: Sets `closed_at` timestamp and changes status to 'closed'
+
+**Security Features:**
+- ✅ **Session Ownership Validation**: Only the session owner can update their sessions
+- ✅ **Bearer Token Authentication**: Requires valid authentication session token
+- ✅ **Parameter Validation**: Session ID must be positive integer
+- ✅ **Action Validation**: Only accepts 'keep_alive' or 'close' actions
+
+**Error Responses:**
+- **400**: Invalid action, invalid session ID, or session already closed
+- **401**: Missing/invalid Authorization header or not session owner
+- **404**: Session not found
+
+**Example Usage:**
+```bash
+# Keep session active
+curl -X PUT http://localhost:3002/api/sessions/34 \
+  -H "Authorization: Bearer your-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"keep_alive"}'
+
+# Close session
+curl -X PUT http://localhost:3002/api/sessions/34 \
+  -H "Authorization: Bearer your-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"close"}'
+```
+
+**Middleware Chain**: `extractBearerToken → validateActiveSession → validateParams → validateBody → updateSession`
+
 ## Database Schema
 
 ### sessions table
@@ -448,6 +507,18 @@ curl -X POST http://localhost:3002/api/sessions \
   -H "Authorization: Bearer YOUR_TOKEN_HERE" \
   -H "Content-Type: application/json" \
   -d '{"device_info":"Test Device - cURL"}'
+
+# Update session - keep alive
+curl -X PUT http://localhost:3002/api/sessions/SESSION_ID \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"keep_alive"}'
+
+# Update session - close
+curl -X PUT http://localhost:3002/api/sessions/SESSION_ID \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"close"}'
 
 # Logout
 curl -X POST http://localhost:3002/api/auth/logout \

@@ -219,23 +219,6 @@ export class User {
   }
 
   /**
-   * Logout (delete token)
-   * @param {string} sessionToken - Session token
-   * @returns {Promise<boolean>} True if logged out successfully
-   */
-  static async logout(sessionToken) {
-    try {
-      const query = 'DELETE FROM sessions WHERE session_token = ?';
-      const result = await executeQuery(query, [sessionToken]);
-      
-      return result.affectedRows > 0;
-    } catch (error) {
-      console.error('Error logging out:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Find active session by token
    * @param {string} sessionToken - Session token
    * @returns {Promise<Object|null>} Session data if active, null otherwise
@@ -448,5 +431,108 @@ export class User {
       email: this.email,
       created_at: this.created_at
     };
+  }
+
+  /**
+   * Find session by ID
+   * @param {number} sessionId - Session ID
+   * @returns {Promise<Object|null>} Session data if found, null otherwise
+   */
+  static async findSessionById(sessionId) {
+    try {
+      const query = `
+        SELECT session_id, user_id, session_token, started_at, last_active, closed_at, device_info, status
+        FROM sessions 
+        WHERE session_id = ?
+      `;
+      
+      const results = await executeQuery(query, [sessionId]);
+      
+      if (results.length === 0) {
+        return null;
+      }
+      
+      return results[0];
+    } catch (error) {
+      console.error('Error finding session by ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if user owns the session
+   * @param {number} userId - User ID
+   * @param {number} sessionId - Session ID
+   * @returns {Promise<boolean>} True if user owns the session
+   */
+  static async isSessionOwner(userId, sessionId) {
+    try {
+      const session = await User.findSessionById(sessionId);
+      
+      if (!session) {
+        return false;
+      }
+      
+      return session.user_id === userId;
+    } catch (error) {
+      console.error('Error checking session ownership:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update session activity (keep_alive action)
+   * @param {number} sessionId - Session ID
+   * @returns {Promise<Object|null>} Updated session data or null if not found
+   */
+  static async updateSessionActivity(sessionId) {
+    try {
+      // Update last_active timestamp and ensure status is active
+      const updateQuery = `
+        UPDATE sessions 
+        SET last_active = NOW(), status = 'active'
+        WHERE session_id = ? AND closed_at IS NULL
+      `;
+      
+      const result = await executeQuery(updateQuery, [sessionId]);
+      
+      if (result.affectedRows === 0) {
+        return null; // Session not found or already closed
+      }
+      
+      // Return updated session data
+      return await User.findSessionById(sessionId);
+    } catch (error) {
+      console.error('Error updating session activity:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Close session by ID (close action)
+   * @param {number} sessionId - Session ID
+   * @returns {Promise<Object|null>} Updated session data or null if not found
+   */
+  static async closeSessionById(sessionId) {
+    try {
+      // Close session by setting closed_at and status
+      const closeQuery = `
+        UPDATE sessions 
+        SET closed_at = NOW(), status = 'closed'
+        WHERE session_id = ? AND closed_at IS NULL
+      `;
+      
+      const result = await executeQuery(closeQuery, [sessionId]);
+      
+      if (result.affectedRows === 0) {
+        return null; // Session not found or already closed
+      }
+      
+      // Return updated session data
+      return await User.findSessionById(sessionId);
+    } catch (error) {
+      console.error('Error closing session by ID:', error);
+      throw error;
+    }
   }
 } 
