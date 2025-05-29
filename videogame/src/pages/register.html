@@ -10,18 +10,24 @@
 <body>
   <div class="page-container">
     <h2>Create Account</h2>
-    <form>
-      <input type="text" placeholder="Username" required />
-      <input type="email" placeholder="Email" required />
-      <input type="password" placeholder="Password" required />
-      <input type="password" placeholder="Confirm Password" required />
-      <button type="submit">Create Account</button>
+    <form id="registerForm">
+      <input type="text" id="username" placeholder="Username" required />
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="password" id="password" placeholder="Password" required />
+      <input type="password" id="confirmPassword" placeholder="Confirm Password" required />
+      <button type="submit" id="registerButton">Create Account</button>
     </form>
+
+    <div id="messageContainer" class="message-container"></div>
 
     <div class="form-footer">
       <p>Already have an account? <a href="login.html">Log in</a></p>
       <a href="landing.html" class="back-home">← Back to Home</a>
     </div>
+  </div>
+
+  <!-- Incluir el JavaScript para manejar el formulario -->
+  <script type="module" src="./register.js"></script>
 </body>
 
 </html>

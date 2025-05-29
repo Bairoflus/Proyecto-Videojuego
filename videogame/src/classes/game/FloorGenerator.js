@@ -7,6 +7,8 @@ import { COMBAT_ROOMS, SHOP_ROOM_LAYOUT, BOSS_ROOM_LAYOUT } from '../rooms/comba
 import { Room } from '../rooms/Room.js';
 import { log } from '../../utils/Logger.js';
 import { FLOOR_CONSTANTS } from '../../constants/gameConstants.js';
+import { DragonBoss } from '../enemies/floor1/DragonBoss.js';
+import { Vec } from '../../utils/Vec.js';
 
 export class FloorGenerator {
     constructor() {
@@ -25,28 +27,28 @@ export class FloorGenerator {
     generateFloor() {
         // Select random combat rooms using constants
         const combatRoomLayouts = this.selectRandomCombatRooms(FLOOR_CONSTANTS.ROOMS_PER_FLOOR.COMBAT);
-        
+
         // Create floor layout: 4 combat rooms + shop + boss
         this.currentFloor = [
             ...combatRoomLayouts,
             SHOP_ROOM_LAYOUT,
             BOSS_ROOM_LAYOUT
         ];
-        
+
         // Track room types
         this.roomTypes = [
             ...Array(FLOOR_CONSTANTS.ROOMS_PER_FLOOR.COMBAT).fill('combat'),
             'shop',
             'boss'
         ];
-        
+
         // Reset room states and visited rooms for new floor
         this.roomStates = [];
         this.visitedRooms = new Set();
-        
+
         // Reset room index to start of new floor
         this.currentRoomIndex = 0;
-        
+
         log.info("Generated new floor", this.floorCount, "with", this.currentFloor.length, "rooms");
         log.debug("Room states and visit history cleared for new floor");
     }
@@ -55,14 +57,14 @@ export class FloorGenerator {
     selectRandomCombatRooms(n) {
         const rooms = [...COMBAT_ROOMS];
         const selected = [];
-        
+
         for (let i = 0; i < n; i++) {
             if (rooms.length === 0) break;
             const randomIndex = Math.floor(Math.random() * rooms.length);
             selected.push(rooms[randomIndex]);
             rooms.splice(randomIndex, 1);
         }
-        
+
         return selected;
     }
 
@@ -74,42 +76,48 @@ export class FloorGenerator {
         }
         return this.currentFloor[this.currentRoomIndex];
     }
-    
+
     // Creates a Room instance for the current room (with persistence)
     getCurrentRoom() {
         const layout = this.getCurrentRoomLayout();
         if (!layout) return null;
-        
+
         const roomIndex = this.currentRoomIndex;
         const roomType = this.roomTypes[roomIndex]; // Get the room type
         const isCombatRoom = roomType === 'combat';
-        
+
         log.info(`Getting room ${roomIndex} (${roomType})`);
-        
+
         // Check if we already have a saved state for this room
         if (this.roomStates[roomIndex]) {
             log.debug(`Loading saved state for room ${roomIndex}`);
             return this.roomStates[roomIndex];
         }
-        
+
+
         // Create new room instance with room type
         const room = new Room(layout, isCombatRoom, roomType);
-        
+
+        if (roomType === 'boss') {
+            const boss = new DragonBoss(new Vec(380, 75));
+            room.objects.enemies.push(boss);
+        }
+
         // Save the room state
         this.roomStates[roomIndex] = room;
-        
+
         // Mark room as visited
         this.visitedRooms.add(roomIndex);
-        
+
         if (isCombatRoom) {
             log.info(`Created new combat room ${roomIndex} with ${room.objects.enemies.length} enemies`);
         } else {
             log.info(`Created new ${roomType} room ${roomIndex}`);
         }
-        
+
         return room;
     }
-    
+
     // Gets the type of current room
     getCurrentRoomType() {
         if (this.currentRoomIndex >= this.roomTypes.length) {
@@ -164,7 +172,7 @@ export class FloorGenerator {
             this.floorCount++;
             log.info("Advanced to floor", this.floorCount);
         }
-        
+
         // Generate new floor and reset room index
         this.generateFloor();
     }
@@ -193,12 +201,12 @@ export class FloorGenerator {
     hasBeenVisited(roomIndex = this.currentRoomIndex) {
         return this.visitedRooms.has(roomIndex);
     }
-    
+
     // Get saved room state if it exists
     getSavedRoomState(roomIndex = this.currentRoomIndex) {
         return this.roomStates[roomIndex] || null;
     }
-    
+
     // Update room state (call this whenever enemies die or room changes)
     updateRoomState(roomIndex = this.currentRoomIndex, room) {
         if (room) {
@@ -207,7 +215,7 @@ export class FloorGenerator {
             log.verbose(`Updated room ${roomIndex} state`);
         }
     }
-    
+
     // Increments run count on player death
     incrementRunCount() {
         this.runCount++;
@@ -215,33 +223,33 @@ export class FloorGenerator {
         localStorage.setItem('gameRunCount', this.runCount.toString());
         log.info(`Player died. Starting run ${this.runCount}`);
     }
-    
+
     // DEATH RESET: Complete game state reset
     resetToInitialState() {
         log.info("=== COMPLETE FLOOR GENERATOR RESET ===");
-        
+
         // Increment run count on death
         this.incrementRunCount();
-        
+
         // Reset all counters to initial state EXCEPT runCount
         this.floorCount = 1;
         this.currentRoomIndex = 0;
-        
+
         // Clear all stored states
         this.roomStates = [];
         this.visitedRooms = new Set();
         this.currentFloor = [];
         this.roomTypes = [];
-        
+
         log.debug("Cleared all room states and visit history");
         log.debug(`Reset to: Run ${this.runCount}, Floor 1, Room 1`);
-        
+
         // Generate fresh floor
         this.generateFloor();
-        
+
         log.info("Floor generator reset to initial state (run count preserved)");
     }
-    
+
     // Get initial game state info
     getInitialStateInfo() {
         return {
