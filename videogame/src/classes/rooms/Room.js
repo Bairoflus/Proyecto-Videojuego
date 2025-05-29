@@ -82,7 +82,7 @@ export class Room {
               8
             );
             coin.setSprite(
-              "../assets/sprites/coin_gold.png",
+              "./assets/sprites/coin_gold.png",
               new Rect(0, 0, 32, 32)
             );
             coin.setAnimation(0, 7, true, variables.animationDelay);
@@ -375,10 +375,10 @@ export class Room {
 
     return new Vec(
       variables.canvasWidth -
-      this.transitionZone -
-      this.minSafeDistance -
-      playerWidth +
-      hitboxOffset,
+        this.transitionZone -
+        this.minSafeDistance -
+        playerWidth +
+        hitboxOffset,
       variables.canvasHeight / 2 - 32
     );
   }
@@ -478,11 +478,11 @@ export class Room {
 
     while (attempts < ROOM_CONSTANTS.MAX_PLACEMENT_ATTEMPTS) {
       const position = this.generateRandomPosition(isCommon, safeZone);
-
+      
       if (position && this.isValidEnemyPosition(position)) {
         return position;
       }
-
+      
       attempts++;
     }
 
@@ -531,37 +531,18 @@ export class Room {
 
   // Checks if the room can transition (no enemies alive)
   canTransition() {
-    // Boss room: locked until boss (and any adds) are dead
-    if (this.roomType === 'boss') {
-      const totalEnemies = this.objects.enemies.length;
-      const aliveEnemies = this.objects.enemies.filter(e => e.state !== 'dead');
-      const deadEnemies = totalEnemies - aliveEnemies.length;
-      const canTransition = aliveEnemies.length === 0;
-
-      if (canTransition) {
-        log.info(
-          `Boss defeated! (${deadEnemies}/${totalEnemies} dead) — boss room unlocked.`
-        );
-      } else {
-        const aliveTypes = aliveEnemies.map(e => e.type).join(', ');
-        log.debug(
-          `Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`
-        );
-      }
-
-      return canTransition;
-    }
-
-    // Non-combat rooms always allow transition
     if (!this.isCombatRoom) {
       log.debug("Transition allowed: Non-combat room");
-      return true;
+      return true; // Non-combat rooms can always transition
     }
 
-    // Regular combat rooms: must clear all enemies
+    // Combat rooms require all enemies to be defeated
     const totalEnemies = this.objects.enemies.length;
-    const aliveEnemies = this.objects.enemies.filter(e => e.state !== 'dead');
+    const aliveEnemies = this.objects.enemies.filter(
+      (enemy) => enemy.state !== "dead"
+    );
     const deadEnemies = totalEnemies - aliveEnemies.length;
+
     const canTransition = aliveEnemies.length === 0;
 
     if (canTransition) {
@@ -569,9 +550,9 @@ export class Room {
         `Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
       );
     } else {
-      const aliveTypes = aliveEnemies.map(e => e.type).join(', ');
+      const aliveGoblins = aliveEnemies.map((e) => e.type).join(", ");
       log.debug(
-        `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
+        `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveGoblins})`
       );
     }
 

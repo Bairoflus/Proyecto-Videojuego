@@ -5,7 +5,6 @@ import { Player } from "../entities/Player.js";
 import { variables, keyDirections } from "../../config.js";
 import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
-import { Boss } from "../entities/Boss.js";
 
 export class Game {
   constructor() {
@@ -57,11 +56,6 @@ export class Game {
         this.player
       );
     }
-    if (this.floorGenerator.isBossRoom()) {
-      const room = this.floorGenerator.getCurrentRoom();
-      const boss = room.objects.enemies.find(e => e instanceof Boss);
-      drawBossHealthBar(ctx, boss);
-    }
   }
 
   drawUI(ctx) {
@@ -85,10 +79,18 @@ export class Game {
     // Draw text with outline for better visibility in bottom-right
     ctx.strokeStyle = "black";
     ctx.lineWidth = 3;
-    ctx.strokeText(runFloorRoomText, variables.canvasWidth - 10, variables.canvasHeight - 10);
+    ctx.strokeText(
+      runFloorRoomText,
+      variables.canvasWidth - 10,
+      variables.canvasHeight - 10
+    );
 
     ctx.fillStyle = "white";
-    ctx.fillText(runFloorRoomText, variables.canvasWidth - 10, variables.canvasHeight - 10);
+    ctx.fillText(
+      runFloorRoomText,
+      variables.canvasWidth - 10,
+      variables.canvasHeight - 10
+    );
 
     // Reset text alignment for other UI elements
     ctx.textAlign = "left";
@@ -296,34 +298,4 @@ export class Game {
       }
     });
   }
-}
-export function drawBossHealthBar(ctx, boss) {
-  if (!boss || boss.health <= 0) return;
-
-  const barWidth = 300;
-  const barHeight = 12;
-  const x = (variables.canvasWidth - barWidth) / 2;
-  const y = (variables.canvasHeight - barHeight) - 20;
-
-  const pct = boss.health / boss.maxHealth;
-
-  // fondo rojo
-  ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
-  ctx.fillRect(x, y, barWidth, barHeight);
-
-  // vida actual verde
-  ctx.fillStyle = "rgba(0, 255, 0, 0.8)";
-  ctx.fillRect(x, y, barWidth * pct, barHeight);
-
-  // borde blanco
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, barWidth, barHeight);
-
-  // nombre del boss
-  ctx.fillStyle = "white";
-  ctx.font = "16px Arial";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
-  ctx.fillText("DRAGON BOSS", x + barWidth / 2, y - 6);
 }

@@ -8,10 +8,10 @@ export const HITBOX_SCALE = {
 };
 
 export const variables = {
-  // Canvas dimensions
+  // Dimensiones del canvas
   canvasWidth: 800, // 25 * 32
   canvasHeight: 608, // 19 * 32
-  // Animation delay in milliseconds
+  // Retardo de animación en milisegundos
   animationDelay: 100,
   playerSpeed: 0.3,
   ctx: null,
