@@ -102,5 +102,24 @@ export async function createRun(userId) {
     });
 }
 
+/**
+ * Save run state
+ * @param {string|number} runId - Run ID to save state for
+ * @param {Object} stateData - State data to save
+ * @param {number} stateData.userId - User ID
+ * @param {number} stateData.sessionId - Session ID 
+ * @param {number} stateData.roomId - Room ID
+ * @param {number} stateData.currentHp - Current HP
+ * @param {number} stateData.currentStamina - Current stamina
+ * @param {number} stateData.gold - Gold amount
+ * @returns {Promise<Object>} Save data with saveId
+ */
+export async function saveRunState(runId, stateData) {
+    return apiRequest(`/runs/${runId}/save-state`, {
+        method: 'POST',
+        body: JSON.stringify(stateData)
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 

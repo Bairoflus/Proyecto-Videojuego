@@ -295,6 +295,99 @@ app.post('/api/runs', async (req, res) => {
     }
 });
 
+// POST /api/runs/:runId/save-state
+app.post('/api/runs/:runId/save-state', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get runId from URL parameters
+        const { runId } = req.params;
+        
+        // Get data from request body
+        const { userId, sessionId, roomId, currentHp, currentStamina, gold } = req.body;
+        
+        // Basic validation
+        if (!runId) {
+            return res.status(400).send('Missing runId parameter');
+        }
+        
+        if (!userId || !sessionId || roomId === undefined || currentHp === undefined || currentStamina === undefined || gold === undefined) {
+            return res.status(400).send('Missing required fields: userId, sessionId, roomId, currentHp, currentStamina, gold');
+        }
+        
+        // Type validation - currentHp and currentStamina are SMALLINT, others are INT
+        if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(sessionId)) || !Number.isInteger(Number(roomId)) || 
+            !Number.isInteger(Number(currentHp)) || !Number.isInteger(Number(currentStamina)) || 
+            !Number.isInteger(Number(gold))) {
+            return res.status(400).send('Invalid field types: userId, sessionId, roomId, currentHp, currentStamina, gold must be integers');
+        }
+        
+        // Validate SMALLINT ranges for HP and stamina (0-32767)
+        if (currentHp < 0 || currentHp > 32767 || currentStamina < 0 || currentStamina > 32767) {
+            return res.status(400).send('Invalid range: currentHp and currentStamina must be between 0 and 32767');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Verify that runId exists and is active (ended_at is NULL and completed is FALSE)
+        const [runs] = await connection.execute(
+            'SELECT run_id, completed FROM run_history WHERE run_id = ? AND ended_at IS NULL AND completed = FALSE',
+            [runId]
+        );
+        
+        if (runs.length === 0) {
+            return res.status(404).send('Run not found or run is not active');
+        }
+        
+        // Verify that roomId exists in rooms table
+        const [rooms] = await connection.execute(
+            'SELECT room_id FROM rooms WHERE room_id = ?',
+            [roomId]
+        );
+        
+        if (rooms.length === 0) {
+            return res.status(400).send('Invalid roomId: room does not exist');
+        }
+        
+        // Verify that sessionId exists in sessions table
+        const [sessions] = await connection.execute(
+            'SELECT session_id FROM sessions WHERE session_id = ?',
+            [sessionId]
+        );
+        
+        if (sessions.length === 0) {
+            return res.status(400).send('Invalid sessionId: session does not exist');
+        }
+        
+        // Insert new save state - saved_at has DEFAULT CURRENT_TIMESTAMP
+        const [result] = await connection.execute(
+            'INSERT INTO save_states (user_id, session_id, run_id, room_id, current_hp, current_stamina, gold) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [userId, sessionId, runId, roomId, currentHp, currentStamina, gold]
+        );
+        
+        // Return success response
+        res.status(201).json({
+            saveId: result.insertId
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
