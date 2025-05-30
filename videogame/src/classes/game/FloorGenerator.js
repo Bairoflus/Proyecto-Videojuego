@@ -9,6 +9,7 @@ import { log } from '../../utils/Logger.js';
 import { FLOOR_CONSTANTS } from '../../constants/gameConstants.js';
 import { DragonBoss } from '../enemies/floor1/DragonBoss.js';
 import { Vec } from '../../utils/Vec.js';
+import { createRun } from '../../utils/api.js';
 
 export class FloorGenerator {
     constructor() {
@@ -161,8 +162,23 @@ export class FloorGenerator {
     }
 
     // Advances to next floor
-    nextFloor() {
+    async nextFloor() {
         if (this.floorCount >= FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN) {
+            // Player completed all floors successfully! Create run entry
+            try {
+                const userId = localStorage.getItem('currentUserId');
+                
+                if (userId) {
+                    console.log("Creating run entry for successful completion...");
+                    const runData = await createRun(userId);
+                    console.log("Run created for successful completion:", runData);
+                } else {
+                    console.log("No userId found - playing in test mode");
+                }
+            } catch (error) {
+                console.error("Failed to create run on successful completion:", error);
+            }
+
             // If we're at the max floor, increment run and reset floor
             this.runCount++;
             this.floorCount = 1;

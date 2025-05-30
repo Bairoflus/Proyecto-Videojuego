@@ -138,8 +138,9 @@ app.post('/api/auth/login', async (req, res) => {
             [sessionResult.insertId]
         );
         
-        // Return success response
+        // Return success response with userId
         res.status(200).json({
+            userId: user.user_id,
             sessionToken: sessions[0].session_token
         });
         
@@ -243,7 +244,58 @@ app.get('/api/users/:userId/stats', async (req, res) => {
     }
 });
 
+// POST /api/runs
+app.post('/api/runs', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get userId from request body
+        const { userId } = req.body;
+        
+        // Basic validation
+        if (!userId) {
+            return res.status(400).send('Missing userId');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Insert new run into run_history
+        const [result] = await connection.execute(
+            'INSERT INTO run_history (user_id) VALUES (?)',
+            [userId]
+        );
+        
+        // Get the run data with started_at timestamp
+        const [runs] = await connection.execute(
+            'SELECT run_id, started_at FROM run_history WHERE run_id = ?',
+            [result.insertId]
+        );
+        
+        // Return success response
+        res.status(201).json({
+            runId: runs[0].run_id,
+            startedAt: runs[0].started_at
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-}); 
+});

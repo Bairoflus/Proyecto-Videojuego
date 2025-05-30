@@ -1,7 +1,7 @@
 /**
  * Login page functionality
  */
-import { loginUser } from '../../utils/api.js';
+import { loginUser, createRun } from '../../utils/api.js';
 
 // Wait for DOM to load
 document.addEventListener('DOMContentLoaded', () => {
@@ -30,19 +30,33 @@ document.addEventListener('DOMContentLoaded', () => {
             // Call API to login user
             const result = await loginUser(email, password);
             
-            // Store session token
+            // Store session token and userId
             localStorage.setItem('sessionToken', result.sessionToken);
+            localStorage.setItem('currentUserId', result.userId);
+            
+            // Create a new run for the login session
+            try {
+                console.log("Creating run for new login session...");
+                const runData = await createRun(result.userId);
+                console.log("Run created on login:", runData);
+                
+                // Store current run ID for potential future use
+                localStorage.setItem('currentRunId', runData.runId);
+            } catch (runError) {
+                console.error("Failed to create run on login:", runError);
+                // Don't block login if run creation fails
+            }
             
             // Show success message
             if (successMessage) {
-                successMessage.textContent = 'Login successful! Redirecting to game...';
+                successMessage.textContent = 'Login successful! Starting new game...';
                 successMessage.style.display = 'block';
             }
             
-            // Redirect to game after 1 second
+            // Redirect to game after 1.5 seconds
             setTimeout(() => {
                 window.location.href = 'game.html';
-            }, 1000);
+            }, 1500);
             
         } catch (error) {
             // Show error message
