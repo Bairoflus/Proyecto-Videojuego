@@ -1,7 +1,7 @@
 # API - Project Shattered Timeline
 
 ## Description
-REST API for the Project Shattered Timeline video game. This API handles authentication operations and user management.
+REST API for the Project Shattered Timeline video game. This API handles authentication operations, user management, and player statistics.
 
 ## Requirements
 - Node.js
@@ -128,6 +128,83 @@ Invalid credentials
 Database error
 ```
 
+### POST /api/auth/logout
+Invalidates a user session.
+
+**URL**: `/api/auth/logout`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "sessionToken": "uuid-string"
+}
+```
+
+**Success Response** (204 No Content):
+```
+(empty response body)
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing session token:
+```
+Missing sessionToken
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+### GET /api/users/:userId/stats
+Retrieves player statistics for a specific user.
+
+**URL**: `/api/users/{userId}/stats`
+
+**Method**: `GET`
+
+**Parameters**:
+- `userId` (path parameter) - The ID of the user whose stats to retrieve
+
+**Example URL**:
+```
+/api/users/123/stats
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "user_id": 123,
+  "games_played": 15,
+  "wins": 8,
+  "losses": 7,
+  "total_score": 45600,
+  "highest_score": 8900,
+  "total_playtime_minutes": 240,
+  "last_played_at": "2024-01-15 14:30:00"
+}
+```
+
+**Error Responses**:
+
+- **404 Not Found** - No stats found for user:
+```
+Stats not found
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -143,12 +220,32 @@ Database error
 - **Passwords are hashed with bcrypt before storage**
 
 ## Database Table Structure
-The `users` table must have the following columns according to the database schema:
+
+### Users Table
+The `users` table must have the following columns:
 - `user_id` (INT, AUTO_INCREMENT, PRIMARY KEY)
 - `username` (VARCHAR(30), UNIQUE)
 - `email` (VARCHAR(100), UNIQUE)
 - `password_hash` (CHAR(60)) - Stores the bcrypt hash
 - `created_at` (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+
+### Sessions Table
+The `sessions` table must have the following columns:
+- `session_id` (INT, AUTO_INCREMENT, PRIMARY KEY)
+- `user_id` (INT, FOREIGN KEY)
+- `session_token` (VARCHAR(36), UNIQUE)
+- `created_at` (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+
+### Player Stats Table
+The `player_stats` table must have the following columns:
+- `user_id` (INT, PRIMARY KEY, FOREIGN KEY)
+- `games_played` (INT, DEFAULT 0)
+- `wins` (INT, DEFAULT 0)
+- `losses` (INT, DEFAULT 0)
+- `total_score` (BIGINT, DEFAULT 0)
+- `highest_score` (INT, DEFAULT 0)
+- `total_playtime_minutes` (INT, DEFAULT 0)
+- `last_played_at` (DATETIME, NULL)
 
 ## Dependencies
 - `express`: ^4.18.2
@@ -159,10 +256,12 @@ The `users` table must have the following columns according to the database sche
 
 The API is ready to be consumed by the frontend. To integrate with your frontend application:
 
-1. **Make HTTP POST requests to**:
+1. **Make HTTP requests to**:
    ```
-   http://localhost:3000/api/auth/register
-   http://localhost:3000/api/auth/login
+   POST http://localhost:3000/api/auth/register
+   POST http://localhost:3000/api/auth/login  
+   POST http://localhost:3000/api/auth/logout
+   GET  http://localhost:3000/api/users/{userId}/stats
    ```
 
 2. **Send data in JSON format**:
@@ -181,30 +280,44 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
      "password": "password"
    }
    ```
+   - For logout:
+   ```json
+   {
+     "sessionToken": "uuid-string"
+   }
+   ```
+   - For stats: No body required, userId in URL path
 
 3. **Handle responses**:
    - Registration Success (201): User created, receives `userId`
    - Login Success (200): Session created, receives `sessionToken`
-   - Error (400): Missing fields
-   - Error (404): Invalid credentials (login only)
+   - Logout Success (204): Session invalidated, empty response
+   - Stats Success (200): Player stats data as JSON
+   - Error (400): Missing fields or parameters
+   - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)
    - Error (500): Server error
 
 ### Frontend Integration Example
 
 The frontend integration is implemented in:
-- `videogame/src/pages/register.js` - Registration form handling
-- `videogame/src/pages/login.js` - Login form handling
+- `videogame/src/pages/auth/register.js` - Registration form handling
+- `videogame/src/pages/auth/login.js` - Login form handling
+- `videogame/src/pages/html/game.html` - Logout functionality
+- `videogame/src/pages/html/stats.html` - Player statistics display
 - `videogame/src/utils/api.js` - API communication layer
 
-Both pages automatically:
+All pages automatically:
 - Validate input fields
 - Show error/success messages
 - Handle loading states
-- Redirect on success (register → login, login → game)
+- Redirect on success
+- Session token is stored in localStorage
 
-To use the authentication pages:
+To use the application:
 1. Ensure the API server is running (`node app.js`)
-2. Open `register.html` to create a new account
-3. Open `login.html` to authenticate
-4. Session token is stored in localStorage 
+2. Open `landing.html` to access the main menu
+3. Use `register.html` to create a new account
+4. Use `login.html` to authenticate
+5. Use `stats.html` to view player statistics
+6. Use `game.html` for the main game with logout functionality 
