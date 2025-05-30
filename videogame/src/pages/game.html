@@ -194,6 +194,56 @@
     }
 
     /**
+     * Equip weapons for a run
+     * @param {number} runId - Run ID to equip weapons for
+     * @param {Array} weaponsData - Array of {weapon_slot, weapon_id}
+     * @returns {Promise<Object|null>} Equipped weapons data or null if failed
+     */
+    async function equipWeapons(runId, weaponsData) {
+      const sessionToken = localStorage.getItem('sessionToken');
+      
+      if (!sessionToken) {
+        console.error('No session token available for weapon equipment');
+        return null;
+      }
+
+      if (!runId) {
+        console.error('No run ID provided for weapon equipment');
+        return null;
+      }
+
+      if (!weaponsData || !Array.isArray(weaponsData) || weaponsData.length === 0) {
+        console.error('Invalid weapons data provided');
+        return null;
+      }
+
+      try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WEAPONS}/${runId}/weapons`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(weaponsData)
+        });
+
+        if (response.status === 200) {
+          const weaponData = await response.json();
+          console.log('Weapons equipped successfully:', weaponData);
+          return weaponData;
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to equip weapons:', errorData);
+          return null;
+        }
+        
+      } catch (error) {
+        console.error('Error equipping weapons:', error);
+        return null;
+      }
+    }
+
+    /**
      * Enhanced logout function that closes both auth and game sessions
      */
     window.handleLogout = async function() {
@@ -463,6 +513,7 @@
       close: closeGameSession,
       gameOver: window.handleGameOver,
       createRun: createGameRun,
+      equipWeapons: equipWeapons,
       isActive: () => isGameActive,
       getSessionId: () => gameSessionId,
       getCurrentRunId: () => localStorage.getItem('currentRunId')

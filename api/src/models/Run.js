@@ -109,6 +109,87 @@ export class Run {
   }
 
   /**
+   * Verify if run exists and belongs to user
+   * @param {number} runId - Run ID
+   * @param {number} userId - User ID
+   * @returns {Promise<boolean>} True if run exists and belongs to user
+   */
+  static async verifyRunOwnership(runId, userId) {
+    try {
+      const query = 'SELECT run_id FROM run_history WHERE run_id = ? AND user_id = ?';
+      const results = await executeQuery(query, [runId, userId]);
+      return results.length > 0;
+    } catch (error) {
+      console.error('Error verifying run ownership:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Equip weapons for a run (upsert into equipped_weapons table)
+   * @param {number} runId - Run ID
+   * @param {number} userId - User ID
+   * @param {Array} weaponsData - Array of {weapon_slot, weapon_id}
+   * @returns {Promise<Array>} Array of equipped weapons
+   */
+  static async equipWeapons(runId, userId, weaponsData) {
+    try {
+      // First delete existing equipped weapons for this run and user
+      const deleteQuery = 'DELETE FROM equipped_weapons WHERE run_id = ? AND user_id = ?';
+      await executeQuery(deleteQuery, [runId, userId]);
+      
+      // Insert new weapon equipment
+      const equipped = [];
+      for (const weaponData of weaponsData) {
+        const insertQuery = `
+          INSERT INTO equipped_weapons (run_id, user_id, weapon_slot, weapon_id)
+          VALUES (?, ?, ?, ?)
+        `;
+        
+        await executeQuery(insertQuery, [
+          runId, 
+          userId, 
+          weaponData.weapon_slot, 
+          weaponData.weapon_id
+        ]);
+        
+        equipped.push({
+          weapon_slot: weaponData.weapon_slot,
+          weapon_id: weaponData.weapon_id
+        });
+      }
+      
+      return equipped;
+    } catch (error) {
+      console.error('Error equipping weapons:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get equipped weapons for a run
+   * @param {number} runId - Run ID
+   * @param {number} userId - User ID
+   * @returns {Promise<Array>} Array of equipped weapons
+   */
+  static async getEquippedWeapons(runId, userId) {
+    try {
+      const query = `
+        SELECT weapon_slot, weapon_id 
+        FROM equipped_weapons 
+        WHERE run_id = ? AND user_id = ?
+        ORDER BY weapon_slot
+      `;
+      
+      const results = await executeQuery(query, [runId, userId]);
+      return results;
+    } catch (error) {
+      console.error('Error getting equipped weapons:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Convert to JSON object
    * @returns {Object} Run data
    */

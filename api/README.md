@@ -429,6 +429,62 @@ curl -X POST http://localhost:3002/api/runs \
 
 **Middleware Chain**: `extractBearerToken → validateActiveSession → validateBody → createRun`
 
+#### POST /api/runs/:run_id/weapons
+Equip weapons for a run - Associate selected weapons with a specific run.
+
+**Headers Required:**
+```
+Authorization: Bearer {auth_session_token}
+```
+
+**Request Body:**
+```json
+[
+  { "weapon_slot": "melee", "weapon_id": 1 },
+  { "weapon_slot": "rango", "weapon_id": 3 }
+]
+```
+
+**Response (200):**
+```json
+{
+  "run_id": 5,
+  "equipped": [
+    { "weapon_slot": "melee", "weapon_id": 1 },
+    { "weapon_slot": "rango", "weapon_id": 3 }
+  ]
+}
+```
+
+**What it does**:
+- Validates that the run exists and belongs to the authenticated user
+- Validates weapon_slot enum values ('melee' or 'rango')
+- Ensures one weapon per slot per run (prevents duplicates)
+- Upserts records into `equipped_weapons` table
+- Returns the equipped weapon list
+
+**Security Features**:
+- ✅ **Run Ownership Validation**: Verifies the run belongs to the authenticated user
+- ✅ **Bearer Token Authentication**: Requires valid authentication session token
+- ✅ **Input Validation**: Weapon slots and IDs must be valid
+- ✅ **Business Logic Validation**: One weapon per slot maximum
+
+**Error Responses:**
+- **400**: Invalid run_id, invalid weapon data, or duplicate weapon slots
+- **401**: Missing/invalid Authorization header
+- **404**: Run not found or access denied
+- **500**: Database error
+
+**Example:**
+```bash
+curl -X POST http://localhost:3002/api/runs/5/weapons \
+  -H "Authorization: Bearer your-token" \
+  -H "Content-Type: application/json" \
+  -d '[{"weapon_slot":"melee","weapon_id":1},{"weapon_slot":"rango","weapon_id":3}]'
+```
+
+**Middleware Chain**: `extractBearerToken → validateActiveSession → validateParams → validateBody → equipWeapons`
+
 ## Database Schema
 
 ### sessions table

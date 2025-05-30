@@ -113,4 +113,51 @@ export const getUserRuns = async (req, res, next) => {
     console.error('Get user runs error:', error);
     next(createError('Failed to get user runs', 500));
   }
+};
+
+/**
+ * Equip weapons for a run
+ */
+export const equipWeapons = async (req, res, next) => {
+  try {
+    // 1. Extract data from request
+    const userId = req.userId; // From validateActiveSession middleware
+    const runId = parseInt(req.params.run_id, 10);
+    const weaponsData = req.body; // Array of {weapon_slot, weapon_id}
+    
+    // 2. Business validations
+    if (!userId) {
+      return next(createError('User ID not found', 401));
+    }
+    
+    if (isNaN(runId)) {
+      return next(createError('Invalid run ID', 400));
+    }
+    
+    // Verify run exists and belongs to user
+    const runExists = await Run.verifyRunOwnership(runId, userId);
+    if (!runExists) {
+      return next(createError('Run not found or access denied', 404));
+    }
+    
+    // Validate weapon slots uniqueness (one weapon per slot)
+    const slots = weaponsData.map(w => w.weapon_slot);
+    const uniqueSlots = new Set(slots);
+    if (slots.length !== uniqueSlots.size) {
+      return next(createError('Duplicate weapon slots not allowed', 400));
+    }
+    
+    // 3. Main logic - Equip weapons
+    const equippedWeapons = await Run.equipWeapons(runId, userId, weaponsData);
+    
+    // 4. Successful response
+    res.status(200).json({
+      run_id: runId,
+      equipped: equippedWeapons
+    });
+    
+  } catch (error) {
+    console.error('Equip weapons error:', error);
+    next(createError('Failed to equip weapons', 500));
+  }
 }; 
