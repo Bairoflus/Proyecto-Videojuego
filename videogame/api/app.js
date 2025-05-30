@@ -154,6 +154,48 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// POST /api/auth/logout
+app.post('/api/auth/logout', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get session token from request body
+        const { sessionToken } = req.body;
+        
+        // Basic validation
+        if (!sessionToken) {
+            return res.status(400).send('Missing sessionToken');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Delete session from database
+        const [result] = await connection.execute(
+            'DELETE FROM sessions WHERE session_token = ?',
+            [sessionToken]
+        );
+        
+        // Return 204 No Content on success
+        res.status(204).send();
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

@@ -10,7 +10,7 @@
 <body class="game-page">
   <header class="game-header">
     <span id="welcome-msg">Welcome, username</span>
-    <button onclick="location.href='landing.html'">Logout</button>
+    <button id="logout-btn">Logout</button>
   </header>
   <main>
     <div id="status">Loading game...</div>
@@ -18,7 +18,39 @@
   </main>
 
   <script type="module">
+    import { logoutUser } from '../utils/api.js';
+    
     const status = document.getElementById('status');
+    const logoutButton = document.getElementById('logout-btn');
+
+    // Handle logout functionality
+    logoutButton.addEventListener('click', async () => {
+      try {
+        // Disable button during logout
+        logoutButton.disabled = true;
+        logoutButton.textContent = 'Logging out...';
+        
+        // Get session token from localStorage
+        const sessionToken = localStorage.getItem('sessionToken');
+        
+        if (sessionToken) {
+          // Call logout API
+          await logoutUser(sessionToken);
+        }
+        
+        // Clear session data
+        localStorage.removeItem('sessionToken');
+        
+        // Redirect to landing page
+        window.location.href = 'landing.html';
+        
+      } catch (error) {
+        console.error('Logout error:', error);
+        // Even if API call fails, clear local session and redirect
+        localStorage.removeItem('sessionToken');
+        window.location.href = 'landing.html';
+      }
+    });
 
     try {
       status.textContent = 'Loading modules...';

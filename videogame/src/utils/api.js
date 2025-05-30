@@ -22,6 +22,11 @@ async function apiRequest(endpoint, options = {}) {
             ...options
         });
 
+        // Handle 204 No Content responses
+        if (response.status === 204) {
+            return {};
+        }
+
         const data = await response.json();
 
         if (!response.ok) {
@@ -59,6 +64,18 @@ export async function loginUser(email, password) {
     return apiRequest('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password })
+    });
+}
+
+/**
+ * Logout the current user
+ * @param {string} sessionToken - Session token to invalidate
+ * @returns {Promise<Object>} Empty object on success
+ */
+export async function logoutUser(sessionToken) {
+    return apiRequest('/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ sessionToken })
     });
 }
 
