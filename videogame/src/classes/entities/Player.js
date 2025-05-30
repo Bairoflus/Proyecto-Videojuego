@@ -384,6 +384,18 @@ export class Player extends AnimatedObject {
       this.preAttackMinFrame = this.minFrame;
       this.preAttackMaxFrame = this.maxFrame;
 
+      // Store current sprite path and sheetCols to restore later
+      this.preAttackSpritePath = this.spriteImage
+        ? this.spriteImage.src
+        : this.getWeaponSpritePath(this.weaponType);
+      this.preAttackSheetCols = this.sheetCols;
+
+      // Switch to attack sprite sheet and update sheetCols for attack animations
+      const attackSpritePath = weaponInfo.attackSpritePath;
+      this.setSprite(attackSpritePath, new Rect(0, 0, 64, 64));
+      // Attack sprite sheets typically have 6 columns (4 directions * some frames, arranged differently)
+      this.sheetCols = this.weaponType === "slingshot" ? 13 : 6; // slingshot has 13 cols, dagger has 6
+
       // Set attack animation
       const attackFrames = getAttackFrames(
         this.weaponType,
@@ -573,6 +585,11 @@ export class Player extends AnimatedObject {
           this.isAttacking = false;
           this.hasCreatedProjectile = false; // Reset the flag
           this.hasAppliedMeleeDamage = false; // Reset the flag
+
+          // Restore walking sprite sheet and sheetCols
+          this.setSprite(this.preAttackSpritePath, new Rect(0, 0, 64, 64));
+          this.sheetCols = this.preAttackSheetCols; // Restore original sheetCols
+
           // Return to the exact frame and direction we were in before the attack
           const anim = playerMovement[this.preAttackDirection];
           this.minFrame = this.preAttackMinFrame;
@@ -783,103 +800,6 @@ export class Player extends AnimatedObject {
       ? this.meleeDamageBonus
       : this.rangedDamageBonus;
     return weaponInfo.damage + bonus;
-  }
-
-  /**
-   * Updated attack method to use helper methods
-   * @override
-   */
-  attack() {
-    const staminaCost = this.weaponType === "dagger" ? 8 : 12;
-
-    if (this.stamina < staminaCost) {
-      console.log("Not enough stamina to attack");
-      return;
-    }
-
-    if (!this.isAttacking && this.attackCooldown <= 0) {
-      this.isAttacking = true;
-      this.hasCreatedProjectile = false; // Reset projectile creation flag
-      this.hasAppliedMeleeDamage = false; // Reset melee damage flag
-      this.attackCooldown = playerAttack.cooldown;
-
-      if (this.weaponType === "dagger") {
-        this.stamina -= staminaCost;
-        this.staminaRegenCooldown = this.staminaRegenDelay;
-      }
-
-      console.log(`Player attacking with ${this.weaponType}`);
-
-      if (this.weaponType === "dagger") {
-        const playerCenter = new Vec(
-          this.position.x + this.width / 2,
-          this.position.y + this.height / 2
-        );
-        const attackDirection = this.getAttackDirection();
-        const attackArea = this.calculateAttackArea(
-          playerCenter,
-          attackDirection,
-          DAGGER_ATTACK_RANGE,
-          DAGGER_ATTACK_WIDTH
-        );
-
-        if (this.currentRoom && this.currentRoom.objects.enemies) {
-          const enemies = this.currentRoom.objects.enemies.filter(
-            (enemy) => enemy.state !== "dead"
-          );
-          let enemiesHit = 0;
-
-          enemies.forEach((enemy) => {
-            const enemyHitbox = enemy.getHitboxBounds();
-
-            if (
-              attackArea.x < enemyHitbox.x + enemyHitbox.width &&
-              attackArea.x + attackArea.width > enemyHitbox.x &&
-              attackArea.y < enemyHitbox.y + enemyHitbox.height &&
-              attackArea.y + attackArea.height > enemyHitbox.y
-            ) {
-              enemy.takeDamage(DAGGER_ATTACK_DAMAGE + this.meleeDamageBonus);
-              enemiesHit++;
-            }
-          });
-
-          console.log(
-            enemiesHit === 0
-              ? "Dagger attack missed all enemies"
-              : `Dagger attack hit ${enemiesHit} enemies`
-          );
-        } else {
-          console.warn("No current room or enemies found for dagger attack");
-        }
-
-        this.hasAppliedMeleeDamage = true;
-      }
-
-      // Store current frame and direction before attacking
-      this.preAttackFrame = this.frame;
-      this.preAttackDirection = this.currentDirection;
-      this.preAttackMinFrame = this.minFrame;
-      this.preAttackMaxFrame = this.maxFrame;
-      const attackFrames = getAttackFrames(
-        this.weaponType,
-        this.currentDirection
-      );
-      this.setAnimation(
-        attackFrames[0],
-        attackFrames[1],
-        playerAttack.repeat,
-        playerAttack.duration
-      );
-      this.frame = this.minFrame;
-    } else {
-      console.log(
-        this.isAttacking
-          ? "Attack blocked: Already attacking"
-          : `Attack blocked: Cooldown remaining ${Math.round(
-              this.attackCooldown
-            )}ms`
-      );
-    }
   }
 
   // Updated draw method to use helper methods
