@@ -90,5 +90,17 @@ export async function getUserStats(userId) {
     });
 }
 
+/**
+ * Create a new game run
+ * @param {string|number} userId - User ID to create run for
+ * @returns {Promise<Object>} Run data with runId and startedAt
+ */
+export async function createRun(userId) {
+    return apiRequest('/runs', {
+        method: 'POST',
+        body: JSON.stringify({ userId })
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 

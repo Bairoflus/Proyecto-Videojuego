@@ -18,6 +18,7 @@ import {
   PLAYER_CONSTANTS,
   PHYSICS_CONSTANTS,
 } from "../../constants/gameConstants.js";
+import { createRun } from "../../utils/api.js";
 
 // Constants for Player class
 const DASH_STAMINA_COST = PLAYER_CONSTANTS.DAGGER_STAMINA_COST; // Reuse for dash
@@ -109,8 +110,24 @@ export class Player extends AnimatedObject {
     }
   }
 
-  die() {
+  async die() {
     console.log("Player died! Initiating game reset...");
+
+    // Create a new run entry for the death event
+    try {
+      // Get userId from localStorage (set during login)
+      const userId = localStorage.getItem('currentUserId');
+      
+      if (userId) {
+        console.log("Creating run entry for player death...");
+        const runData = await createRun(userId);
+        console.log("Run created on death:", runData);
+      } else {
+        console.log("No userId found - playing in test mode");
+      }
+    } catch (error) {
+      console.error("Failed to create run on death:", error);
+    }
 
     // Trigger complete game reset through the global game instance
     if (window.game && typeof window.game.resetGameAfterDeath === "function") {

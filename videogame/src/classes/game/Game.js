@@ -163,7 +163,7 @@ export class Game {
   }
 
   // Extracted helper method to handle room transitions
-  handleRoomTransition(direction) {
+  async handleRoomTransition(direction) {
     const isBossRoom = this.floorGenerator.isBossRoom();
     const transitionMethod =
       direction === "right" ? "nextRoom" : "previousRoom";
@@ -185,7 +185,7 @@ export class Game {
 
       if (isBossRoom && direction === "right") {
         console.log("Transitioning to next floor");
-        this.floorGenerator.nextFloor();
+        await this.floorGenerator.nextFloor();
       } else if (!this.floorGenerator[transitionMethod]()) {
         console.log("Room transition failed");
         return;
@@ -222,9 +222,15 @@ export class Game {
 
     // Check room transition
     if (this.currentRoom.isPlayerAtRightEdge(this.player)) {
-      this.handleRoomTransition("right");
+      // Don't block the game loop with async operations
+      this.handleRoomTransition("right").catch(error => {
+        console.error("Error in room transition:", error);
+      });
     } else if (this.currentRoom.isPlayerAtLeftEdge(this.player)) {
-      this.handleRoomTransition("left");
+      // Don't block the game loop with async operations
+      this.handleRoomTransition("left").catch(error => {
+        console.error("Error in room transition:", error);
+      });
     }
 
     // Update player

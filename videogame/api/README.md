@@ -1,7 +1,7 @@
 # API - Project Shattered Timeline
 
 ## Description
-REST API for the Project Shattered Timeline video game. This API handles authentication operations, user management, and player statistics.
+REST API for the Project Shattered Timeline video game. This API handles authentication operations, user management, player statistics, and game run management.
 
 ## Requirements
 - Node.js
@@ -107,6 +107,7 @@ Content-Type: application/json
 **Success Response** (200 OK):
 ```json
 {
+  "userId": 123,
   "sessionToken": "uuid-string"
 }
 ```
@@ -205,6 +206,64 @@ Stats not found
 Database error
 ```
 
+### POST /api/runs
+Creates a new game run for a specific user.
+
+**URL**: `/api/runs`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "userId": 123
+}
+```
+
+**Success Response** (201 Created):
+```json
+{
+  "runId": 15,
+  "startedAt": "2025-05-30T20:33:33.000Z"
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing userId:
+```
+Missing userId
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Restrictions**:
+This endpoint is **NOT** exposed in the user interface and should **ONLY** be called internally by the game logic in the following scenarios:
+
+1. **When a player logs in successfully** - Automatically creates a new run
+2. **When a player dies** - Records the death event
+3. **When a player successfully completes all floors** - Records successful completion
+
+**Integration Points**:
+- `videogame/src/pages/js/login.js` - Called on successful login
+- `videogame/src/classes/entities/Player.js` - Called in `die()` method
+- `videogame/src/classes/game/FloorGenerator.js` - Called in `nextFloor()` when completing all floors
+
+**Example Usage**:
+```bash
+curl -X POST http://localhost:3000/api/runs \
+  -H "Content-Type: application/json" \
+  -d '{"userId": 123}'
+```
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -247,6 +306,15 @@ The `player_stats` table must have the following columns:
 - `total_playtime_minutes` (INT, DEFAULT 0)
 - `last_played_at` (DATETIME, NULL)
 
+### Run History Table
+The `run_history` table must have the following columns:
+- `run_id` (INT, AUTO_INCREMENT, PRIMARY KEY)
+- `user_id` (INT, FOREIGN KEY)
+- `started_at` (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+- `ended_at` (DATETIME, NULL)
+- `score` (INT, DEFAULT 0)
+- `status` (ENUM('active', 'completed', 'abandoned'), DEFAULT 'active')
+
 ## Dependencies
 - `express`: ^4.18.2
 - `mysql2`: ^3.6.5
@@ -262,6 +330,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    POST http://localhost:3000/api/auth/login  
    POST http://localhost:3000/api/auth/logout
    GET  http://localhost:3000/api/users/{userId}/stats
+   POST http://localhost:3000/api/runs
    ```
 
 2. **Send data in JSON format**:
@@ -287,12 +356,19 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    }
    ```
    - For stats: No body required, userId in URL path
+   - For runs:
+   ```json
+   {
+     "userId": 123
+   }
+   ```
 
 3. **Handle responses**:
    - Registration Success (201): User created, receives `userId`
    - Login Success (200): Session created, receives `sessionToken`
    - Logout Success (204): Session invalidated, empty response
    - Stats Success (200): Player stats data as JSON
+   - Runs Success (201): New run created, receives `runId` and `startedAt`
    - Error (400): Missing fields or parameters
    - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)
@@ -305,6 +381,7 @@ The frontend integration is implemented in:
 - `videogame/src/pages/auth/login.js` - Login form handling
 - `videogame/src/pages/html/game.html` - Logout functionality
 - `videogame/src/pages/html/stats.html` - Player statistics display
+- `videogame/src/pages/html/runs.html` - Game run creation
 - `videogame/src/utils/api.js` - API communication layer
 
 All pages automatically:
@@ -320,4 +397,5 @@ To use the application:
 3. Use `register.html` to create a new account
 4. Use `login.html` to authenticate
 5. Use `stats.html` to view player statistics
-6. Use `game.html` for the main game with logout functionality 
+6. Use `runs.html` to start new game runs
+7. Use `game.html` for the main game with logout functionality 
