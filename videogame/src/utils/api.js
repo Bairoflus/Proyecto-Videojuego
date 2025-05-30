@@ -79,5 +79,16 @@ export async function logoutUser(sessionToken) {
     });
 }
 
+/**
+ * Get user statistics
+ * @param {string|number} userId - User ID to get stats for
+ * @returns {Promise<Object>} User stats data
+ */
+export async function getUserStats(userId) {
+    return apiRequest(`/users/${userId}/stats`, {
+        method: 'GET'
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 

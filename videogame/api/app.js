@@ -196,6 +196,53 @@ app.post('/api/auth/logout', async (req, res) => {
     }
 });
 
+// GET /api/users/:userId/stats
+app.get('/api/users/:userId/stats', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get userId from URL parameters
+        const { userId } = req.params;
+        
+        // Basic validation
+        if (!userId) {
+            return res.status(400).send('Missing userId parameter');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Query player stats
+        const [stats] = await connection.execute(
+            'SELECT * FROM player_stats WHERE user_id = ?',
+            [userId]
+        );
+        
+        // Check if stats exist
+        if (stats.length === 0) {
+            return res.status(404).send('Stats not found');
+        }
+        
+        // Return stats data
+        res.status(200).json(stats[0]);
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
