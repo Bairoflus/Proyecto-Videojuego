@@ -264,6 +264,142 @@ curl -X POST http://localhost:3000/api/runs \
   -d '{"userId": 123}'
 ```
 
+### POST /api/runs/:runId/save-state
+Saves the current state of an active game run.
+
+**URL**: `/api/runs/{runId}/save-state`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "userId": 123,
+  "sessionId": 456,
+  "roomId": 1,
+  "currentHp": 85,
+  "currentStamina": 45,
+  "gold": 150
+}
+```
+
+**Success Response** (201 Created):
+```json
+{
+  "saveId": 789
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing runId parameter:
+```
+Missing runId parameter
+```
+
+- **400 Bad Request** - Missing required fields:
+```
+Missing required fields: userId, sessionId, roomId, currentHp, currentStamina, gold
+```
+
+- **400 Bad Request** - Invalid field types:
+```
+Invalid field types: userId, sessionId, roomId, currentHp, currentStamina, gold must be integers
+```
+
+- **400 Bad Request** - Invalid HP/Stamina range:
+```
+Invalid range: currentHp and currentStamina must be between 0 and 32767
+```
+
+- **400 Bad Request** - Invalid room:
+```
+Invalid roomId: room does not exist
+```
+
+- **400 Bad Request** - Invalid session:
+```
+Invalid sessionId: session does not exist
+```
+
+- **404 Not Found** - Run not found or inactive:
+```
+Run not found or run is not active
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Restrictions**:
+This endpoint is **NOT** exposed in the landing page or main user interface. It should **ONLY** be called:
+
+1. **During active gameplay** - When saving game progress
+2. **After run creation** - Only for active runs (ended_at IS NULL AND completed = FALSE)
+3. **Before run completion/death** - Cannot save state for finished runs
+4. **With valid game data** - Must reference existing rooms and sessions
+
+**Database Schema Requirements**:
+The endpoint validates against the actual database schema:
+
+**save_states table**:
+```sql
+CREATE TABLE save_states (
+  save_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  session_id INT NOT NULL,
+  run_id INT NOT NULL,
+  room_id INT NOT NULL,
+  current_hp SMALLINT,      -- Range: 0-32767
+  current_stamina SMALLINT, -- Range: 0-32767  
+  gold INT,
+  saved_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (session_id) REFERENCES sessions(session_id),
+  FOREIGN KEY (run_id) REFERENCES run_history(run_id),
+  FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+);
+```
+
+**Validation Logic**:
+1. **Run Active Check**: `SELECT run_id FROM run_history WHERE run_id = ? AND ended_at IS NULL AND completed = FALSE`
+2. **Room Exists Check**: `SELECT room_id FROM rooms WHERE room_id = ?`
+3. **Session Exists Check**: `SELECT session_id FROM sessions WHERE session_id = ?`
+4. **Data Type Validation**: All fields must be integers
+5. **Range Validation**: HP and stamina must be 0-32767 (SMALLINT range)
+
+**Example Usage**:
+```bash
+curl -X POST http://localhost:3000/api/runs/123/save-state \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 123,
+    "sessionId": 456,
+    "roomId": 1,
+    "currentHp": 85,
+    "currentStamina": 45,
+    "gold": 150
+  }'
+```
+
+**Integration Points**:
+- `videogame/src/utils/api.js` - `saveRunState()` function
+- `videogame/src/pages/html/admin-test-save-state.html` - Development testing only (not linked from landing)
+
+**Data Flow**:
+1. Player progresses through game
+2. Game reaches save point (room transition, significant event)
+3. Frontend calls `saveRunState()` with current game state
+4. API validates run is active and all foreign keys exist
+5. State saved to `save_states` table with timestamp
+6. Returns `saveId` for confirmation
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -331,6 +467,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    POST http://localhost:3000/api/auth/logout
    GET  http://localhost:3000/api/users/{userId}/stats
    POST http://localhost:3000/api/runs
+   POST http://localhost:3000/api/runs/{runId}/save-state
    ```
 
 2. **Send data in JSON format**:
@@ -362,6 +499,17 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
      "userId": 123
    }
    ```
+   - For save state:
+   ```json
+   {
+     "userId": 123,
+     "sessionId": 456,
+     "roomId": 1,
+     "currentHp": 85,
+     "currentStamina": 45,
+     "gold": 150
+   }
+   ```
 
 3. **Handle responses**:
    - Registration Success (201): User created, receives `userId`
@@ -369,6 +517,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    - Logout Success (204): Session invalidated, empty response
    - Stats Success (200): Player stats data as JSON
    - Runs Success (201): New run created, receives `runId` and `startedAt`
+   - Save State Success (201): Save state created, receives `saveId`
    - Error (400): Missing fields or parameters
    - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)
