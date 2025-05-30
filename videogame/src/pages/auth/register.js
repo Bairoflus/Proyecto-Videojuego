@@ -1,7 +1,7 @@
 /**
  * Registration page functionality
  */
-import { registerUser } from '../utils/api.js';
+import { registerUser } from '../../utils/api.js';
 
 // Wait for DOM to load
 document.addEventListener('DOMContentLoaded', () => {

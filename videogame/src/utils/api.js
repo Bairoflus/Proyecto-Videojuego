@@ -49,5 +49,18 @@ export async function registerUser(username, email, password) {
     });
 }
 
+/**
+ * Login an existing user
+ * @param {string} email - Email address
+ * @param {string} password - Password
+ * @returns {Promise<Object>} Session data with sessionToken
+ */
+export async function loginUser(email, password) {
+    return apiRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 

@@ -4,12 +4,18 @@
 <head>
   <meta charset="UTF-8" />
   <title>Log In - Shattered Timeline</title>
-  <link rel="stylesheet" href="./styles/style.css" />
+  <link rel="stylesheet" href="../styles/style.css" />
+  <script type="module" src="login.js"></script>
 </head>
 
 <body>
   <div class="page-container">
     <h2>Log In</h2>
+    
+    <!-- Message containers -->
+    <div id="error-message" class="message error" style="display: none;"></div>
+    <div id="success-message" class="message success" style="display: none;"></div>
+    
     <form>
       <input type="email" placeholder="Email" required />
       <input type="password" placeholder="Password" required />
@@ -18,8 +24,9 @@
 
     <div class="form-footer">
       <p>Not registered yet? <a href="register.html">Create account</a></p>
-      <a href="landing.html" class="back-home">← Back to Home</a>
+      <a href="../landing.html" class="back-home">← Back to Home</a>
     </div>
+  </div>
 </body>
 
 </html>

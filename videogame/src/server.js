@@ -57,4 +57,6 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Frontend server running at http://localhost:${PORT}/`);
   console.log(`The game will open at http://localhost:${PORT}/ (landing page)`);
+  console.log(`Registration page: http://localhost:${PORT}/pages/auth/register.html`);
+  console.log(`Login page: http://localhost:${PORT}/pages/auth/login.html`);
 }); 
