@@ -83,6 +83,77 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
+// POST /api/auth/login
+app.post('/api/auth/login', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get data from request body
+        const { email, password } = req.body;
+        
+        // Basic validation
+        if (!email || !password) {
+            return res.status(400).send('Missing email or password');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Query user by email
+        const [users] = await connection.execute(
+            'SELECT user_id, password_hash FROM users WHERE email = ?',
+            [email]
+        );
+        
+        // Check if user exists
+        if (users.length === 0) {
+            return res.status(404).send('Invalid credentials');
+        }
+        
+        const user = users[0];
+        
+        // For MVP: Compare plain password with stored hash using bcrypt
+        // Note: In production, we should use bcrypt.compare
+        const passwordMatch = await bcrypt.compare(password, user.password_hash);
+        
+        if (!passwordMatch) {
+            return res.status(404).send('Invalid credentials');
+        }
+        
+        // Insert new session with UUID
+        const [sessionResult] = await connection.execute(
+            'INSERT INTO sessions (user_id, session_token) VALUES (?, UUID())',
+            [user.user_id]
+        );
+        
+        // Get the generated session token
+        const [sessions] = await connection.execute(
+            'SELECT session_token FROM sessions WHERE session_id = ?',
+            [sessionResult.insertId]
+        );
+        
+        // Return success response
+        res.status(200).json({
+            sessionToken: sessions[0].session_token
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

@@ -84,6 +84,50 @@ Content-Type: application/json
 }
 ```
 
+### POST /api/auth/login
+Authenticates a user and creates a new session.
+
+**URL**: `/api/auth/login`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "email": "string",
+  "password": "string"
+}
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "sessionToken": "uuid-string"
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing fields:
+```
+Missing email or password
+```
+
+- **404 Not Found** - Invalid credentials:
+```
+Invalid credentials
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -118,9 +162,11 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
 1. **Make HTTP POST requests to**:
    ```
    http://localhost:3000/api/auth/register
+   http://localhost:3000/api/auth/login
    ```
 
 2. **Send data in JSON format**:
+   - For registration:
    ```json
    {
      "username": "user",
@@ -128,22 +174,37 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
      "password": "password"
    }
    ```
+   - For login:
+   ```json
+   {
+     "email": "email@example.com",
+     "password": "password"
+   }
+   ```
 
 3. **Handle responses**:
-   - Success (201): User created, receives `userId`
+   - Registration Success (201): User created, receives `userId`
+   - Login Success (200): Session created, receives `sessionToken`
    - Error (400): Missing fields
-   - Error (409): Duplicate user
+   - Error (404): Invalid credentials (login only)
+   - Error (409): Duplicate user (registration only)
    - Error (500): Server error
 
 ### Frontend Integration Example
 
-The frontend integration is implemented in `videogame/src/pages/register.js` using the Fetch API. The registration form automatically:
-- Validates password match
-- Shows error/success messages
-- Redirects to login on success
-- Handles loading states
+The frontend integration is implemented in:
+- `videogame/src/pages/register.js` - Registration form handling
+- `videogame/src/pages/login.js` - Login form handling
+- `videogame/src/utils/api.js` - API communication layer
 
-To use the registration page:
+Both pages automatically:
+- Validate input fields
+- Show error/success messages
+- Handle loading states
+- Redirect on success (register → login, login → game)
+
+To use the authentication pages:
 1. Ensure the API server is running (`node app.js`)
-2. Open `register.html` in a browser
-3. Fill in the form and submit 
+2. Open `register.html` to create a new account
+3. Open `login.html` to authenticate
+4. Session token is stored in localStorage 

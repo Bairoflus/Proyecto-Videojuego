@@ -16,16 +16,18 @@ videogame/
 │
 ├── src/                        # Frontend source code
 │   ├── pages/                  # HTML pages
+│   │   ├── auth/               # Authentication pages (NEW)
+│   │   │   ├── login.html      # Login page
+│   │   │   ├── login.js        # Login logic
+│   │   │   ├── register.html   # Registration page
+│   │   │   └── register.js     # Registration logic
 │   │   ├── landing.html        # Home page
-│   │   ├── login.html          # Login page
-│   │   ├── register.html       # Registration page (integrated)
-│   │   ├── register.js         # Registration logic (NEW)
 │   │   ├── game.html           # Main game page
 │   │   └── styles/
 │   │       └── style.css       # Global styles
 │   │
 │   ├── utils/                  # Utility functions
-│   │   ├── api.js              # API communication layer (NEW)
+│   │   ├── api.js              # API communication layer
 │   │   ├── Logger.js           # Logging utility
 │   │   ├── Vec.js              # Vector math
 │   │   ├── Rect.js             # Rectangle utility
@@ -84,24 +86,35 @@ The MySQL database `ProjectShatteredTimeline` contains multiple tables. Key tabl
 
 ### Key Files for Registration
 
-1. **`src/pages/register.html`**
+1. **`src/pages/auth/register.html`**
    - Registration form UI
    - Links to register.js
    - Message containers for feedback
 
-2. **`src/pages/register.js`**
+2. **`src/pages/auth/register.js`**
    - Form submission handling
    - Client-side validation
    - API communication
    - Error/success messaging
    - Redirect on success
 
-3. **`src/utils/api.js`**
+3. **`src/pages/auth/login.html`**
+   - Login form UI
+   - Links to login.js
+   - Message containers for feedback
+
+4. **`src/pages/auth/login.js`**
+   - Login form handling
+   - API communication
+   - Session token storage
+   - Redirect to game on success
+
+5. **`src/utils/api.js`**
    - Centralized API communication
    - Error handling
    - Request/response processing
 
-4. **`src/pages/styles/style.css`**
+6. **`src/pages/styles/style.css`**
    - Styling for all pages
    - Message container styles
    - Form styling
