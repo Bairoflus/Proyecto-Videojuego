@@ -143,33 +143,6 @@ export class User {
   }
 
   /**
-   * Verify login credentials
-   * @param {string} email - User email
-   * @param {string} password - Plain text password
-   * @returns {Promise<User|null>} User if credentials are valid
-   */
-  static async verifyCredentials(email, password) {
-    try {
-      const user = await User.findByEmail(email);
-      
-      if (!user) {
-        return null;
-      }
-      
-      const isValidPassword = await bcryptVerifyPassword(password, user.password_hash);
-      
-      if (!isValidPassword) {
-        return null;
-      }
-      
-      return user;
-    } catch (error) {
-      console.error('Error verifying credentials:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Verify password for a specific user
    * @param {string} email - User email
    * @param {string} password - Plain text password

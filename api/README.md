@@ -370,6 +370,65 @@ curl -X PUT http://localhost:3002/api/sessions/34 \
 
 **Middleware Chain**: `extractBearerToken → validateActiveSession → validateParams → validateBody → updateSession`
 
+### Game Runs
+
+#### POST /api/runs
+Create a new game run - Start a new run.
+
+**Headers Required:**
+```
+Authorization: Bearer {auth_session_token}
+```
+
+**Request Body:**
+```json
+{
+  "session_id": "number (positive integer, must be valid active game session)"
+}
+```
+
+**Response (201):**
+```json
+{
+  "run_id": 1,
+  "started_at": "2025-05-29T23:20:38.000Z",
+  "user_id": 15,
+  "gold_collected": 0,
+  "gold_spent": 0,
+  "total_kills": 0,
+  "completed": 0
+}
+```
+
+**What it does**:
+- Validates that the session exists and belongs to the authenticated user
+- Creates a new run record in `run_history` table
+- Initializes all metrics to default values (0)
+- Sets `started_at` to current timestamp
+- Sets `completed` to false (0)
+
+**Security Features**:
+- ✅ **Session Ownership Validation**: Verifies the game session belongs to the authenticated user
+- ✅ **Bearer Token Authentication**: Requires valid authentication session token
+- ✅ **Session State Validation**: Ensures the session is active (not closed)
+- ✅ **Input Validation**: Session ID must be positive integer
+
+**Error Responses:**
+- **400**: Missing session_id or invalid data format
+- **401**: Missing/invalid Authorization header
+- **404**: Session not found or doesn't belong to user
+- **500**: Database error
+
+**Example:**
+```bash
+curl -X POST http://localhost:3002/api/runs \
+  -H "Authorization: Bearer your-token" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": 47}'
+```
+
+**Middleware Chain**: `extractBearerToken → validateActiveSession → validateBody → createRun`
+
 ## Database Schema
 
 ### sessions table
@@ -520,6 +579,12 @@ curl -X PUT http://localhost:3002/api/sessions/SESSION_ID \
   -H "Content-Type: application/json" \
   -d '{"action":"close"}'
 
+# Create game run
+curl -X POST http://localhost:3002/api/runs \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": SESSION_ID}'
+
 # Logout
 curl -X POST http://localhost:3002/api/auth/logout \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
@@ -579,4 +644,4 @@ This project is licensed under the ISC License.
 - **Morgan** - HTTP request logger
 - **CORS** - Cross-origin resource sharing
 - **mysql2** - MySQL client with Promise support
-- **dotenv** - Environment variable management 
+- **dotenv** - Environment variable management

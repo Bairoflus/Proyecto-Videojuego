@@ -148,6 +148,52 @@
     // ==================== GAME LIFECYCLE FUNCTIONS ====================
 
     /**
+     * Create a new game run
+     * @param {number} sessionId - Game session ID to associate with the run
+     * @returns {Promise<Object|null>} Created run data or null if failed
+     */
+    async function createGameRun(sessionId) {
+      const sessionToken = localStorage.getItem('sessionToken');
+      
+      if (!sessionToken) {
+        console.error('No session token available for run creation');
+        return null;
+      }
+
+      if (!sessionId) {
+        console.error('No session ID provided for run creation');
+        return null;
+      }
+
+      try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.RUNS}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            session_id: sessionId
+          })
+        });
+
+        if (response.status === 201) {
+          const runData = await response.json();
+          console.log('Game run created successfully:', runData);
+          return runData;
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to create game run:', errorData);
+          return null;
+        }
+        
+      } catch (error) {
+        console.error('Error creating game run:', error);
+        return null;
+      }
+    }
+
+    /**
      * Enhanced logout function that closes both auth and game sessions
      */
     window.handleLogout = async function() {
@@ -211,6 +257,7 @@
       localStorage.removeItem('isLoggedIn');
       localStorage.removeItem('gameSessionId');
       localStorage.removeItem('gameSessionToken');
+      localStorage.removeItem('currentRunId');
       gameSessionId = null;
       gameSessionToken = null;
       isGameActive = false;
@@ -352,6 +399,23 @@
         isGameActive = true;
         startSessionHeartbeat();
         
+        status.textContent = 'Creating game run...';
+
+        // Create game run after session is established
+        const gameRun = await createGameRun(gameSessionId);
+        
+        if (!gameRun) {
+          status.textContent = 'Failed to create game run. Please try again.';
+          // Close the session since we couldn't create a run
+          await closeGameSession();
+          return;
+        }
+
+        // Store run data for reference
+        const currentRunId = gameRun.run_id;
+        localStorage.setItem('currentRunId', currentRunId);
+        console.log(`Game run created with ID: ${currentRunId}`);
+        
         status.textContent = 'Loading game modules...';
 
         // Check if main.js exists before trying to import
@@ -398,8 +462,10 @@
       keepAlive: keepSessionAlive,
       close: closeGameSession,
       gameOver: window.handleGameOver,
+      createRun: createGameRun,
       isActive: () => isGameActive,
-      getSessionId: () => gameSessionId
+      getSessionId: () => gameSessionId,
+      getCurrentRunId: () => localStorage.getItem('currentRunId')
     };
 
     // Start initialization
