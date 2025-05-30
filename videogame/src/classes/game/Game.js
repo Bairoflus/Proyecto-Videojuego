@@ -26,8 +26,8 @@ export class Game {
     const startPos = this.currentRoom.getPlayerStartPosition();
 
     this.player = new Player(startPos, 64, 64, "red", 13);
-    // Initialize player with default weapon (dagger) and proper animation
-    this.player.setWeapon("dagger");
+    // Initialize player with default weapon (melee) and proper animation
+    this.player.setWeapon("melee");
     this.player.setCurrentRoom(this.currentRoom);
 
     this.enemies = this.currentRoom.objects.enemies;
@@ -94,8 +94,8 @@ export class Game {
 
     // Draw weapon icons
     const icons = [
-      { type: "dagger", img: "Sword.png" },
-      { type: "slingshot", img: "Bow.png" },
+      { type: "melee", img: "Sword.png" },
+      { type: "ranged", img: "Bow.png" },
     ];
 
     icons.forEach((icon, i) => {
@@ -273,7 +273,7 @@ export class Game {
 
       const action = keyDirections[key];
 
-      if (action === "dagger" || action === "slingshot") {
+      if (action === "melee" || action === "ranged") {
         this.player.setWeapon(action);
       } else if (action === "attack") {
         this.player.attack();

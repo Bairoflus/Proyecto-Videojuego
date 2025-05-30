@@ -157,14 +157,28 @@ export class Shop {
         switch(option.type) {
             case 'melee':
                 this.runUpgrades.melee++;
-                player.meleeDamageBonus = (player.meleeDamageBonus || 0) + option.damageIncrease;
-                log.info(`Melee damage increased by +${option.damageIncrease}. Total bonus: +${player.meleeDamageBonus}`);
+                // Use new weapon progression system
+                const meleeUpgraded = player.upgradeMeleeWeapon();
+                if (meleeUpgraded) {
+                    log.info(`Melee weapon upgraded to level ${player.meleeLevel}! Current weapon: ${player.getCurrentMeleeWeapon()}`);
+                } else {
+                    // Fallback to damage bonus if at max level
+                    player.meleeDamageBonus = (player.meleeDamageBonus || 0) + option.damageIncrease;
+                    log.info(`Melee weapon at max level. Damage bonus increased by +${option.damageIncrease}. Total bonus: +${player.meleeDamageBonus}`);
+                }
                 break;
                 
             case 'ranged':
                 this.runUpgrades.ranged++;
-                player.rangedDamageBonus = (player.rangedDamageBonus || 0) + option.damageIncrease;
-                log.info(`Ranged damage increased by +${option.damageIncrease}. Total bonus: +${player.rangedDamageBonus}`);
+                // Use new weapon progression system
+                const rangedUpgraded = player.upgradeRangedWeapon();
+                if (rangedUpgraded) {
+                    log.info(`Ranged weapon upgraded to level ${player.rangedLevel}! Current weapon: ${player.getCurrentRangedWeapon()}`);
+                } else {
+                    // Fallback to damage bonus if at max level
+                    player.rangedDamageBonus = (player.rangedDamageBonus || 0) + option.damageIncrease;
+                    log.info(`Ranged weapon at max level. Damage bonus increased by +${option.damageIncrease}. Total bonus: +${player.rangedDamageBonus}`);
+                }
                 break;
                 
             case 'health':

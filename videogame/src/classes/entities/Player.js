@@ -45,12 +45,17 @@ export class Player extends AnimatedObject {
     this.dashDirection = new Vec(0, 0);
 
     // Combat properties
-    this.weaponType = "dagger";
+    this.weaponType = "melee"; // Changed from specific weapon to category
     this.isAttacking = false;
     this.attackCooldown = 0;
     this.projectiles = [];
     this.hasCreatedProjectile = false;
     this.hasAppliedMeleeDamage = false;
+
+    // Weapon progression system
+    this.meleeLevel = 1;
+    this.rangedLevel = 1;
+    this.maxWeaponLevel = 15;
 
     // Player stats
     this.health = PLAYER_CONSTANTS.MAX_HEALTH;
@@ -189,8 +194,8 @@ export class Player extends AnimatedObject {
     this.projectiles = [];
 
     // Reset weapon to default
-    this.weaponType = "dagger";
-    this.setWeapon("dagger");
+    this.weaponType = "melee";
+    this.setWeapon("melee");
 
     // Reset direction
     this.currentDirection = "down";
@@ -226,13 +231,17 @@ export class Player extends AnimatedObject {
   }
 
   setWeapon(type) {
-    if (type === "dagger" || type === "slingshot") {
+    if (type === "melee" || type === "ranged") {
       console.log(`Switching weapon to ${type}`);
       this.weaponType = type;
 
       // Update sprite sheet based on weapon type
-      const spritePath = this.getWeaponSpritePath(type);
-      this.setSprite(spritePath, new Rect(0, 0, 64, 64));
+      const spritePath = this.getWeaponSpritePath();
+      
+      // Set correct sheetCols for walk sprites (all walk sprites have 9 columns)
+      this.sheetCols = 9;
+      
+      this.setSprite(spritePath);
 
       // Update walking animation frames based on weapon
       this.updateWalkingFrames(type);
@@ -240,26 +249,30 @@ export class Player extends AnimatedObject {
       // Reset to current direction animation (walking or idle)
       this.resetToCurrentDirectionAnimation();
 
-      console.log(`Weapon switched to ${type} with sprite: ${spritePath}`);
+      console.log(`Weapon switched to ${type} with sprite: ${spritePath} (${this.sheetCols} columns)`);
     } else {
       console.warn(
-        `Invalid weapon type: ${type}. Valid types are 'dagger' and 'slingshot'`
+        `Invalid weapon type: ${type}. Valid types are 'melee' and 'ranged'`
       );
     }
   }
 
   /**
-   * Get the sprite path for the given weapon type
-   * @param {string} weaponType - The weapon type (dagger, slingshot)
+   * Get the sprite path for the current weapon
    * @returns {string} The sprite path
    */
-  getWeaponSpritePath(weaponType) {
+  getWeaponSpritePath() {
+    const currentWeapon = this.getCurrentWeapon();
     const weaponSpritePaths = {
       dagger: "../assets/sprites/player/dagger/walk.png",
+      katana: "../assets/sprites/player/katana/walk.png",
+      lightsaber: "../assets/sprites/player/lightsaber/walk.png",
       slingshot: "../assets/sprites/player/slingshot/walk.png",
+      bow: "../assets/sprites/player/bow/walk.png",
+      crossbow: "../assets/sprites/player/crossbow/walk.png",
     };
 
-    return weaponSpritePaths[weaponType] || weaponSpritePaths.dagger;
+    return weaponSpritePaths[currentWeapon] || weaponSpritePaths.dagger;
   }
 
   /**
@@ -387,18 +400,29 @@ export class Player extends AnimatedObject {
       // Store current sprite path and sheetCols to restore later
       this.preAttackSpritePath = this.spriteImage
         ? this.spriteImage.src
-        : this.getWeaponSpritePath(this.weaponType);
+        : this.getWeaponSpritePath();
       this.preAttackSheetCols = this.sheetCols;
 
       // Switch to attack sprite sheet and update sheetCols for attack animations
       const attackSpritePath = weaponInfo.attackSpritePath;
-      this.setSprite(attackSpritePath, new Rect(0, 0, 64, 64));
-      // Attack sprite sheets typically have 6 columns (4 directions * some frames, arranged differently)
-      this.sheetCols = this.weaponType === "slingshot" ? 13 : 6; // slingshot has 13 cols, dagger has 6
+      const currentWeapon = this.getCurrentWeapon();
+      
+      // Set correct sheetCols for attack sprites based on weapon type
+      if (this.isRangedWeapon()) {
+        if (currentWeapon === "crossbow") {
+          this.sheetCols = 8; // Crossbow attack sprites have 8 columns
+        } else {
+          this.sheetCols = 13; // Slingshot/bow attack sprites have 13 columns
+        }
+      } else {
+        this.sheetCols = 6; // All melee attack sprites have 6 columns
+      }
+      
+      this.setSprite(attackSpritePath);
 
       // Set attack animation
       const attackFrames = getAttackFrames(
-        this.weaponType,
+        currentWeapon,
         this.currentDirection
       );
       this.setAnimation(
@@ -454,15 +478,15 @@ export class Player extends AnimatedObject {
           enemy.takeDamage(damage);
           enemiesHit++;
           console.log(
-            `${this.weaponType} hit ${enemy.type} for ${damage} damage`
+            `${this.getCurrentWeapon()} hit ${enemy.type} for ${damage} damage`
           );
         }
       });
 
       console.log(
         enemiesHit === 0
-          ? `${this.weaponType} attack missed all enemies`
-          : `${this.weaponType} attack hit ${enemiesHit} enemies`
+          ? `${this.getCurrentWeapon()} attack missed all enemies`
+          : `${this.getCurrentWeapon()} attack hit ${enemiesHit} enemies`
       );
     } else {
       console.warn("No current room or enemies found for melee attack");
@@ -587,7 +611,7 @@ export class Player extends AnimatedObject {
           this.hasAppliedMeleeDamage = false; // Reset the flag
 
           // Restore walking sprite sheet and sheetCols
-          this.setSprite(this.preAttackSpritePath, new Rect(0, 0, 64, 64));
+          this.setSprite(this.preAttackSpritePath);
           this.sheetCols = this.preAttackSheetCols; // Restore original sheetCols
 
           // Return to the exact frame and direction we were in before the attack
@@ -745,7 +769,10 @@ export class Player extends AnimatedObject {
    * @returns {Object} Weapon information including type, sprite path, and capabilities
    */
   getWeaponInfo() {
+    const currentWeapon = this.getCurrentWeapon();
+    
     const weaponInfo = {
+      // Melee weapons
       dagger: {
         type: "dagger",
         category: "melee",
@@ -755,8 +782,31 @@ export class Player extends AnimatedObject {
         damage: PLAYER_CONSTANTS.DAGGER_ATTACK_DAMAGE,
         staminaCost: PLAYER_CONSTANTS.DAGGER_STAMINA_COST,
         cooldown: playerAttack.cooldown,
-        description: "Close-range melee weapon with line-of-sight detection",
+        description: "Basic melee weapon (Level 1-5)",
       },
+      katana: {
+        type: "katana",
+        category: "melee",
+        spritePath: "../assets/sprites/player/katana/walk.png",
+        attackSpritePath: "../assets/sprites/player/katana/slash.png",
+        range: PLAYER_CONSTANTS.DAGGER_ATTACK_RANGE * 1.2, // Slightly longer range
+        damage: PLAYER_CONSTANTS.DAGGER_ATTACK_DAMAGE * 1.5, // More damage
+        staminaCost: PLAYER_CONSTANTS.DAGGER_STAMINA_COST,
+        cooldown: playerAttack.cooldown,
+        description: "Enhanced melee weapon (Level 6-10)",
+      },
+      lightsaber: {
+        type: "lightsaber", 
+        category: "melee",
+        spritePath: "../assets/sprites/player/lightsaber/walk.png",
+        attackSpritePath: "../assets/sprites/player/lightsaber/slash.png",
+        range: PLAYER_CONSTANTS.DAGGER_ATTACK_RANGE * 1.4, // Longest melee range
+        damage: PLAYER_CONSTANTS.DAGGER_ATTACK_DAMAGE * 2, // Double damage
+        staminaCost: PLAYER_CONSTANTS.DAGGER_STAMINA_COST * 0.8, // Less stamina cost
+        cooldown: playerAttack.cooldown * 0.8, // Faster attacks
+        description: "Ultimate melee weapon (Level 11-15)",
+      },
+      // Ranged weapons
       slingshot: {
         type: "slingshot",
         category: "ranged",
@@ -767,11 +817,35 @@ export class Player extends AnimatedObject {
         staminaCost: PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST,
         cooldown: playerAttack.cooldown,
         projectileSpeed: PLAYER_CONSTANTS.SLINGSHOT_PROJECTILE_SPEED,
-        description: "Long-range projectile weapon",
+        description: "Basic ranged weapon (Level 1-5)",
+      },
+      bow: {
+        type: "bow",
+        category: "ranged",
+        spritePath: "../assets/sprites/player/bow/walk.png",
+        attackSpritePath: "../assets/sprites/player/bow/shoot.png",
+        range: 250, // Longer projectile range
+        damage: PLAYER_CONSTANTS.SLINGSHOT_DAMAGE * 1.5, // More damage
+        staminaCost: PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST,
+        cooldown: playerAttack.cooldown,
+        projectileSpeed: PLAYER_CONSTANTS.SLINGSHOT_PROJECTILE_SPEED * 1.2, // Faster projectiles
+        description: "Enhanced ranged weapon (Level 6-10)",
+      },
+      crossbow: {
+        type: "crossbow",
+        category: "ranged",
+        spritePath: "../assets/sprites/player/crossbow/walk.png",
+        attackSpritePath: "../assets/sprites/player/crossbow/shoot.png",
+        range: 300, // Longest projectile range
+        damage: PLAYER_CONSTANTS.SLINGSHOT_DAMAGE * 2, // Double damage
+        staminaCost: PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST * 0.8, // Less stamina cost
+        cooldown: playerAttack.cooldown * 0.7, // Faster attacks
+        projectileSpeed: PLAYER_CONSTANTS.SLINGSHOT_PROJECTILE_SPEED * 1.5, // Fastest projectiles
+        description: "Ultimate ranged weapon (Level 11-15)",
       },
     };
 
-    return weaponInfo[this.weaponType] || weaponInfo.dagger;
+    return weaponInfo[currentWeapon] || weaponInfo.dagger;
   }
 
   /**
@@ -779,7 +853,7 @@ export class Player extends AnimatedObject {
    * @returns {boolean} True if current weapon is melee
    */
   isMeleeWeapon() {
-    return this.getWeaponInfo().category === "melee";
+    return this.weaponType === "melee";
   }
 
   /**
@@ -787,7 +861,7 @@ export class Player extends AnimatedObject {
    * @returns {boolean} True if current weapon is ranged
    */
   isRangedWeapon() {
-    return this.getWeaponInfo().category === "ranged";
+    return this.weaponType === "ranged";
   }
 
   /**
@@ -808,7 +882,7 @@ export class Player extends AnimatedObject {
     this.projectiles.forEach((projectile) => projectile.draw(ctx));
 
     if (
-      this.weaponType === "dagger" &&
+      this.isMeleeWeapon() &&
       this.isAttacking &&
       variables.showHitboxes
     ) {
@@ -817,16 +891,17 @@ export class Player extends AnimatedObject {
         this.position.y + this.height / 2
       );
       const attackDirection = this.getAttackDirection();
+      const weaponInfo = this.getWeaponInfo();
       const attackArea = this.calculateAttackArea(
         playerCenter,
         attackDirection,
-        DAGGER_ATTACK_RANGE,
-        DAGGER_ATTACK_WIDTH
+        weaponInfo.range,
+        DAGGER_ATTACK_WIDTH // Keep using same width for all melee weapons
       );
 
       const isLimited =
-        this.raycastToWall(playerCenter, attackDirection, DAGGER_ATTACK_RANGE) <
-        DAGGER_ATTACK_RANGE;
+        this.raycastToWall(playerCenter, attackDirection, weaponInfo.range) <
+        weaponInfo.range;
       const pulseIntensity = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
 
       ctx.strokeStyle = isLimited
@@ -1050,5 +1125,170 @@ export class Player extends AnimatedObject {
     }
 
     return true;
+  }
+
+  /**
+   * Get the current specific weapon based on weapon type and level
+   * @param {string} weaponType - "melee" or "ranged"
+   * @returns {string} The specific weapon name
+   */
+  getCurrentWeapon(weaponType = this.weaponType) {
+    if (weaponType === "melee") {
+      return this.getCurrentMeleeWeapon();
+    } else if (weaponType === "ranged") {
+      return this.getCurrentRangedWeapon();
+    }
+    return "dagger"; // fallback
+  }
+
+  /**
+   * Get current melee weapon based on level
+   * @returns {string} Current melee weapon
+   */
+  getCurrentMeleeWeapon() {
+    if (this.meleeLevel >= 11) {
+      return "lightsaber";
+    } else if (this.meleeLevel >= 6) {
+      return "katana";
+    } else {
+      return "dagger";
+    }
+  }
+
+  /**
+   * Get current ranged weapon based on level
+   * @returns {string} Current ranged weapon
+   */
+  getCurrentRangedWeapon() {
+    if (this.rangedLevel >= 11) {
+      return "crossbow";
+    } else if (this.rangedLevel >= 6) {
+      return "bow";
+    } else {
+      return "slingshot";
+    }
+  }
+
+  /**
+   * Upgrade melee weapon level and update sprite if currently using melee
+   */
+  upgradeMeleeWeapon() {
+    if (this.meleeLevel < this.maxWeaponLevel) {
+      const oldWeapon = this.getCurrentMeleeWeapon();
+      this.meleeLevel++;
+      const newWeapon = this.getCurrentMeleeWeapon();
+      
+      console.log(`Melee weapon upgraded to level ${this.meleeLevel}! ${oldWeapon} → ${newWeapon}`);
+      
+      // If currently using melee weapon, update sprite
+      if (this.weaponType === "melee") {
+        this.updateWeaponSprite();
+      }
+      
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Upgrade ranged weapon level and update sprite if currently using ranged
+   */
+  upgradeRangedWeapon() {
+    if (this.rangedLevel < this.maxWeaponLevel) {
+      const oldWeapon = this.getCurrentRangedWeapon();
+      this.rangedLevel++;
+      const newWeapon = this.getCurrentRangedWeapon();
+      
+      console.log(`Ranged weapon upgraded to level ${this.rangedLevel}! ${oldWeapon} → ${newWeapon}`);
+      
+      // If currently using ranged weapon, update sprite
+      if (this.weaponType === "ranged") {
+        this.updateWeaponSprite();
+      }
+      
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Update weapon sprite to current weapon without changing weapon type
+   */
+  updateWeaponSprite() {
+    const spritePath = this.getWeaponSpritePath();
+    
+    // Set correct sheetCols for walk sprites (all walk sprites have 9 columns)
+    this.sheetCols = 9;
+    
+    this.setSprite(spritePath);
+    this.resetToCurrentDirectionAnimation();
+    
+    const currentWeapon = this.getCurrentWeapon();
+    console.log(`Weapon sprite updated to ${currentWeapon} (${this.weaponType} level ${this.weaponType === "melee" ? this.meleeLevel : this.rangedLevel}) - ${this.sheetCols} columns`);
+  }
+
+  /**
+   * Get current weapon level for the specified weapon type
+   * @param {string} weaponType - "melee" or "ranged" 
+   * @returns {number} Current weapon level
+   */
+  getWeaponLevel(weaponType = this.weaponType) {
+    return weaponType === "melee" ? this.meleeLevel : this.rangedLevel;
+  }
+
+  /**
+   * Get weapon status information for UI display
+   * @returns {Object} Weapon status including levels, current weapons, and upgrade availability
+   */
+  getWeaponStatus() {
+    return {
+      currentWeaponType: this.weaponType,
+      currentWeapon: this.getCurrentWeapon(),
+      meleeLevel: this.meleeLevel,
+      rangedLevel: this.rangedLevel,
+      currentMeleeWeapon: this.getCurrentMeleeWeapon(),
+      currentRangedWeapon: this.getCurrentRangedWeapon(),
+      maxLevel: this.maxWeaponLevel,
+      canUpgradeMelee: this.meleeLevel < this.maxWeaponLevel,
+      canUpgradeRanged: this.rangedLevel < this.maxWeaponLevel,
+      nextMeleeWeapon: this.meleeLevel < this.maxWeaponLevel ? this.getNextMeleeWeapon() : null,
+      nextRangedWeapon: this.rangedLevel < this.maxWeaponLevel ? this.getNextRangedWeapon() : null,
+    };
+  }
+
+  /**
+   * Get the next melee weapon that will be unlocked at the next tier
+   * @returns {string|null} Next melee weapon or null if at max level
+   */
+  getNextMeleeWeapon() {
+    if (this.meleeLevel >= this.maxWeaponLevel) return null;
+    if (this.meleeLevel < 6) return "katana";
+    if (this.meleeLevel < 11) return "lightsaber";
+    return null;
+  }
+
+  /**
+   * Get the next ranged weapon that will be unlocked at the next tier
+   * @returns {string|null} Next ranged weapon or null if at max level
+   */
+  getNextRangedWeapon() {
+    if (this.rangedLevel >= this.maxWeaponLevel) return null;
+    if (this.rangedLevel < 6) return "bow";
+    if (this.rangedLevel < 11) return "crossbow";
+    return null;
+  }
+
+  /**
+   * Switch to melee weapon and update sprite
+   */
+  switchToMeleeWeapon() {
+    this.setWeapon("melee");
+  }
+
+  /**
+   * Switch to ranged weapon and update sprite  
+   */
+  switchToRangedWeapon() {
+    this.setWeapon("ranged");
   }
 }

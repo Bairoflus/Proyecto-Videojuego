@@ -23,12 +23,12 @@ export const variables = {
 variables.backgroundImage.src = "../assets/backgrounds/backgroundfloor1.jpg";
 
 // Base walking animations (shared between weapons)
-// Common sprite sheet layout: Down, Left, Right, Up in rows
+// All walk.png sprites have 9 columns, 4 rows
 const walkingFrames = {
-  down: [26, 34], // Row 0: Walking down
-  left: [13, 21], // Row 1: Walking left
-  right: [39, 47], // Row 2: Walking right
-  up: [0, 8], // Row 3: Walking up
+  up: [0, 8],       // Row 0: frames 0-8 (walk up)
+  left: [9, 17],    // Row 1: frames 9-17 (walk left)
+  down: [18, 26],   // Row 2: frames 18-26 (walk down)  
+  right: [27, 35],  // Row 3: frames 27-35 (walk right)
 };
 
 // Weapon-specific attack animations
@@ -99,8 +99,8 @@ export const keyDirections = {
   a: "left",
   d: "right",
   " ": "attack",
-  1: "dagger",
-  2: "slingshot",
+  1: "melee",
+  2: "ranged",
   shift: "dash",
 };
 
