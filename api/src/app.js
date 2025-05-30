@@ -81,6 +81,7 @@ const startServer = async () => {
       console.log(`   POST /api/sessions        - Create game session`);
       console.log(`   PUT  /api/sessions/:id    - Update session (keep_alive/close)`);
       console.log(`   POST /api/runs            - Create new game run`);
+      console.log(`   POST /api/runs/:run_id/weapons - Equip weapons for run`);
     });
   } catch (error) {
     console.error('Error starting server:', error);

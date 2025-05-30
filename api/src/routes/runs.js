@@ -1,8 +1,13 @@
 import express from 'express';
-import { createRun, getRunById, getUserRuns } from '../controllers/runController.js';
+import { createRun, getRunById, getUserRuns, equipWeapons } from '../controllers/runController.js';
 import { validateBody, validateParams } from '../middleware/validation.js';
 import { extractBearerToken, validateActiveSession } from '../middleware/auth.js';
-import { createRunSchema, runIdParamSchema } from '../validators/runValidators.js';
+import { 
+  createRunSchema, 
+  runIdParamSchema, 
+  equipWeaponsSchema, 
+  runIdWeaponsParamSchema 
+} from '../validators/runValidators.js';
 
 const router = express.Router();
 
@@ -39,6 +44,19 @@ router.get('/',
   extractBearerToken,
   validateActiveSession,
   getUserRuns
+);
+
+/**
+ * @route   POST /api/runs/:run_id/weapons
+ * @desc    Equip weapons for a run
+ * @access  Private (requires valid session and run ownership)
+ */
+router.post('/:run_id/weapons',
+  extractBearerToken,
+  validateActiveSession,
+  validateParams(runIdWeaponsParamSchema),
+  validateBody(equipWeaponsSchema),
+  equipWeapons
 );
 
 export default router; 
