@@ -28,7 +28,7 @@ export class Game {
 
     this.player = new Player(startPos, 64, 64, "red", 13);
     this.player.setSprite(
-      "../assets/sprites/dagger-sprite-sheet.png",
+      "/assets/sprites/dagger-sprite-sheet.png",
       new Rect(0, 0, 64, 64)
     );
     this.player.setAnimation(130, 130, false, variables.animationDelay);
@@ -101,7 +101,7 @@ export class Game {
 
     icons.forEach((icon, i) => {
       const iconImg = new Image();
-      iconImg.src = `../assets/sprites/${icon.img}`;
+      iconImg.src = `/assets/sprites/${icon.img}`;
       const x = startX + i * (iconSize + 10);
       const y = startY;
 
@@ -131,7 +131,7 @@ export class Game {
 
     // Draw gold counter
     const goldIcon = new Image();
-    goldIcon.src = "../assets/sprites/gold_coin.png";
+    goldIcon.src = "/assets/sprites/gold_coin.png";
     ctx.drawImage(goldIcon, 40, 100, 20, 20);
     ctx.fillStyle = "white";
     ctx.font = "16px monospace";

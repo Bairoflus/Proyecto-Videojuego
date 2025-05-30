@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Game - Shattered Timeline</title>
-  <link rel="stylesheet" href="./styles/main.css" />
+  <link rel="stylesheet" href="../css/main.css" />
 </head>
 
 <body class="game-page">
@@ -18,7 +18,7 @@
   </main>
 
   <script type="module">
-    import { logoutUser } from '../utils/api.js';
+    import { logoutUser } from '../../utils/api.js';
     
     const status = document.getElementById('status');
     const logoutButton = document.getElementById('logout-btn');
@@ -56,7 +56,7 @@
       status.textContent = 'Loading modules...';
 
       // Import main game module
-      const { main } = await import('../main.js');
+      const { main } = await import('../../main.js');
 
       status.textContent = 'Starting game...';
       main();

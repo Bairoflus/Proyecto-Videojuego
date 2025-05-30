@@ -25,7 +25,7 @@ const server = http.createServer((req, res) => {
   // Handle root path
   if (req.url === '/' || req.url === '/index.html') {
     res.writeHead(302, {
-      'Location': '/pages/landing.html'
+      'Location': '/pages/html/landing.html'
     });
     return res.end();
   }
@@ -57,6 +57,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Frontend server running at http://localhost:${PORT}/`);
   console.log(`The game will open at http://localhost:${PORT}/ (landing page)`);
-  console.log(`Registration page: http://localhost:${PORT}/pages/auth/register.html`);
-  console.log(`Login page: http://localhost:${PORT}/pages/auth/login.html`);
+  console.log(`Registration page: http://localhost:${PORT}/pages/html/register.html`);
+  console.log(`Login page: http://localhost:${PORT}/pages/html/login.html`);
+  console.log(`Game page: http://localhost:${PORT}/pages/html/game.html`);
 }); 

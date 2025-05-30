@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Redirect to game after 1 second
             setTimeout(() => {
-                window.location.href = '../game.html';
+                window.location.href = 'game.html';
             }, 1000);
             
         } catch (error) {

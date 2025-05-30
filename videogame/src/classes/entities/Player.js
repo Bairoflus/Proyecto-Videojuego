@@ -232,8 +232,8 @@ export class Player extends AnimatedObject {
       // Update sprite sheet based on weapon type
       const spritePath =
         type === "dagger"
-          ? "../assets/sprites/dagger-sprite-sheet.png"
-          : "../assets/sprites/slingshot-sprite-sheet.png";
+          ? "/assets/sprites/dagger-sprite-sheet.png"
+          : "/assets/sprites/slingshot-sprite-sheet.png";
       this.setSprite(spritePath, new Rect(0, 0, 64, 64));
 
       // Reset to idle animation in current direction

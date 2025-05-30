@@ -30,6 +30,3 @@ export function main() {
   }
   requestAnimationFrame(frame);
 }
-
-// Execute main function when loaded
-main();
