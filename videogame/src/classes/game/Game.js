@@ -26,11 +26,8 @@ export class Game {
     const startPos = this.currentRoom.getPlayerStartPosition();
 
     this.player = new Player(startPos, 64, 64, "red", 13);
-    this.player.setSprite(
-      "../assets/sprites/player/character_dagger.png",
-      new Rect(0, 0, 64, 64)
-    );
-    this.player.setAnimation(130, 130, false, variables.animationDelay);
+    // Initialize player with default weapon (dagger) and proper animation
+    this.player.setWeapon("dagger");
     this.player.setCurrentRoom(this.currentRoom);
 
     this.enemies = this.currentRoom.objects.enemies;

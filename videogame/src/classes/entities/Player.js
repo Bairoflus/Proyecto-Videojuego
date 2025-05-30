@@ -229,20 +229,77 @@ export class Player extends AnimatedObject {
     if (type === "dagger" || type === "slingshot") {
       console.log(`Switching weapon to ${type}`);
       this.weaponType = type;
+
       // Update sprite sheet based on weapon type
-      const spritePath =
-        type === "dagger"
-          ? "../assets/sprites/player/character_dagger.png"
-          : "../assets/sprites/player/character_slingshot.png";
+      const spritePath = this.getWeaponSpritePath(type);
       this.setSprite(spritePath, new Rect(0, 0, 64, 64));
 
-      // Reset to idle animation in current direction
+      // Update walking animation frames based on weapon
+      this.updateWalkingFrames(type);
+
+      // Reset to current direction animation (walking or idle)
+      this.resetToCurrentDirectionAnimation();
+
+      console.log(`Weapon switched to ${type} with sprite: ${spritePath}`);
+    } else {
+      console.warn(
+        `Invalid weapon type: ${type}. Valid types are 'dagger' and 'slingshot'`
+      );
+    }
+  }
+
+  /**
+   * Get the sprite path for the given weapon type
+   * @param {string} weaponType - The weapon type (dagger, slingshot)
+   * @returns {string} The sprite path
+   */
+  getWeaponSpritePath(weaponType) {
+    const weaponSpritePaths = {
+      dagger: "../assets/sprites/player/dagger/walk.png",
+      slingshot: "../assets/sprites/player/slingshot/walk.png",
+    };
+
+    return weaponSpritePaths[weaponType] || weaponSpritePaths.dagger;
+  }
+
+  /**
+   * Update walking animation frames based on weapon type
+   * This method can be extended to support different walking animations per weapon
+   * @param {string} weaponType - The weapon type
+   */
+  updateWalkingFrames(weaponType) {
+    // For now, all weapons use the same walking frames
+    // This can be expanded later if different weapons have different walking animations
+    console.log(`Walking frames updated for weapon: ${weaponType}`);
+  }
+
+  /**
+   * Reset animation to current direction (walking if moving, idle if stationary)
+   */
+  resetToCurrentDirectionAnimation() {
+    const isMoving =
+      this.velocity && (this.velocity.x !== 0 || this.velocity.y !== 0);
+
+    if (isMoving) {
+      // Set walking animation
+      const anim = playerMovement[this.currentDirection];
+      this.setAnimation(
+        anim.frames[0],
+        anim.frames[1],
+        anim.repeat,
+        anim.duration
+      );
+      this.frame = anim.frames[0];
+    } else {
+      // Set idle animation (first frame of current direction)
       const anim = playerMovement[this.currentDirection];
       this.setAnimation(anim.frames[0], anim.frames[0], false, anim.duration);
       this.frame = anim.frames[0];
-      this.spriteRect.x = this.frame % this.sheetCols;
-      this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
     }
+
+    // Update sprite rectangle
+    this.spriteRect.x = this.frame % this.sheetCols;
+    this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
   }
 
   // LINE OF SIGHT: Raycast to detect walls between player and target
@@ -290,13 +347,15 @@ export class Player extends AnimatedObject {
 
   // ENHANCED ATTACK: Melee attack with line-of-sight wall detection
   attack() {
-    const staminaCost =
-      this.weaponType === "dagger"
-        ? PLAYER_CONSTANTS.DAGGER_STAMINA_COST
-        : PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST;
+    const weaponInfo = this.getWeaponInfo();
+    const staminaCost = weaponInfo.staminaCost;
 
     if (this.stamina < staminaCost) {
-      console.log("Not enough stamina to attack");
+      console.log(
+        `Not enough stamina to attack with ${
+          this.weaponType
+        } (need ${staminaCost}, have ${Math.floor(this.stamina)})`
+      );
       return;
     }
 
@@ -304,58 +363,19 @@ export class Player extends AnimatedObject {
       this.isAttacking = true;
       this.hasCreatedProjectile = false; // Reset projectile creation flag
       this.hasAppliedMeleeDamage = false; // Reset melee damage flag
-      this.attackCooldown = playerAttack.cooldown;
+      this.attackCooldown = weaponInfo.cooldown;
 
-      if (this.weaponType === "dagger") {
-        this.stamina -= staminaCost;
-        this.staminaRegenCooldown = this.staminaRegenDelay;
-      }
+      // Consume stamina for attacks
+      this.stamina -= staminaCost;
+      this.staminaRegenCooldown = this.staminaRegenDelay;
 
-      console.log(`Player attacking with ${this.weaponType}`);
+      console.log(
+        `Player attacking with ${this.weaponType} (${weaponInfo.category})`
+      );
 
-      if (this.weaponType === "dagger") {
-        const playerCenter = new Vec(
-          this.position.x + this.width / 2,
-          this.position.y + this.height / 2
-        );
-        const attackDirection = this.getAttackDirection();
-        const attackArea = this.calculateAttackArea(
-          playerCenter,
-          attackDirection,
-          DAGGER_ATTACK_RANGE,
-          DAGGER_ATTACK_WIDTH
-        );
-
-        if (this.currentRoom && this.currentRoom.objects.enemies) {
-          const enemies = this.currentRoom.objects.enemies.filter(
-            (enemy) => enemy.state !== "dead"
-          );
-          let enemiesHit = 0;
-
-          enemies.forEach((enemy) => {
-            const enemyHitbox = enemy.getHitboxBounds();
-
-            if (
-              attackArea.x < enemyHitbox.x + enemyHitbox.width &&
-              attackArea.x + attackArea.width > enemyHitbox.x &&
-              attackArea.y < enemyHitbox.y + enemyHitbox.height &&
-              attackArea.y + attackArea.height > enemyHitbox.y
-            ) {
-              enemy.takeDamage(DAGGER_ATTACK_DAMAGE + this.meleeDamageBonus);
-              enemiesHit++;
-            }
-          });
-
-          console.log(
-            enemiesHit === 0
-              ? "Dagger attack missed all enemies"
-              : `Dagger attack hit ${enemiesHit} enemies`
-          );
-        } else {
-          console.warn("No current room or enemies found for dagger attack");
-        }
-
-        this.hasAppliedMeleeDamage = true;
+      // Handle melee weapon attacks immediately
+      if (this.isMeleeWeapon()) {
+        this.performMeleeAttack();
       }
 
       // Store current frame and direction before attacking
@@ -363,6 +383,8 @@ export class Player extends AnimatedObject {
       this.preAttackDirection = this.currentDirection;
       this.preAttackMinFrame = this.minFrame;
       this.preAttackMaxFrame = this.maxFrame;
+
+      // Set attack animation
       const attackFrames = getAttackFrames(
         this.weaponType,
         this.currentDirection
@@ -383,6 +405,58 @@ export class Player extends AnimatedObject {
             )}ms`
       );
     }
+  }
+
+  /**
+   * Perform melee attack with enhanced line-of-sight detection
+   */
+  performMeleeAttack() {
+    const playerCenter = new Vec(
+      this.position.x + this.width / 2,
+      this.position.y + this.height / 2
+    );
+    const attackDirection = this.getAttackDirection();
+    const attackArea = this.calculateAttackArea(
+      playerCenter,
+      attackDirection,
+      DAGGER_ATTACK_RANGE,
+      DAGGER_ATTACK_WIDTH
+    );
+
+    if (this.currentRoom && this.currentRoom.objects.enemies) {
+      const enemies = this.currentRoom.objects.enemies.filter(
+        (enemy) => enemy.state !== "dead"
+      );
+      let enemiesHit = 0;
+
+      enemies.forEach((enemy) => {
+        const enemyHitbox = enemy.getHitboxBounds();
+
+        if (
+          attackArea.x < enemyHitbox.x + enemyHitbox.width &&
+          attackArea.x + attackArea.width > enemyHitbox.x &&
+          attackArea.y < enemyHitbox.y + enemyHitbox.height &&
+          attackArea.y + attackArea.height > enemyHitbox.y
+        ) {
+          const damage = this.getWeaponDamage();
+          enemy.takeDamage(damage);
+          enemiesHit++;
+          console.log(
+            `${this.weaponType} hit ${enemy.type} for ${damage} damage`
+          );
+        }
+      });
+
+      console.log(
+        enemiesHit === 0
+          ? `${this.weaponType} attack missed all enemies`
+          : `${this.weaponType} attack hit ${enemiesHit} enemies`
+      );
+    } else {
+      console.warn("No current room or enemies found for melee attack");
+    }
+
+    this.hasAppliedMeleeDamage = true;
   }
 
   update(deltaTime) {
@@ -441,15 +515,15 @@ export class Player extends AnimatedObject {
 
       // Handle attack animation and projectile creation
       if (this.isAttacking) {
-        // Create projectile at the middle of the attack animation
+        // Create projectile at the middle of the attack animation for ranged weapons
         if (
-          this.weaponType === "slingshot" &&
+          this.isRangedWeapon() &&
           !this.hasCreatedProjectile &&
           this.frame === Math.floor((this.minFrame + this.maxFrame) / 2)
         ) {
-          const projectileSpeed = PLAYER_CONSTANTS.SLINGSHOT_PROJECTILE_SPEED;
-          const projectileDamage =
-            PLAYER_CONSTANTS.SLINGSHOT_DAMAGE + this.rangedDamageBonus; // Add shop bonus
+          const weaponInfo = this.getWeaponInfo();
+          const projectileSpeed = weaponInfo.projectileSpeed;
+          const projectileDamage = this.getWeaponDamage(); // Use weapon damage calculation with shop bonuses
 
           // Calculate spawn position at the center of the player
           const spawnPos = new Vec(
@@ -487,11 +561,9 @@ export class Player extends AnimatedObject {
           this.projectiles.push(projectile);
           this.hasCreatedProjectile = true; // Mark that we've created the projectile
 
-          this.stamina -= PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST;
-          this.staminaRegenCooldown = this.staminaRegenDelay;
-
+          // Note: Stamina consumption is now handled in the attack() method
           console.log(
-            `Slingshot projectile created (direction: ${this.currentDirection}, damage: ${projectileDamage})`
+            `${weaponInfo.type} projectile created (direction: ${this.currentDirection}, damage: ${projectileDamage})`
           );
         }
 
@@ -651,7 +723,72 @@ export class Player extends AnimatedObject {
     return attackArea;
   }
 
-  // Updated attack method to use helper methods
+  /**
+   * Get current weapon information
+   * @returns {Object} Weapon information including type, sprite path, and capabilities
+   */
+  getWeaponInfo() {
+    const weaponInfo = {
+      dagger: {
+        type: "dagger",
+        category: "melee",
+        spritePath: "../assets/sprites/player/dagger/walk.png",
+        attackSpritePath: "../assets/sprites/player/dagger/slash.png",
+        range: PLAYER_CONSTANTS.DAGGER_ATTACK_RANGE,
+        damage: PLAYER_CONSTANTS.DAGGER_ATTACK_DAMAGE,
+        staminaCost: PLAYER_CONSTANTS.DAGGER_STAMINA_COST,
+        cooldown: playerAttack.cooldown,
+        description: "Close-range melee weapon with line-of-sight detection",
+      },
+      slingshot: {
+        type: "slingshot",
+        category: "ranged",
+        spritePath: "../assets/sprites/player/slingshot/walk.png",
+        attackSpritePath: "../assets/sprites/player/slingshot/shoot.png",
+        range: 200, // Projectile range
+        damage: PLAYER_CONSTANTS.SLINGSHOT_DAMAGE,
+        staminaCost: PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST,
+        cooldown: playerAttack.cooldown,
+        projectileSpeed: PLAYER_CONSTANTS.SLINGSHOT_PROJECTILE_SPEED,
+        description: "Long-range projectile weapon",
+      },
+    };
+
+    return weaponInfo[this.weaponType] || weaponInfo.dagger;
+  }
+
+  /**
+   * Check if the current weapon is a melee weapon
+   * @returns {boolean} True if current weapon is melee
+   */
+  isMeleeWeapon() {
+    return this.getWeaponInfo().category === "melee";
+  }
+
+  /**
+   * Check if the current weapon is a ranged weapon
+   * @returns {boolean} True if current weapon is ranged
+   */
+  isRangedWeapon() {
+    return this.getWeaponInfo().category === "ranged";
+  }
+
+  /**
+   * Get weapon damage including bonuses
+   * @returns {number} Total weapon damage
+   */
+  getWeaponDamage() {
+    const weaponInfo = this.getWeaponInfo();
+    const bonus = this.isMeleeWeapon()
+      ? this.meleeDamageBonus
+      : this.rangedDamageBonus;
+    return weaponInfo.damage + bonus;
+  }
+
+  /**
+   * Updated attack method to use helper methods
+   * @override
+   */
   attack() {
     const staminaCost = this.weaponType === "dagger" ? 8 : 12;
 
