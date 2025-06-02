@@ -177,18 +177,24 @@ app.post('/api/auth/logout', async (req, res) => {
             port: 3306
         });
         
-        // Delete session from database
+        // Logout logic: Update the session_token to closed_at
         const [result] = await connection.execute(
-            'DELETE FROM sessions WHERE session_token = ?',
+            'UPDATE sessions SET closed_at = NOW() WHERE session_token = ?',
             [sessionToken]
         );
         
+        // Check if session was found and updated
+        if (result.affectedRows === 0) {
+            return res.status(404).send('Session not found');
+        }
+
         // Return 204 No Content on success
         res.status(204).send();
         
     } catch (err) {
         console.error(err);
         res.status(500).send('Database error');
+
     } finally {
         // Always close the connection
         if (connection) {
@@ -375,6 +381,87 @@ app.post('/api/runs/:runId/save-state', async (req, res) => {
         // Return success response
         res.status(201).json({
             saveId: result.insertId
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
+// PUT /api/runs/:runId/complete
+app.put('/api/runs/:runId/complete', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get runId from URL parameters
+        const { runId } = req.params;
+        
+        // Get data from request body
+        const { goldCollected, goldSpent, totalKills, deathCause } = req.body;
+        
+        // Basic validation - runId parameter
+        if (!runId) {
+            return res.status(400).send('Missing runId parameter');
+        }
+        
+        // Input validation - required fields
+        if (goldCollected === undefined || goldSpent === undefined || totalKills === undefined) {
+            return res.status(400).send('Missing required fields: goldCollected, goldSpent, totalKills');
+        }
+        
+        // Type validation - must be integers
+        if (!Number.isInteger(Number(goldCollected)) || !Number.isInteger(Number(goldSpent)) || !Number.isInteger(Number(totalKills))) {
+            return res.status(400).send('Invalid field types: goldCollected, goldSpent, totalKills must be integers');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Check run existence and state - must exist and not be completed
+        const [runs] = await connection.execute(
+            'SELECT run_id, completed FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        if (runs.length === 0) {
+            return res.status(404).send('Run not found');
+        }
+        
+        if (runs[0].completed === 1) {
+            return res.status(400).send('Run already completed');
+        }
+        
+        // Determine if run was completed successfully or player died
+        // If deathCause is null or empty, assume successful completion
+        const isSuccessfulCompletion = !deathCause || deathCause.trim() === '';
+        const completedStatus = isSuccessfulCompletion ? 1 : 0; // TRUE if successful, FALSE if died
+        
+        // Update run with completion data
+        const [result] = await connection.execute(
+            'UPDATE run_history SET ended_at = NOW(), completed = ?, gold_collected = ?, gold_spent = ?, total_kills = ?, death_cause = ? WHERE run_id = ? AND completed = FALSE',
+            [completedStatus, goldCollected, goldSpent, totalKills, deathCause || null, runId]
+        );
+        
+        // Check if update was successful
+        if (result.affectedRows === 0) {
+            return res.status(400).send('Unable to complete run - run may already be completed');
+        }
+        
+        // Success response
+        res.status(200).json({
+            message: 'Run marked complete'
         });
         
     } catch (err) {

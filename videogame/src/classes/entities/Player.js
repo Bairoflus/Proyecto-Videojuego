@@ -18,7 +18,7 @@ import {
   PLAYER_CONSTANTS,
   PHYSICS_CONSTANTS,
 } from "../../constants/gameConstants.js";
-import { createRun } from "../../utils/api.js";
+import { createRun, completeRun } from "../../utils/api.js";
 
 // Constants for Player class
 const DASH_STAMINA_COST = PLAYER_CONSTANTS.DAGGER_STAMINA_COST; // Reuse for dash
@@ -111,22 +111,37 @@ export class Player extends AnimatedObject {
   }
 
   async die() {
-    console.log("Player died! Initiating game reset...");
+    console.log("Player died! Completing current run...");
 
-    // Create a new run entry for the death event
+    // Complete the current run with death data
     try {
-      // Get userId from localStorage (set during login)
-      const userId = localStorage.getItem('currentUserId');
+      const currentRunId = localStorage.getItem('currentRunId');
       
-      if (userId) {
-        console.log("Creating run entry for player death...");
-        const runData = await createRun(userId);
-        console.log("Run created on death:", runData);
+      if (currentRunId && window.game) {
+        console.log("Completing run with death data...");
+        
+        // Get run statistics from game instance
+        const runStats = window.game.getRunStats();
+        
+        const completionData = {
+          goldCollected: runStats.goldCollected,
+          goldSpent: runStats.goldSpent, 
+          totalKills: runStats.totalKills,
+          deathCause: "player_death" // Generic death cause
+        };
+        
+        console.log("Run completion data:", completionData);
+        const result = await completeRun(currentRunId, completionData);
+        console.log("Run completed on death:", result);
+        
+        // Clear the current run ID since run is now complete
+        localStorage.removeItem('currentRunId');
+        
       } else {
-        console.log("No userId found - playing in test mode");
+        console.log("No current run ID found or game instance missing - playing in test mode");
       }
     } catch (error) {
-      console.error("Failed to create run on death:", error);
+      console.error("Failed to complete run on death:", error);
     }
 
     // Trigger complete game reset through the global game instance

@@ -121,5 +121,22 @@ export async function saveRunState(runId, stateData) {
     });
 }
 
+/**
+ * Complete a game run
+ * @param {string|number} runId - Run ID to complete
+ * @param {Object} completionData - Completion data
+ * @param {number} completionData.goldCollected - Gold collected during run
+ * @param {number} completionData.goldSpent - Gold spent during run
+ * @param {number} completionData.totalKills - Total kills during run
+ * @param {string|null} completionData.deathCause - Death cause (null for successful completion)
+ * @returns {Promise<Object>} Completion confirmation
+ */
+export async function completeRun(runId, completionData) {
+    return apiRequest(`/runs/${runId}/complete`, {
+        method: 'PUT',
+        body: JSON.stringify(completionData)
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 
