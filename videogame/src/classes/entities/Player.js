@@ -998,6 +998,7 @@ export class Player extends AnimatedObject {
     }
     // Solo permitir dash si no está en cooldown y no está atacando
     if (this.dashCooldownTime <= 0 && this.dashTime <= 0 && !this.isAttacking) {
+      let dashDir = null;
       // Solo permitir dash si hay teclas presionadas
       if (this.keys.length > 0) {
         // Usar la dirección de las teclas actualmente presionadas
@@ -1008,17 +1009,38 @@ export class Player extends AnimatedObject {
             currentVelocity[move.axis] += move.direction;
           }
         }
-
-        // Solo dash si hay movimiento
         if (currentVelocity.magnitude() > 0) {
-          this.dashDirection = currentVelocity.normalize();
-          this.dashTime = this.dashDuration;
-          this.stamina -= DASH_STAMINA_COST;
-          this.staminaCooldown = this.staminaRegenDelay;
-          this.dashCooldownTime = this.dashCooldown;
-          this.isInvulnerable = true;
-          this.invulnerabilityTimer = this.dashDuration;
+          dashDir = currentVelocity.normalize();
         }
+      }
+
+      if (!dashDir) {
+        switch (this.previousDirection) {
+          case "up":
+            dashDir = new Vec(0, -1);
+            break;
+          case "down":
+            dashDir = new Vec(0, 1);
+            break;
+          case "left":
+            dashDir = new Vec(-1, 0);
+            break;
+          case "right":
+            dashDir = new Vec(1, 0);
+            break;
+          default:
+            dashDir = null;
+        }
+      }
+      // Solo dash si hay movimiento
+      if (dashDir) {
+        this.dashDirection = dashDir;
+        this.dashTime = this.dashDuration;
+        this.stamina -= DASH_STAMINA_COST;
+        this.staminaCooldown = this.staminaRegenDelay;
+        this.dashCooldownTime = this.dashCooldown;
+        this.isInvulnerable = true;
+        this.invulnerabilityTimer = this.dashDuration;
       }
     }
   }
