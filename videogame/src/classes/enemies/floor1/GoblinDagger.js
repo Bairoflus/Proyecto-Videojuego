@@ -55,10 +55,8 @@ export class GoblinDagger extends MeleeEnemy {
     const direction = targetPosition.minus(this.position);
     const distance = direction.magnitude();
 
-    if (distance <= this.attackRange && this.attackCooldown <= 0) {
-      // Attack if in range and not on cooldown
-      this.attack(this.target);
-    } else {
+    // Just move toward the target - attack will be called separately by Room.js
+    if (distance > this.attackRange) {
       // Chase the player
       const previousState = this.state;
       const previousDirection = this.currentDirection;
@@ -75,6 +73,12 @@ export class GoblinDagger extends MeleeEnemy {
       // Update animation if state or direction changed
       if (previousState !== this.state || previousDirection !== this.currentDirection) {
         this.updateAnimation();
+      }
+    } else {
+      // Stop moving when in attack range - actual attack will be handled by Room.js
+      this.velocity = new Vec(0, 0);
+      if (this.state !== "attacking") {
+        this.state = "idle"; // Set to idle, will change to attacking when attack() is called
       }
     }
   }
@@ -106,10 +110,13 @@ export class GoblinDagger extends MeleeEnemy {
     this.attackCooldown = this.attackDuration;
     this.velocity = new Vec(0, 0); // Stop moving during attack
     
+    // Deal damage to the target
+    target.takeDamage(this.baseDamage);
+    
     // Update animation to attack sprite
     this.updateAnimation();
     
-    console.log(`Goblin dagger attacking in direction: ${this.currentDirection}`);
+    console.log(`Goblin dagger attacking in direction: ${this.currentDirection}, dealing ${this.baseDamage} damage`);
   }
 
   // Get attack frame ranges based on direction (same as player dagger)

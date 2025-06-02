@@ -226,10 +226,8 @@ export class Room {
           );
           enemy.moveTo(playerCenter);
 
-          // For ranged enemies, also call their attack method
-          if (enemy.type === "goblin_archer") {
-            enemy.attack(window.game.player);
-          }
+          // For all enemy types, call their attack method with player reference
+          enemy.attack(window.game.player);
         }
 
         // Update enemy with player reference for projectile handling
