@@ -17,7 +17,7 @@ export class AnimatedObject extends GameObject {
     this.repeat = true;
     this.frameDuration = ANIMATION_CONSTANTS.DEFAULT_DELAY;
     this.totalTime = 0;
-    
+
     // spriteRect will be set automatically when sprite is loaded via setSprite
     this.spriteRect = null;
   }
@@ -36,7 +36,7 @@ export class AnimatedObject extends GameObject {
     if (this.totalTime > this.frameDuration) {
       let restart = this.repeat ? this.minFrame : this.frame;
       this.frame = this.frame < this.maxFrame ? this.frame + 1 : restart;
-      
+
       // Ensure spriteRect exists before updating
       if (this.spriteRect) {
         this.spriteRect.x = this.frame % this.sheetCols;

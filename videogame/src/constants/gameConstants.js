@@ -37,6 +37,52 @@ export const PLAYER_CONSTANTS = {
   RAYCAST_STEP_SIZE: 5,
 };
 
+// Sprite scaling constants for maintaining consistent character size
+export const SPRITE_SCALING_CONSTANTS = {
+  // Base character size (dagger sprites as reference)
+  BASE_CHARACTER_SIZE: 64,
+
+  // Scale factors for different weapon animations to maintain consistent character size
+  // These compensate for sprites where the character appears smaller due to larger frame dimensions
+  WEAPON_SCALE_FACTORS: {
+    // Dagger - 64x64 frames for both walk and slash
+    dagger: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 1.0, // 384x256 sprite, 64x64 per frame
+    },
+
+    // Crossbow - 64x64 frames for both walk and shoot
+    crossbow: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 1.0, // 512x256 sprite, 64x64 per frame
+    },
+
+    // Slingshot - 64x64 frames for both walk and shoot
+    slingshot: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 1.0, // 832x256 sprite, 64x64 per frame
+    },
+
+    // Lightsaber - 64x64 for walk, 192x192 for slash
+    lightsaber: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 3.0, // 1152x768 sprite, 192x192 per frame (192/64 = 3, so we scale 3x to compensate)
+    },
+
+    // Katana - 128x128 frames for both walk and slash
+    katana: {
+      walk: 2.0, // 1152x512 sprite, 128x128 per frame
+      attack: 2.0, // 768x512 sprite, 128x128 per frame
+    },
+
+    // Bow - 128x128 for walk, 64x64 for shoot
+    bow: {
+      walk: 2.0, // 1152x512 sprite, 128x128 per frame
+      attack: 1.0, // 832x256 sprite, 64x64 per frame
+    },
+  },
+};
+
 // Enemy constants
 export const ENEMY_CONSTANTS = {
   // Goblin Dagger

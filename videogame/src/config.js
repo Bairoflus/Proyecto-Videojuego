@@ -25,10 +25,10 @@ variables.backgroundImage.src = "../assets/backgrounds/backgroundfloor1.jpg";
 // Base walking animations (shared between weapons)
 // All walk.png sprites have 9 columns, 4 rows
 const walkingFrames = {
-  up: [0, 8],       // Row 0: frames 0-8 (walk up)
-  left: [9, 17],    // Row 1: frames 9-17 (walk left)
-  down: [18, 26],   // Row 2: frames 18-26 (walk down)  
-  right: [27, 35],  // Row 3: frames 27-35 (walk right)
+  up: [0, 8], // Row 0: frames 0-8 (walk up)
+  left: [9, 17], // Row 1: frames 9-17 (walk left)
+  down: [18, 26], // Row 2: frames 18-26 (walk down)
+  right: [27, 35], // Row 3: frames 27-35 (walk right)
 };
 
 // Weapon-specific attack animations
@@ -52,16 +52,16 @@ const attackFrames = {
     right: [18, 23], // slash.png, row 3, 6 frames
   },
   slingshot: {
-    up: [0, 12], // shoot.png, row 0, 13 frames
-    left: [13, 25], // shoot.png, row 1, 13 frames
-    down: [26, 38], // shoot.png, row 2, 13 frames
-    right: [39, 51], // shoot.png, row 3, 13 frames
+    up: [0, 11], // shoot.png, row 0, 12 frames (exclude frame 12)
+    left: [13, 24], // shoot.png, row 1, 12 frames (exclude frame 25)
+    down: [26, 37], // shoot.png, row 2, 12 frames (exclude frame 38)
+    right: [39, 50], // shoot.png, row 3, 12 frames (exclude frame 51)
   },
   bow: {
-    up: [0, 12], // shoot.png, row 0, 13 frames
-    left: [13, 25], // shoot.png, row 1, 13 frames
-    down: [26, 38], // shoot.png, row 2, 13 frames
-    right: [39, 51], // shoot.png, row 3, 13 frames
+    up: [0, 11], // shoot.png, row 0, 12 frames (exclude frame 12)
+    left: [13, 24], // shoot.png, row 1, 12 frames (exclude frame 25)
+    down: [26, 37], // shoot.png, row 2, 12 frames (exclude frame 38)
+    right: [39, 50], // shoot.png, row 3, 12 frames (exclude frame 51)
   },
   crossbow: {
     up: [0, 7], // shoot.png, row 0, 8 frames

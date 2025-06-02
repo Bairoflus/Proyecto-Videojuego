@@ -27,7 +27,7 @@ export class GameObject {
   setSprite(imagePath, rect) {
     this.spriteImage = new Image();
     this.spriteImage.src = imagePath;
-    
+
     // Set the provided rect or calculate it automatically for AnimatedObjects
     if (rect) {
       this.spriteRect = rect;
@@ -35,19 +35,21 @@ export class GameObject {
       // Initialize with default dimensions immediately to prevent null reference errors
       // These will be updated with correct dimensions when the image loads
       this.spriteRect = new Rect(0, 0, 64, 64); // Temporary default dimensions
-      
+
       // For AnimatedObjects, calculate actual frame dimensions when image loads
       this.spriteImage.onload = () => {
         // Calculate frame dimensions: spritesheet dimensions / actual columns and rows
         // All player spritesheets have 4 rows (up, left, down, right directions)
         const frameWidth = this.spriteImage.width / this.sheetCols;
         const frameHeight = this.spriteImage.height / 4; // Always 4 rows for player sprites
-        
+
         // Update the existing spriteRect with correct dimensions
         this.spriteRect.width = frameWidth;
         this.spriteRect.height = frameHeight;
-        
-        console.log(`Auto-calculated sprite dimensions: ${frameWidth}x${frameHeight} (cols: ${this.sheetCols}, rows: 4) for ${imagePath}`);
+
+        console.log(
+          `Auto-calculated sprite dimensions: ${frameWidth}x${frameHeight} (cols: ${this.sheetCols}, rows: 4) for ${imagePath}`
+        );
       };
     }
   }
