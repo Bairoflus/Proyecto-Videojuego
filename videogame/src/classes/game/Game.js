@@ -9,6 +9,21 @@ import { Boss } from "../entities/Boss.js";
 
 export class Game {
   constructor() {
+    this.canvas = null;
+    this.ctx = null;
+    this.player = null;
+    this.floorGenerator = null;
+    this.currentRoom = null;
+    this.gameState = "loading"; // loading, playing, paused, gameover
+    this.debug = false;
+    this.lastTime = 0;
+    
+    // Run statistics tracking
+    this.runStats = {
+      goldSpent: 0,
+      totalKills: 0
+    };
+
     this.globalShop = new Shop();
     this.createEventListeners();
     this.floorGenerator = new FloorGenerator();
@@ -142,6 +157,9 @@ export class Game {
     console.log("=== COMPLETE GAME RESET AFTER DEATH ===");
 
     try {
+      // Reset run statistics for new run
+      this.resetRunStats();
+      
       this.floorGenerator.resetToInitialState();
       this.globalShop.resetForNewRun();
 
@@ -301,6 +319,37 @@ export class Game {
         this.player.keys = this.player.keys.filter((k) => k !== action);
       }
     });
+  }
+
+  // Run statistics tracking methods
+  trackGoldSpent(amount) {
+    this.runStats.goldSpent += amount;
+    console.log(`Gold spent: +${amount}, Total spent this run: ${this.runStats.goldSpent}`);
+  }
+
+  trackKill() {
+    this.runStats.totalKills++;
+    console.log(`Enemy killed! Total kills this run: ${this.runStats.totalKills}`);
+  }
+
+  resetRunStats() {
+    console.log("Resetting run statistics...");
+    this.runStats = {
+      goldSpent: 0,
+      totalKills: 0
+    };
+  }
+
+  getRunStats() {
+    return {
+      goldSpent: this.runStats.goldSpent,
+      totalKills: this.runStats.totalKills,
+      goldCollected: this.player ? this.player.getGold() : 0
+    };
+  }
+
+  // Game state management methods
+  setupNewGame() {
   }
 }
 export function drawBossHealthBar(ctx, boss) {

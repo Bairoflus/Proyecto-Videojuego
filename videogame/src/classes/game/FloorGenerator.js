@@ -9,7 +9,7 @@ import { log } from '../../utils/Logger.js';
 import { FLOOR_CONSTANTS } from '../../constants/gameConstants.js';
 import { DragonBoss } from '../enemies/floor1/DragonBoss.js';
 import { Vec } from '../../utils/Vec.js';
-import { createRun } from '../../utils/api.js';
+import { createRun, completeRun } from '../../utils/api.js';
 
 export class FloorGenerator {
     constructor() {
@@ -164,19 +164,35 @@ export class FloorGenerator {
     // Advances to next floor
     async nextFloor() {
         if (this.floorCount >= FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN) {
-            // Player completed all floors successfully! Create run entry
+            // Player completed all floors successfully! Complete current run
             try {
-                const userId = localStorage.getItem('currentUserId');
+                const currentRunId = localStorage.getItem('currentRunId');
                 
-                if (userId) {
-                    console.log("Creating run entry for successful completion...");
-                    const runData = await createRun(userId);
-                    console.log("Run created for successful completion:", runData);
+                if (currentRunId && window.game) {
+                    console.log("Completing run for successful completion...");
+                    
+                    // Get run statistics from game instance
+                    const runStats = window.game.getRunStats();
+                    
+                    const completionData = {
+                        goldCollected: runStats.goldCollected,
+                        goldSpent: runStats.goldSpent,
+                        totalKills: runStats.totalKills,
+                        deathCause: null // null for successful completion
+                    };
+                    
+                    console.log("Victory completion data:", completionData);
+                    const result = await completeRun(currentRunId, completionData);
+                    console.log("Run completed for victory:", result);
+                    
+                    // Clear the current run ID since run is now complete  
+                    localStorage.removeItem('currentRunId');
+                    
                 } else {
-                    console.log("No userId found - playing in test mode");
+                    console.log("No current run ID found or game instance missing - playing in test mode");
                 }
             } catch (error) {
-                console.error("Failed to create run on successful completion:", error);
+                console.error("Failed to complete run on victory:", error);
             }
 
             // If we're at the max floor, increment run and reset floor

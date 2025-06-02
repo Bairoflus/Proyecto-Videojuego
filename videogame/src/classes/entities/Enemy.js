@@ -95,16 +95,23 @@ export class Enemy extends AnimatedObject {
   die() {
     this.state = "dead";
     log.debug(`${this.type} died`);
-
-    // EVENT-DRIVEN UPDATE: Update room state when enemy dies
-    if (window.game && window.game.floorGenerator && this.currentRoom) {
-      window.game.floorGenerator.updateRoomState(
-        window.game.floorGenerator.getCurrentRoomIndex(),
-        this.currentRoom
-      );
-      log.verbose("Room state updated due to enemy death");
+    
+    // Track kill in global game statistics
+    if (window.game && typeof window.game.trackKill === 'function') {
+        window.game.trackKill();
     }
 
+    // EVENT-DRIVEN UPDATE: Update room state when enemy dies
+    if (this.currentRoom) {
+      log.verbose("Updating room after enemy death");
+      
+      // Update the room state in floor generator
+      if (window.game && window.game.floorGenerator) {
+        window.game.floorGenerator.updateRoomState(undefined, this.currentRoom);
+        log.verbose("Room state updated due to enemy death");
+      }
+    }
+    
     // TODO: Add death animation and effects
   }
 

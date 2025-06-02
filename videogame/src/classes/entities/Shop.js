@@ -153,6 +153,11 @@ export class Shop {
         player.gold -= option.cost;
         option.purchased++;
         
+        // Track gold spent in global game statistics
+        if (window.game && typeof window.game.trackGoldSpent === 'function') {
+            window.game.trackGoldSpent(option.cost);
+        }
+        
         // Apply upgrade effects
         switch(option.type) {
             case 'melee':
