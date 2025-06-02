@@ -20,6 +20,20 @@ app.use((req, res, next) => {
     next();
 });
 
+// Root route - API information
+app.get('/', (req, res) => {
+    res.json({
+        message: 'Project Shattered Timeline API',
+        status: 'Server is running',
+        version: '1.0.0',
+        endpoints: {
+            'POST /api/auth/register': 'Register a new user',
+            'POST /api/auth/login': 'Login user and get session token'
+        },
+        documentation: 'Check the README.md for more details'
+    });
+});
+
 // POST /api/auth/register
 app.post('/api/auth/register', async (req, res) => {
     let connection;
