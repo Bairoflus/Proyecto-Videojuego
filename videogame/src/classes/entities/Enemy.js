@@ -38,7 +38,7 @@ export class Enemy extends AnimatedObject {
     this.type = type;
     this.currentDirection = "down";
     this.isAttacking = false;
-    
+
     // Reference to current room for collision detection
     this.currentRoom = null;
   }
@@ -53,30 +53,30 @@ export class Enemy extends AnimatedObject {
     if (this.state === "dead" || !this.currentRoom) {
       return false;
     }
-    
+
     const originalPosition = new Vec(this.position.x, this.position.y);
     let collisionDetected = false;
-    
+
     // Try movement in X direction only
     const newPositionX = new Vec(newPosition.x, this.position.y);
     this.position = newPositionX;
-    
+
     if (this.currentRoom.checkWallCollision(this)) {
       // Revert X movement if it collides
       this.position.x = originalPosition.x;
       collisionDetected = true;
     }
-    
+
     // Try movement in Y direction only
     const newPositionY = new Vec(this.position.x, newPosition.y);
     this.position = newPositionY;
-    
+
     if (this.currentRoom.checkWallCollision(this)) {
       // Revert Y movement if it collides
       this.position.y = originalPosition.y;
       collisionDetected = true;
     }
-    
+
     // Return true if we moved at all
     return this.position.x !== originalPosition.x || this.position.y !== originalPosition.y;
   }
@@ -95,16 +95,16 @@ export class Enemy extends AnimatedObject {
   die() {
     this.state = "dead";
     log.debug(`${this.type} died`);
-    
+
     // EVENT-DRIVEN UPDATE: Update room state when enemy dies
     if (window.game && window.game.floorGenerator && this.currentRoom) {
       window.game.floorGenerator.updateRoomState(
-        window.game.floorGenerator.getCurrentRoomIndex(), 
+        window.game.floorGenerator.getCurrentRoomIndex(),
         this.currentRoom
       );
       log.verbose("Room state updated due to enemy death");
     }
-    
+
     // TODO: Add death animation and effects
   }
 
@@ -117,7 +117,7 @@ export class Enemy extends AnimatedObject {
     if (distance > this.attackRange) {
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
-      
+
       // Calculate new position and use safe movement
       const newPosition = this.position.plus(this.velocity);
       this.moveToPosition(newPosition);
