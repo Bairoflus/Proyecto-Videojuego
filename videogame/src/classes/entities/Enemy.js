@@ -152,7 +152,9 @@ export class Enemy extends AnimatedObject {
       this.attackCooldown -= deltaTime;
     }
 
-    this.updateAnimation();
+    // Only call updateFrame for animation progression
+    // updateAnimation should be called only when state/direction changes, not every frame
+    this.updateFrame(deltaTime);
     this.constrainToCanvas();
   }
 

@@ -34,8 +34,14 @@ export class AnimatedObject extends GameObject {
   updateFrame(deltaTime) {
     this.totalTime += deltaTime;
     if (this.totalTime > this.frameDuration) {
-      let restart = this.repeat ? this.minFrame : this.frame;
-      this.frame = this.frame < this.maxFrame ? this.frame + 1 : restart;
+      // Allow non-repeating animations to exceed maxFrame for completion detection
+      if (this.frame < this.maxFrame) {
+        this.frame++;
+      } else if (this.repeat) {
+        this.frame = this.minFrame;
+      } else {
+        this.frame++; // Allow exceeding maxFrame for non-repeating animations
+      }
 
       // Ensure spriteRect exists before updating
       if (this.spriteRect) {

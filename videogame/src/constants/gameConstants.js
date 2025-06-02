@@ -87,17 +87,19 @@ export const SPRITE_SCALING_CONSTANTS = {
 export const ENEMY_CONSTANTS = {
   // Goblin Dagger
   GOBLIN_DAGGER: {
-    size: { width: 32, height: 32 },
+    size: { width: 48, height: 48 }, // Increased from 32x32 to make them slightly bigger
     health: 20,
     damage: 10,
-    speed: PLAYER_CONSTANTS.BASE_SPEED * 0.7,
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 2,
     attackRange: 32,
     attackCooldown: 1000,
+    // Sprite scaling - since dagger_goblin has same layout as player dagger (64x64 frames)
+    spriteScale: 1.2, // Make sprite slightly bigger than base size
   },
 
   // Goblin Archer
   GOBLIN_ARCHER: {
-    size: { width: 32, height: 32 },
+    size: { width: 48, height: 48 }, // Increased from 32x32 to make them slightly bigger
     health: 30,
     damage: 15,
     speed: 0, // Static enemy
@@ -105,6 +107,8 @@ export const ENEMY_CONSTANTS = {
     attackCooldown: 2000,
     projectileSpeed: 300,
     retreatDistance: 80,
+    // Sprite scaling - assuming bow_goblin has similar layout to player bow
+    spriteScale: 1.2, // Make sprite slightly bigger than base size
   },
 };
 
