@@ -955,6 +955,170 @@ curl -X POST http://localhost:3000/api/runs/123/boss-encounter \
 5. Encounter registered in `boss_encounters` table with timestamp
 6. Returns `encounterId` for confirmation/tracking
 
+### POST /api/runs/:runId/upgrade-purchase
+Registers a permanent upgrade purchase during an active game run.
+
+**URL**: `/api/runs/{runId}/upgrade-purchase`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "userId": 123,
+  "upgradeType": "max_health",
+  "levelBefore": 1,
+  "levelAfter": 2,
+  "goldSpent": 200
+}
+```
+
+**Success Response** (201 Created):
+```json
+{
+  "purchaseId": 456,
+  "message": "Upgrade purchase registered"
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing runId parameter:
+```
+Missing runId parameter
+```
+
+- **400 Bad Request** - Missing required fields:
+```
+Missing required fields: userId, upgradeType, levelBefore, levelAfter, goldSpent
+```
+
+- **400 Bad Request** - Invalid integer field types:
+```
+Invalid field types: userId, levelBefore, levelAfter, goldSpent, runId must be integers
+```
+
+- **400 Bad Request** - Invalid string field types:
+```
+Invalid field types: upgradeType must be string
+```
+
+- **400 Bad Request** - Business logic validation:
+```
+Invalid upgrade: levelAfter must be greater than levelBefore
+```
+
+- **400 Bad Request** - User ID mismatch:
+```
+User ID does not match run owner
+```
+
+- **400 Bad Request** - Run already completed:
+```
+Run is already completed
+```
+
+- **404 Not Found** - Run not found:
+```
+Run not found
+```
+
+- **404 Not Found** - Upgrade type not found:
+```
+Upgrade type not found
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Restrictions**:
+This endpoint is **NOT** exposed in the landing page or main user interface. It should **ONLY** be called:
+
+1. **During active gameplay** - When a permanent upgrade is purchased
+2. **For active runs only** - Cannot register purchases for completed runs
+3. **With valid game data** - Must reference existing runs and upgrade types
+4. **By the run owner** - userId must match the run's user_id
+5. **With valid upgrade progression** - levelAfter must be greater than levelBefore
+
+**Database Schema Requirements**:
+The endpoint validates against the actual database schema and performs dual operations:
+
+**permanent_upgrade_purchases table** (INSERT):
+```sql
+CREATE TABLE permanent_upgrade_purchases (
+  purchase_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  run_id INT NOT NULL,
+  upgrade_type VARCHAR(50) NOT NULL,
+  level_before SMALLINT,
+  level_after SMALLINT,
+  gold_spent INT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (run_id) REFERENCES run_history(run_id),
+  FOREIGN KEY (upgrade_type) REFERENCES upgrade_types(upgrade_type)
+);
+```
+
+**player_upgrades table** (UPSERT):
+```sql
+CREATE TABLE player_upgrades (
+  user_id INT NOT NULL,
+  upgrade_type VARCHAR(50) NOT NULL,
+  level SMALLINT,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, upgrade_type),
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (upgrade_type) REFERENCES upgrade_types(upgrade_type)
+);
+```
+
+**Validation Logic**:
+1. **Run Exists Check**: `SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?`
+2. **User Ownership Check**: Validates `userId` matches run owner
+3. **Run Active Check**: Validates `ended_at IS NULL` (run not completed)
+4. **Upgrade Type Exists Check**: `SELECT upgrade_type FROM upgrade_types WHERE upgrade_type = ?`
+5. **Business Logic Check**: Validates `levelAfter > levelBefore`
+6. **Data Type Validation**: Integers for userId, levelBefore, levelAfter, goldSpent, runId; string for upgradeType
+
+**Database Operations**:
+1. **Purchase Record**: `INSERT INTO permanent_upgrade_purchases (...) VALUES (...)`
+2. **Player Upgrade**: `INSERT INTO player_upgrades (...) VALUES (...) ON DUPLICATE KEY UPDATE level = VALUES(level), updated_at = NOW()`
+
+**Example Usage**:
+```bash
+curl -X POST http://localhost:3000/api/runs/123/upgrade-purchase \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 123,
+    "upgradeType": "max_health",
+    "levelBefore": 1,
+    "levelAfter": 2,
+    "goldSpent": 200
+  }'
+```
+
+**Integration Points**:
+- Should be integrated with permanent upgrade shop mechanics
+- Called when player purchases permanent upgrades that persist between runs
+- Tracks upgrade progression and spending for character development
+
+**Data Flow**:
+1. Player purchases permanent upgrade during gameplay
+2. Game engine processes upgrade transaction
+3. Frontend calls this endpoint with upgrade details
+4. API validates run ownership and entity existence
+5. Purchase recorded in `permanent_upgrade_purchases` table
+6. Player's upgrade level updated/inserted in `player_upgrades` table
+7. Returns `purchaseId` for confirmation/tracking
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -1027,6 +1191,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    POST http://localhost:3000/api/runs/{runId}/chest-event
    POST http://localhost:3000/api/runs/{runId}/shop-purchase
    POST http://localhost:3000/api/runs/{runId}/boss-encounter
+   POST http://localhost:3000/api/runs/{runId}/upgrade-purchase
    ```
 
 2. **Send data in JSON format**:
@@ -1105,6 +1270,16 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
      "resultCode": "victory"
    }
    ```
+   - For upgrade purchase:
+   ```json
+   {
+     "userId": 123,
+     "upgradeType": "max_health",
+     "levelBefore": 1,
+     "levelAfter": 2,
+     "goldSpent": 200
+   }
+   ```
 
 3. **Handle responses**:
    - Registration Success (201): User created, receives `userId`
@@ -1117,6 +1292,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    - Chest Event Success (201): Chest event registered, receives `eventId`
    - Shop Purchase Success (201): Purchase registered, receives `purchaseId`
    - Boss Encounter Success (201): Encounter registered, receives `encounterId`
+   - Upgrade Purchase Success (201): Purchase registered, receives `purchaseId`
    - Error (400): Missing fields or parameters
    - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)
