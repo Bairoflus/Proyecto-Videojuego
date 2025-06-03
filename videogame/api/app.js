@@ -1335,6 +1335,37 @@ app.get('/api/lookups', async (req, res) => {
     }
 });
 
+// GET /api/item-types
+app.get('/api/item-types', async (req, res) => {
+    let connection;
+    
+    try {
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Query item types
+        const [itemTypes] = await connection.execute('SELECT item_type AS name FROM item_types');
+        
+        // Return item types array
+        res.status(200).json(itemTypes);
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

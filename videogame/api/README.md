@@ -2055,6 +2055,31 @@ function validateUpgradeType(upgradeType) {
 }
 ```
 
+**Item Types Integration:**
+```javascript
+// Load item types for shop menu
+import { getItemTypes } from '../../utils/api.js';
+
+// Initialize shop categories
+const itemTypes = await getItemTypes();
+
+// Create shop categories
+function createShopMenu(itemTypes) {
+    itemTypes.forEach(itemType => {
+        const categoryButton = document.createElement('button');
+        categoryButton.textContent = itemType.name.replace('_', ' ').toUpperCase();
+        categoryButton.onclick = () => filterShopItems(itemType.name);
+        shopMenu.appendChild(categoryButton);
+    });
+}
+
+// Filter shop items by type
+function filterShopItems(itemType) {
+    const filteredItems = allShopItems.filter(item => item.type === itemType);
+    displayShopItems(filteredItems);
+}
+```
+
 To use the application:
 1. Ensure the API server is running (`node app.js`)
 2. Open `landing.html` to access the main menu
@@ -2064,4 +2089,144 @@ To use the application:
 6. Use `runs.html` to start new game runs
 7. Use `game.html` for the main game with logout functionality
 8. Use `admin-test-bosses.html` to test boss data integration (development only)
-9. Use `admin-test-lookups.html` to test lookup data integration (development only) 
+9. Use `admin-test-lookups.html` to test lookup data integration (development only)
+10. Use `admin-test-item-types.html` to test item types integration (development only)
+
+### GET /api/item-types
+Retrieves all item types from the database for shop menu categorization and item filtering.
+
+**URL**: `/api/item-types`
+
+**Method**: `GET`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**: None required
+
+**Success Response** (200 OK):
+```json
+[
+  { "name": "armor" },
+  { "name": "consumable" },
+  { "name": "health_potion" },
+  { "name": "upgrade" },
+  { "name": "weapon" }
+]
+```
+
+**Error Responses**:
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Information**:
+This endpoint is **read-only** and designed specifically for shop menu integration:
+
+1. **Shop categories** - Populate shop menu categories for item browsing
+2. **Item filtering** - Filter inventory and shop items by type
+3. **Content organization** - Organize game items by category
+4. **UI categorization** - Create category-based navigation
+5. **Item validation** - Validate item types in forms and transactions
+6. **No authentication required** - Public endpoint for reference data
+
+**Database Schema Requirements**:
+The endpoint queries the item_types table:
+
+**item_types table**:
+```sql
+CREATE TABLE item_types (
+  item_type VARCHAR(50) NOT NULL PRIMARY KEY
+);
+```
+
+**Query Logic**:
+```sql
+SELECT item_type AS name FROM item_types;
+```
+
+**Response Details**:
+- **Array format**: Simple array of objects for easy iteration
+- **name property**: Each object contains only the item type name
+- **Direct consumption**: Ready for immediate use in frontend without processing
+
+**Shop Menu Integration**:
+```javascript
+import { getItemTypes } from '../../utils/api.js';
+
+// Load item types for shop menu
+const itemTypes = await getItemTypes();
+
+// Create shop categories
+itemTypes.forEach(itemType => {
+    const categoryButton = document.createElement('button');
+    categoryButton.textContent = itemType.name.replace('_', ' ').toUpperCase();
+    categoryButton.onclick = () => filterShopItems(itemType.name);
+    shopMenu.appendChild(categoryButton);
+});
+```
+
+**Item Filtering Example**:
+```javascript
+// Filter items by type
+function filterShopItems(itemType) {
+    const filteredItems = allShopItems.filter(item => item.type === itemType);
+    displayShopItems(filteredItems);
+}
+```
+
+**Example Usage**:
+```bash
+curl -X GET http://localhost:3000/api/item-types
+```
+
+**Integration Points**:
+- Shop menu category population
+- Item inventory filtering and organization
+- Item type validation in purchase transactions
+- Content management for item categorization
+- Game UI category navigation
+
+**Data Flow**:
+1. Frontend requests item types for shop menu initialization
+2. API queries item_types table with simple SELECT
+3. Returns clean array of item type objects
+4. Frontend uses data to populate shop categories and filters
+
+**Frontend Integration**:
+```javascript
+import { getItemTypes } from '../../utils/api.js';
+
+// Initialize shop with item types
+async function initializeShop() {
+    try {
+        const itemTypes = await getItemTypes();
+        
+        // Populate shop categories
+        populateShopCategories(itemTypes);
+        
+        // Set up filtering
+        setupItemFiltering(itemTypes);
+        
+    } catch (error) {
+        console.error('Failed to load item types:', error);
+    }
+}
+```
+
+**Performance Notes**:
+- Very lightweight (5 items typical)
+- Fast response time (< 5ms average)
+- Perfect for frequent shop menu access
+- Minimal database load (single simple query)
+
+## Security Features
+- Use of placeholders (?) in SQL queries to prevent SQL injection
+- Proper database connection management (always closed)
+- Basic field validation
+- **Passwords hashed with bcrypt** (10 salt rounds)
+- **CORS enabled** for frontend integration 

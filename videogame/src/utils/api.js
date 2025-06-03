@@ -297,5 +297,15 @@ export async function getLookups() {
     });
 }
 
+/**
+ * Get all item types for shop menus and item categorization
+ * @returns {Promise<Array>} Array of item type objects with name property
+ */
+export async function getItemTypes() {
+    return apiRequest('/item-types', {
+        method: 'GET'
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 
