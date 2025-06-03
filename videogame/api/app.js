@@ -573,6 +573,94 @@ app.post('/api/runs/:runId/enemy-kill', async (req, res) => {
     }
 });
 
+// POST /api/runs/:runId/chest-event
+app.post('/api/runs/:runId/chest-event', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get runId from URL parameters
+        const { runId } = req.params;
+        
+        // Get data from request body
+        const { userId, roomId, goldReceived } = req.body;
+        
+        // Basic validation - runId parameter
+        if (!runId) {
+            return res.status(400).send('Missing runId parameter');
+        }
+        
+        // Input validation - required fields
+        if (!userId || !roomId || goldReceived === undefined) {
+            return res.status(400).send('Missing required fields: userId, roomId, goldReceived');
+        }
+        
+        // Type validation - must be integers
+        if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(roomId)) || !Number.isInteger(Number(goldReceived)) || !Number.isInteger(Number(runId))) {
+            return res.status(400).send('Invalid field types: userId, roomId, goldReceived, runId must be integers');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Validate runId exists and is active in run_history
+        const [runs] = await connection.execute(
+            'SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        if (runs.length === 0) {
+            return res.status(404).send('Run not found');
+        }
+        
+        // Validate userId matches the run owner
+        if (runs[0].user_id !== parseInt(userId)) {
+            return res.status(400).send('User ID does not match run owner');
+        }
+        
+        // Validate run is still active
+        if (runs[0].ended_at !== null) {
+            return res.status(400).send('Run is already completed');
+        }
+        
+        // Validate roomId exists in rooms
+        const [rooms] = await connection.execute(
+            'SELECT room_id FROM rooms WHERE room_id = ?',
+            [roomId]
+        );
+        
+        if (rooms.length === 0) {
+            return res.status(404).send('Room not found');
+        }
+        
+        // Insert chest event record
+        const [result] = await connection.execute(
+            'INSERT INTO chest_events (user_id, run_id, room_id, gold_received) VALUES (?, ?, ?, ?)',
+            [userId, runId, roomId, goldReceived]
+        );
+        
+        // Success response
+        res.status(201).json({
+            eventId: result.insertId,
+            message: 'Chest event registered'
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

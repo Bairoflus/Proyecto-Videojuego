@@ -154,5 +154,21 @@ export async function registerEnemyKill(runId, killData) {
     });
 }
 
+/**
+ * Register a chest event during gameplay
+ * @param {string|number} runId - Run ID where the chest was opened
+ * @param {Object} chestData - Chest event data
+ * @param {number} chestData.userId - User ID who opened the chest
+ * @param {number} chestData.roomId - Room ID where the chest was opened
+ * @param {number} chestData.goldReceived - Gold amount received from chest
+ * @returns {Promise<Object>} Chest event registration confirmation with eventId
+ */
+export async function registerChestEvent(runId, chestData) {
+    return apiRequest(`/runs/${runId}/chest-event`, {
+        method: 'POST',
+        body: JSON.stringify(chestData)
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 
