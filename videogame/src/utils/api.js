@@ -267,5 +267,15 @@ export async function getRooms() {
     });
 }
 
+/**
+ * Get all enemy types
+ * @returns {Promise<Array>} Array of enemy objects with enemy details and stats
+ */
+export async function getEnemies() {
+    return apiRequest('/enemies', {
+        method: 'GET'
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 
