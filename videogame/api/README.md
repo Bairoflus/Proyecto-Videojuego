@@ -1262,6 +1262,169 @@ curl -X POST http://localhost:3000/api/runs/123/equip-weapon \
 5. Equipment recorded in `equipped_weapons` table
 6. Returns confirmation message for UI feedback
 
+### POST /api/runs/:runId/weapon-upgrade
+Saves temporary weapon upgrade progress during an active game run.
+
+**URL**: `/api/runs/{runId}/weapon-upgrade`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "userId": 123,
+  "slotType": "primary",
+  "level": 2,
+  "damagePerUpgrade": 15,
+  "goldCostPerUpgrade": 100
+}
+```
+
+**Success Response** (201 Created):
+```json
+{
+  "message": "Weapon upgrade saved",
+  "runId": 123,
+  "userId": 123,
+  "slotType": "primary"
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing runId parameter:
+```
+Missing runId parameter
+```
+
+- **400 Bad Request** - Missing required fields:
+```
+Missing required fields: userId, slotType, level, damagePerUpgrade, goldCostPerUpgrade
+```
+
+- **400 Bad Request** - Invalid integer field types:
+```
+Invalid field types: userId, level, damagePerUpgrade, goldCostPerUpgrade, runId must be integers
+```
+
+- **400 Bad Request** - Invalid string field types:
+```
+Invalid field types: slotType must be string
+```
+
+- **400 Bad Request** - User ID mismatch:
+```
+User ID does not match run owner
+```
+
+- **400 Bad Request** - Run already completed:
+```
+Run is already completed
+```
+
+- **404 Not Found** - Run not found:
+```
+Run not found
+```
+
+- **404 Not Found** - Weapon slot type not found:
+```
+Weapon slot type not found
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Restrictions**:
+This endpoint is **NOT** exposed in the landing page or main user interface. It should **ONLY** be called:
+
+1. **During active gameplay** - When weapon upgrades are being saved/updated
+2. **For active runs only** - Cannot save upgrades for completed runs
+3. **With valid game data** - Must reference existing runs and weapon slot types
+4. **By the run owner** - userId must match the run's user_id
+5. **UPSERT functionality** - Updates existing upgrades or creates new ones
+
+**Database Schema Requirements**:
+The endpoint validates against the actual database schema and uses UPSERT functionality:
+
+**weapon_upgrades_temp table**:
+```sql
+CREATE TABLE weapon_upgrades_temp (
+  run_id INT NOT NULL,
+  user_id INT NOT NULL,
+  slot_type VARCHAR(50) NOT NULL,
+  level SMALLINT,
+  damage_per_upgrade SMALLINT,
+  gold_cost_per_upgrade SMALLINT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (run_id, user_id, slot_type),
+  FOREIGN KEY (run_id) REFERENCES run_history(run_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (slot_type) REFERENCES weapon_slots(slot_type)
+);
+```
+
+**weapon_slots table** (lookup):
+```sql
+CREATE TABLE weapon_slots (
+  slot_type VARCHAR(50) NOT NULL,
+  PRIMARY KEY (slot_type)
+);
+```
+
+**Validation Logic**:
+1. **Run Exists Check**: `SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?`
+2. **User Ownership Check**: Validates `userId` matches run owner
+3. **Run Active Check**: Validates `ended_at IS NULL` (run not completed)
+4. **Slot Type Exists Check**: `SELECT slot_type FROM weapon_slots WHERE slot_type = ?`
+5. **Data Type Validation**: Integers for userId, level, damagePerUpgrade, goldCostPerUpgrade, runId; string for slotType
+6. **UPSERT Operation**: `INSERT ... ON DUPLICATE KEY UPDATE` for seamless save/update
+
+**UPSERT Functionality**:
+```sql
+INSERT INTO weapon_upgrades_temp (run_id, user_id, slot_type, level, damage_per_upgrade, gold_cost_per_upgrade) 
+VALUES (?, ?, ?, ?, ?, ?) 
+ON DUPLICATE KEY UPDATE 
+  level = VALUES(level), 
+  damage_per_upgrade = VALUES(damage_per_upgrade), 
+  gold_cost_per_upgrade = VALUES(gold_cost_per_upgrade), 
+  timestamp = NOW()
+```
+
+**Example Usage**:
+```bash
+curl -X POST http://localhost:3000/api/runs/123/weapon-upgrade \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 123,
+    "slotType": "primary",
+    "level": 2,
+    "damagePerUpgrade": 15,
+    "goldCostPerUpgrade": 100
+  }'
+```
+
+**Integration Points**:
+- Should be integrated with weapon upgrade mechanics during gameplay
+- Called when player invests in temporary weapon improvements
+- Tracks upgrade progression and costs for run-specific weapon enhancement
+- Automatically saves or updates existing upgrades for the same weapon slot
+
+**Data Flow**:
+1. Player upgrades weapon during gameplay
+2. Game engine calculates new upgrade values
+3. Frontend calls this endpoint with upgrade details
+4. API validates run ownership and entity existence
+5. Upgrade saved/updated in `weapon_upgrades_temp` table with timestamp
+6. Returns confirmation with run, user, and slot details
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -1336,6 +1499,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    POST http://localhost:3000/api/runs/{runId}/boss-encounter
    POST http://localhost:3000/api/runs/{runId}/upgrade-purchase
    POST http://localhost:3000/api/runs/{runId}/equip-weapon
+   POST http://localhost:3000/api/runs/{runId}/weapon-upgrade
    ```
 
 2. **Send data in JSON format**:
@@ -1431,6 +1595,16 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
      "slotType": "primary"
    }
    ```
+   - For weapon upgrade:
+   ```json
+   {
+     "userId": 123,
+     "slotType": "primary",
+     "level": 2,
+     "damagePerUpgrade": 15,
+     "goldCostPerUpgrade": 100
+   }
+   ```
 
 3. **Handle responses**:
    - Registration Success (201): User created, receives `userId`
@@ -1445,6 +1619,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    - Boss Encounter Success (201): Encounter registered, receives `encounterId`
    - Upgrade Purchase Success (201): Purchase registered, receives `purchaseId`
    - Equip Weapon Success (201): Weapon equipped, receives confirmation message
+   - Weapon Upgrade Success (201): Upgrade saved, receives confirmation message
    - Error (400): Missing fields or parameters
    - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)
