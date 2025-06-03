@@ -865,6 +865,109 @@ app.post('/api/runs/:runId/boss-encounter', async (req, res) => {
     }
 });
 
+// POST /api/runs/:runId/upgrade-purchase
+app.post('/api/runs/:runId/upgrade-purchase', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get runId from URL parameters
+        const { runId } = req.params;
+        
+        // Get data from request body
+        const { userId, upgradeType, levelBefore, levelAfter, goldSpent } = req.body;
+        
+        // Basic validation - runId parameter
+        if (!runId) {
+            return res.status(400).send('Missing runId parameter');
+        }
+        
+        // Input validation - required fields
+        if (!userId || !upgradeType || levelBefore === undefined || levelAfter === undefined || goldSpent === undefined) {
+            return res.status(400).send('Missing required fields: userId, upgradeType, levelBefore, levelAfter, goldSpent');
+        }
+        
+        // Type validation - userId, levelBefore, levelAfter, goldSpent must be integers; upgradeType must be string
+        if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(levelBefore)) || !Number.isInteger(Number(levelAfter)) || !Number.isInteger(Number(goldSpent)) || !Number.isInteger(Number(runId))) {
+            return res.status(400).send('Invalid field types: userId, levelBefore, levelAfter, goldSpent, runId must be integers');
+        }
+        
+        if (typeof upgradeType !== 'string') {
+            return res.status(400).send('Invalid field types: upgradeType must be string');
+        }
+        
+        // Business validation - levelAfter must be greater than levelBefore
+        if (parseInt(levelAfter) <= parseInt(levelBefore)) {
+            return res.status(400).send('Invalid upgrade: levelAfter must be greater than levelBefore');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Validate runId exists and is active in run_history
+        const [runs] = await connection.execute(
+            'SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        if (runs.length === 0) {
+            return res.status(404).send('Run not found');
+        }
+        
+        // Validate userId matches the run owner
+        if (runs[0].user_id !== parseInt(userId)) {
+            return res.status(400).send('User ID does not match run owner');
+        }
+        
+        // Validate run is still active
+        if (runs[0].ended_at !== null) {
+            return res.status(400).send('Run is already completed');
+        }
+        
+        // Validate upgradeType exists in upgrade_types
+        const [upgradeTypes] = await connection.execute(
+            'SELECT upgrade_type FROM upgrade_types WHERE upgrade_type = ?',
+            [upgradeType]
+        );
+        
+        if (upgradeTypes.length === 0) {
+            return res.status(404).send('Upgrade type not found');
+        }
+        
+        // Insert upgrade purchase record
+        const [purchaseResult] = await connection.execute(
+            'INSERT INTO permanent_upgrade_purchases (user_id, run_id, upgrade_type, level_before, level_after, gold_spent) VALUES (?, ?, ?, ?, ?, ?)',
+            [userId, runId, upgradeType, levelBefore, levelAfter, goldSpent]
+        );
+        
+        // Upsert player_upgrades record (update level if exists, insert if not)
+        await connection.execute(
+            'INSERT INTO player_upgrades (user_id, upgrade_type, level, updated_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE level = VALUES(level), updated_at = NOW()',
+            [userId, upgradeType, levelAfter]
+        );
+        
+        // Success response
+        res.status(201).json({
+            purchaseId: purchaseResult.insertId,
+            message: 'Upgrade purchase registered'
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

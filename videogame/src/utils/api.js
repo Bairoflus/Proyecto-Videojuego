@@ -206,5 +206,23 @@ export async function registerBossEncounter(runId, encounterData) {
     });
 }
 
+/**
+ * Register a permanent upgrade purchase during gameplay
+ * @param {string|number} runId - Run ID where the upgrade was purchased
+ * @param {Object} upgradeData - Upgrade purchase event data
+ * @param {number} upgradeData.userId - User ID who purchased the upgrade
+ * @param {string} upgradeData.upgradeType - Type of upgrade purchased (must exist in upgrade_types)
+ * @param {number} upgradeData.levelBefore - Upgrade level before purchase
+ * @param {number} upgradeData.levelAfter - Upgrade level after purchase
+ * @param {number} upgradeData.goldSpent - Gold amount spent on the upgrade
+ * @returns {Promise<Object>} Upgrade purchase registration confirmation with purchaseId
+ */
+export async function registerUpgradePurchase(runId, upgradeData) {
+    return apiRequest(`/runs/${runId}/upgrade-purchase`, {
+        method: 'POST',
+        body: JSON.stringify(upgradeData)
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 
