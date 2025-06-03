@@ -1065,6 +1065,100 @@ app.post('/api/runs/:runId/equip-weapon', async (req, res) => {
     }
 });
 
+// POST /api/runs/:runId/weapon-upgrade
+app.post('/api/runs/:runId/weapon-upgrade', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get runId from URL parameters
+        const { runId } = req.params;
+        
+        // Get data from request body
+        const { userId, slotType, level, damagePerUpgrade, goldCostPerUpgrade } = req.body;
+        
+        // Basic validation - runId parameter
+        if (!runId) {
+            return res.status(400).send('Missing runId parameter');
+        }
+        
+        // Input validation - required fields
+        if (!userId || !slotType || level === undefined || damagePerUpgrade === undefined || goldCostPerUpgrade === undefined) {
+            return res.status(400).send('Missing required fields: userId, slotType, level, damagePerUpgrade, goldCostPerUpgrade');
+        }
+        
+        // Type validation - userId, level, damagePerUpgrade, goldCostPerUpgrade must be integers; slotType must be string
+        if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(level)) || !Number.isInteger(Number(damagePerUpgrade)) || !Number.isInteger(Number(goldCostPerUpgrade)) || !Number.isInteger(Number(runId))) {
+            return res.status(400).send('Invalid field types: userId, level, damagePerUpgrade, goldCostPerUpgrade, runId must be integers');
+        }
+        
+        if (typeof slotType !== 'string') {
+            return res.status(400).send('Invalid field types: slotType must be string');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Validate runId exists and is active in run_history
+        const [runs] = await connection.execute(
+            'SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        if (runs.length === 0) {
+            return res.status(404).send('Run not found');
+        }
+        
+        // Validate userId matches the run owner
+        if (runs[0].user_id !== parseInt(userId)) {
+            return res.status(400).send('User ID does not match run owner');
+        }
+        
+        // Validate run is still active
+        if (runs[0].ended_at !== null) {
+            return res.status(400).send('Run is already completed');
+        }
+        
+        // Validate slotType exists in weapon_slots
+        const [weaponSlots] = await connection.execute(
+            'SELECT slot_type FROM weapon_slots WHERE slot_type = ?',
+            [slotType]
+        );
+        
+        if (weaponSlots.length === 0) {
+            return res.status(404).send('Weapon slot type not found');
+        }
+        
+        // Upsert weapon upgrade record (insert if new, update if exists)
+        const [result] = await connection.execute(
+            'INSERT INTO weapon_upgrades_temp (run_id, user_id, slot_type, level, damage_per_upgrade, gold_cost_per_upgrade) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE level = VALUES(level), damage_per_upgrade = VALUES(damage_per_upgrade), gold_cost_per_upgrade = VALUES(gold_cost_per_upgrade), timestamp = NOW()',
+            [runId, userId, slotType, level, damagePerUpgrade, goldCostPerUpgrade]
+        );
+        
+        // Success response
+        res.status(201).json({
+            message: 'Weapon upgrade saved',
+            runId: parseInt(runId),
+            userId: parseInt(userId),
+            slotType: slotType
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

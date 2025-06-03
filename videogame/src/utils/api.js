@@ -239,5 +239,23 @@ export async function equipWeapon(runId, equipmentData) {
     });
 }
 
+/**
+ * Save weapon upgrade progress during gameplay
+ * @param {string|number} runId - Run ID where the weapon upgrade is being saved
+ * @param {Object} upgradeData - Weapon upgrade data
+ * @param {number} upgradeData.userId - User ID who is upgrading the weapon
+ * @param {string} upgradeData.slotType - Type of weapon slot (must exist in weapon_slots)
+ * @param {number} upgradeData.level - Current upgrade level
+ * @param {number} upgradeData.damagePerUpgrade - Damage per upgrade level
+ * @param {number} upgradeData.goldCostPerUpgrade - Gold cost per upgrade level
+ * @returns {Promise<Object>} Weapon upgrade save confirmation
+ */
+export async function upgradeWeapon(runId, upgradeData) {
+    return apiRequest(`/runs/${runId}/weapon-upgrade`, {
+        method: 'POST',
+        body: JSON.stringify(upgradeData)
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 
