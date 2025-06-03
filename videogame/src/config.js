@@ -20,29 +20,54 @@ export const variables = {
   backgroundImage: new Image(),
   showHitboxes: true, // Enable hitbox visualization for debugging
 };
-variables.backgroundImage.src = "../assets/background/backgroundfloor1.jpg";
+variables.backgroundImage.src = "../assets/backgrounds/backgroundfloor1.jpg";
 
 // Base walking animations (shared between weapons)
+// All walk.png sprites have 9 columns, 4 rows
 const walkingFrames = {
-  up: [104, 112], // Row 9: Walking up (9 frames)
-  down: [130, 138], // Row 11: Walking down (9 frames)
-  left: [117, 125], // Row 10: Walking left (9 frames)
-  right: [143, 151], // Row 12: Walking right (9 frames)
+  up: [0, 8], // Row 0: frames 0-8 (walk up)
+  left: [9, 17], // Row 1: frames 9-17 (walk left)
+  down: [18, 26], // Row 2: frames 18-26 (walk down)
+  right: [27, 35], // Row 3: frames 27-35 (walk right)
 };
 
 // Weapon-specific attack animations
 const attackFrames = {
   dagger: {
-    up: [156, 161], // Row 13: Dagger attack up (9 frames)
-    down: [182, 187], // Row 15: Dagger attack down (9 frames)
-    left: [169, 174], // Row 14: Dagger attack left (9 frames)
-    right: [195, 200], // Row 16: Dagger attack right (9 frames)
+    up: [0, 5], // slash.png, row 0, 6 frames
+    left: [6, 11], // slash.png, row 1, 6 frames
+    down: [12, 17], // slash.png, row 2, 6 frames
+    right: [18, 23], // slash.png, row 3, 6 frames
+  },
+  katana: {
+    up: [0, 5], // slash.png, row 0, 6 frames
+    left: [6, 11], // slash.png, row 1, 6 frames
+    down: [12, 17], // slash.png, row 2, 6 frames
+    right: [18, 23], // slash.png, row 3, 6 frames
+  },
+  lightsaber: {
+    up: [0, 5], // slash.png, row 0, 6 frames
+    left: [6, 11], // slash.png, row 1, 6 frames
+    down: [12, 17], // slash.png, row 2, 6 frames
+    right: [18, 23], // slash.png, row 3, 6 frames
   },
   slingshot: {
-    up: [208, 220], // Row 17: Slingshot attack up (9 frames)
-    down: [234, 246], // Row 19: Slingshot attack down (9 frames)
-    left: [221, 233], // Row 18: Slingshot attack left (9 frames)
-    right: [247, 259], // Row 20: Slingshot attack right (9 frames)
+    up: [0, 11], // shoot.png, row 0, 12 frames (exclude frame 12)
+    left: [13, 24], // shoot.png, row 1, 12 frames (exclude frame 25)
+    down: [26, 37], // shoot.png, row 2, 12 frames (exclude frame 38)
+    right: [39, 50], // shoot.png, row 3, 12 frames (exclude frame 51)
+  },
+  bow: {
+    up: [0, 11], // shoot.png, row 0, 12 frames (exclude frame 12)
+    left: [13, 24], // shoot.png, row 1, 12 frames (exclude frame 25)
+    down: [26, 37], // shoot.png, row 2, 12 frames (exclude frame 38)
+    right: [39, 50], // shoot.png, row 3, 12 frames (exclude frame 51)
+  },
+  crossbow: {
+    up: [0, 7], // shoot.png, row 0, 8 frames
+    left: [8, 15], // shoot.png, row 1, 8 frames
+    down: [16, 23], // shoot.png, row 2, 8 frames
+    right: [24, 31], // shoot.png, row 3, 8 frames
   },
 };
 
@@ -74,8 +99,8 @@ export const keyDirections = {
   a: "left",
   d: "right",
   " ": "attack",
-  1: "dagger",
-  2: "slingshot",
+  1: "melee",
+  2: "ranged",
   shift: "dash",
 };
 

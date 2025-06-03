@@ -6,6 +6,7 @@
 // Player constants
 export const PLAYER_CONSTANTS = {
   // Base stats
+  MAX_HEALTH: 20000,
   MAX_HEALTH: 20,
   BASE_SPEED: 0.3,
   BASE_SIZE: { width: 64, height: 64 },
@@ -24,9 +25,9 @@ export const PLAYER_CONSTANTS = {
   INVULNERABILITY_DURATION: 1000, // ms
 
   // Attack constants
-  DAGGER_ATTACK_RANGE: 100,
-  DAGGER_ATTACK_WIDTH: 100,
-  DAGGER_ATTACK_DAMAGE: 100,
+  DAGGER_ATTACK_RANGE: 1000,
+  DAGGER_ATTACK_WIDTH: 1000,
+  DAGGER_ATTACK_DAMAGE: 1000,
   DAGGER_STAMINA_COST: 8,
 
   SLINGSHOT_DAMAGE: 15,
@@ -35,6 +36,52 @@ export const PLAYER_CONSTANTS = {
 
   ATTACK_COOLDOWN: 500, // ms
   RAYCAST_STEP_SIZE: 5,
+};
+
+// Sprite scaling constants for maintaining consistent character size
+export const SPRITE_SCALING_CONSTANTS = {
+  // Base character size (dagger sprites as reference)
+  BASE_CHARACTER_SIZE: 64,
+
+  // Scale factors for different weapon animations to maintain consistent character size
+  // These compensate for sprites where the character appears smaller due to larger frame dimensions
+  WEAPON_SCALE_FACTORS: {
+    // Dagger - 64x64 frames for both walk and slash
+    dagger: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 1.0, // 384x256 sprite, 64x64 per frame
+    },
+
+    // Crossbow - 64x64 frames for both walk and shoot
+    crossbow: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 1.0, // 512x256 sprite, 64x64 per frame
+    },
+
+    // Slingshot - 64x64 frames for both walk and shoot
+    slingshot: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 1.0, // 832x256 sprite, 64x64 per frame
+    },
+
+    // Lightsaber - 64x64 for walk, 192x192 for slash
+    lightsaber: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 3.0, // 1152x768 sprite, 192x192 per frame (192/64 = 3, so we scale 3x to compensate)
+    },
+
+    // Katana - 128x128 frames for both walk and slash
+    katana: {
+      walk: 2.0, // 1152x512 sprite, 128x128 per frame
+      attack: 2.0, // 768x512 sprite, 128x128 per frame
+    },
+
+    // Bow - 128x128 for walk, 64x64 for shoot
+    bow: {
+      walk: 2.0, // 1152x512 sprite, 128x128 per frame
+      attack: 1.0, // 832x256 sprite, 64x64 per frame
+    },
+  },
 };
 
 // Enemy constants
@@ -80,7 +127,7 @@ export const ROOM_CONSTANTS = {
   // Chest spawn
   CHEST_SIZE: 64,
   CHEST_SAFE_MARGIN: 32,
-  CHEST_GOLD_REWARD: 50,
+  CHEST_GOLD_REWARD: 500,
 };
 
 // UI constants
@@ -139,58 +186,58 @@ export const FLOOR_CONSTANTS = {
     COMBAT: 4,
     SHOP: 1,
     BOSS: 1,
-    TOTAL: 6
+    TOTAL: 6,
   },
   MAX_FLOORS_PER_RUN: 3,
-  INITIAL_RUN_COUNT: 1
+  INITIAL_RUN_COUNT: 1,
 };
 
 // Shop constants
 export const SHOP_CONSTANTS = {
   UI: {
-    BACKGROUND_COLOR: 'rgba(20, 20, 30, 0.95)',
-    BORDER_COLOR: '#444',
-    TEXT_COLOR: '#fff',
-    SELECTED_COLOR: '#4CAF50',
-    DISABLED_COLOR: '#666',
-    GOLD_COLOR: '#FFD700',
-    ERROR_COLOR: '#FF6B6B',
+    BACKGROUND_COLOR: "rgba(20, 20, 30, 0.95)",
+    BORDER_COLOR: "#444",
+    TEXT_COLOR: "#fff",
+    SELECTED_COLOR: "#4CAF50",
+    DISABLED_COLOR: "#666",
+    GOLD_COLOR: "#FFD700",
+    ERROR_COLOR: "#FF6B6B",
     WIDTH: 600,
     HEIGHT: 400,
     OPTION_HEIGHT: 100,
     PADDING: 20,
-    BORDER_WIDTH: 3
+    BORDER_WIDTH: 3,
   },
   FONTS: {
-    TITLE: 'bold 32px Arial',
-    GOLD: '20px Arial',
-    OPTION_NAME: 'bold 20px Arial',
-    DESCRIPTION: '16px Arial',
-    INSTRUCTIONS: '16px Arial',
-    PURCHASE_COUNT: '14px Arial'
+    TITLE: "bold 32px Arial",
+    GOLD: "20px Arial",
+    OPTION_NAME: "bold 20px Arial",
+    DESCRIPTION: "16px Arial",
+    INSTRUCTIONS: "16px Arial",
+    PURCHASE_COUNT: "14px Arial",
   },
   UPGRADES: {
     MELEE: {
-      NAME: 'Primary Weapon Upgrade',
-      DESCRIPTION: 'Increases melee damage by +3',
+      NAME: "Primary Weapon Upgrade",
+      DESCRIPTION: "Increases melee damage by +3",
       COST: 35,
       MAX_PURCHASES: 15,
-      DAMAGE_INCREASE: 3
+      DAMAGE_INCREASE: 3,
     },
     RANGED: {
-      NAME: 'Secondary Weapon Upgrade',
-      DESCRIPTION: 'Increases ranged damage by +4',
+      NAME: "Secondary Weapon Upgrade",
+      DESCRIPTION: "Increases ranged damage by +4",
       COST: 40,
       MAX_PURCHASES: 15,
-      DAMAGE_INCREASE: 4
+      DAMAGE_INCREASE: 4,
     },
     HEALTH: {
-      NAME: 'Full Health Restoration',
-      DESCRIPTION: 'Restores HP to maximum',
+      NAME: "Full Health Restoration",
+      DESCRIPTION: "Restores HP to maximum",
       COST: 50,
-      MAX_PURCHASES: Infinity
-    }
-  }
+      MAX_PURCHASES: Infinity,
+    },
+  },
 };
 
 // Debug constants
