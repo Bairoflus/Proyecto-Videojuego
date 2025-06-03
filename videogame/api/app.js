@@ -1159,6 +1159,39 @@ app.post('/api/runs/:runId/weapon-upgrade', async (req, res) => {
     }
 });
 
+// GET /api/rooms
+app.get('/api/rooms', async (req, res) => {
+    let connection;
+    
+    try {
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Query all rooms ordered by floor and sequence_order
+        const [rooms] = await connection.execute(
+            'SELECT room_id, floor, name, room_type, sequence_order FROM rooms ORDER BY floor ASC, sequence_order ASC'
+        );
+        
+        // Return rooms array
+        res.status(200).json(rooms);
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

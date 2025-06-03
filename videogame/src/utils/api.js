@@ -257,5 +257,15 @@ export async function upgradeWeapon(runId, upgradeData) {
     });
 }
 
+/**
+ * Get all rooms ordered by floor and sequence
+ * @returns {Promise<Array>} Array of room objects with room details
+ */
+export async function getRooms() {
+    return apiRequest('/rooms', {
+        method: 'GET'
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 
