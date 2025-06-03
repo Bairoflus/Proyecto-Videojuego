@@ -1192,6 +1192,39 @@ app.get('/api/rooms', async (req, res) => {
     }
 });
 
+// GET /api/enemies
+app.get('/api/enemies', async (req, res) => {
+    let connection;
+    
+    try {
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Query all enemies
+        const [enemies] = await connection.execute(
+            'SELECT enemy_id, name, floor, is_rare, base_hp, base_damage, movement_speed, attack_cooldown_seconds, attack_range, sprite_url FROM enemy_types'
+        );
+        
+        // Return enemies array
+        res.status(200).json(enemies);
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

@@ -1521,6 +1521,122 @@ curl -X GET http://localhost:3000/api/rooms
 3. Returns complete room array for frontend use
 4. Frontend uses data for map generation and navigation
 
+### GET /api/enemies
+Retrieves all enemy types from the database with their complete stats and information.
+
+**URL**: `/api/enemies`
+
+**Method**: `GET`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**: None required
+
+**Success Response** (200 OK):
+```json
+[
+  {
+    "enemy_id": 100,
+    "name": "Shadow Lord",
+    "floor": 1,
+    "is_rare": 0,
+    "base_hp": 1000,
+    "base_damage": 100,
+    "movement_speed": 30,
+    "attack_cooldown_seconds": 2,
+    "attack_range": 50,
+    "sprite_url": null
+  },
+  {
+    "enemy_id": 101,
+    "name": "Fire Dragon",
+    "floor": 2,
+    "is_rare": 0,
+    "base_hp": 2000,
+    "base_damage": 150,
+    "movement_speed": 40,
+    "attack_cooldown_seconds": 3,
+    "attack_range": 70,
+    "sprite_url": null
+  }
+]
+```
+
+**Error Responses**:
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Information**:
+This endpoint is **read-only** and can be safely called from any part of the application:
+
+1. **Game initialization** - Load enemy data for combat systems
+2. **Enemy catalog** - Display available enemy types and stats
+3. **Combat mechanics** - Enemy stats for damage calculations
+4. **Level design** - Enemy placement and difficulty balancing
+5. **Admin interfaces** - Enemy management and editing tools
+6. **No authentication required** - Public endpoint for game data
+
+**Database Schema Requirements**:
+The endpoint queries the enemy_types table:
+
+**enemy_types table**:
+```sql
+CREATE TABLE enemy_types (
+  enemy_id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50),
+  floor INT,
+  is_rare BOOLEAN DEFAULT FALSE,
+  base_hp SMALLINT,
+  base_damage SMALLINT,
+  movement_speed SMALLINT,
+  attack_cooldown_seconds SMALLINT,
+  attack_range SMALLINT,
+  sprite_url VARCHAR(255)
+);
+```
+
+**Query Logic**:
+```sql
+SELECT enemy_id, name, floor, is_rare, base_hp, base_damage, movement_speed, attack_cooldown_seconds, attack_range, sprite_url 
+FROM enemy_types
+```
+
+**Response Details**:
+- **enemy_id**: Unique identifier for the enemy type
+- **name**: Display name of the enemy
+- **floor**: Floor where this enemy appears
+- **is_rare**: Boolean flag for rare enemy types (0/1)
+- **base_hp**: Base health points of the enemy
+- **base_damage**: Base damage the enemy deals
+- **movement_speed**: Movement speed stat
+- **attack_cooldown_seconds**: Time between attacks in seconds
+- **attack_range**: Attack range in game units
+- **sprite_url**: URL to the enemy sprite image (may be null)
+
+**Example Usage**:
+```bash
+curl -X GET http://localhost:3000/api/enemies
+```
+
+**Integration Points**:
+- Combat system initialization and enemy spawning
+- Enemy stats display and information panels
+- Game balance and difficulty scaling
+- Enemy catalog and bestiary features
+- Level design and enemy placement tools
+
+**Data Flow**:
+1. Frontend requests enemy data for game systems
+2. API queries all enemy types with complete stats
+3. Returns enemy catalog for frontend use
+4. Frontend uses data for combat, display, and game mechanics
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -1597,6 +1713,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    POST http://localhost:3000/api/runs/{runId}/equip-weapon
    POST http://localhost:3000/api/runs/{runId}/weapon-upgrade
    GET  http://localhost:3000/api/rooms
+   GET  http://localhost:3000/api/enemies
    ```
 
 2. **Send data in JSON format**:
@@ -1718,6 +1835,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    - Equip Weapon Success (201): Weapon equipped, receives confirmation message
    - Weapon Upgrade Success (201): Upgrade saved, receives confirmation message
    - Get Rooms Success (200): Array of room objects, receives room data
+   - Get Enemies Success (200): Array of enemy objects, receives enemy data
    - Error (400): Missing fields or parameters
    - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)
