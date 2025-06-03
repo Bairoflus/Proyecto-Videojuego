@@ -277,5 +277,15 @@ export async function getEnemies() {
     });
 }
 
+/**
+ * Get all boss types with their moves and information
+ * @returns {Promise<Array>} Array of boss objects with moves, stats, and information
+ */
+export async function getBosses() {
+    return apiRequest('/bosses', {
+        method: 'GET'
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 

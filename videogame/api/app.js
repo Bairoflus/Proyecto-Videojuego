@@ -1225,6 +1225,70 @@ app.get('/api/enemies', async (req, res) => {
     }
 });
 
+// GET /api/bosses
+app.get('/api/bosses', async (req, res) => {
+    let connection;
+    
+    try {
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Query bosses with their moves
+        const [results] = await connection.execute(
+            'SELECT bd.enemy_id, et.name, bd.max_hp, bd.description, bm.move_id, bm.name as move_name, bm.description as move_description, bm.phase FROM boss_details bd INNER JOIN enemy_types et ON bd.enemy_id = et.enemy_id LEFT JOIN boss_moves bm ON bd.enemy_id = bm.enemy_id ORDER BY bd.enemy_id, bm.phase, bm.move_id'
+        );
+        
+        // Process results to group moves by boss
+        const bossesMap = new Map();
+        
+        for (const row of results) {
+            const bossId = row.enemy_id;
+            
+            // Create boss object if not exists
+            if (!bossesMap.has(bossId)) {
+                bossesMap.set(bossId, {
+                    enemy_id: row.enemy_id,
+                    name: row.name,
+                    max_hp: row.max_hp,
+                    description: row.description,
+                    moves: []
+                });
+            }
+            
+            // Add move if exists
+            if (row.move_id) {
+                bossesMap.get(bossId).moves.push({
+                    move_id: row.move_id,
+                    name: row.move_name,
+                    description: row.move_description,
+                    phase: row.phase
+                });
+            }
+        }
+        
+        // Convert map to array
+        const bosses = Array.from(bossesMap.values());
+        
+        // Return bosses array
+        res.status(200).json(bosses);
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

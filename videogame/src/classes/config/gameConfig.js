@@ -3,6 +3,8 @@
  * Central location for all game constants and configuration options
  */
 
+import { getBosses } from '../../utils/api.js';
+
 export const gameConfig = {
     // Logging configuration
     logging: {
@@ -63,6 +65,16 @@ export const gameConfig = {
             slingshotDamage: 15,
             projectileSpeed: 300
         }
+    },
+
+    // Boss configuration - loaded from API
+    bosses: {
+        // Boss data will be populated from API
+        data: [],
+        // Loading state
+        loaded: false,
+        // Error state
+        error: null
     }
 };
 
@@ -80,4 +92,60 @@ export function updateConfig(path, value) {
     }
     
     obj[keys[keys.length - 1]] = value;
+}
+
+/**
+ * Load boss data from the API and cache it in game config
+ * @returns {Promise<Array>} Array of boss data
+ */
+export async function loadBossData() {
+    try {
+        console.log('Loading boss data from API...');
+        const bossData = await getBosses();
+        
+        gameConfig.bosses.data = bossData;
+        gameConfig.bosses.loaded = true;
+        gameConfig.bosses.error = null;
+        
+        console.log(`Loaded ${bossData.length} bosses from API`);
+        return bossData;
+    } catch (error) {
+        console.error('Failed to load boss data from API:', error);
+        gameConfig.bosses.error = error.message;
+        gameConfig.bosses.loaded = false;
+        return [];
+    }
+}
+
+/**
+ * Get boss data by enemy_id
+ * @param {number} enemyId - The enemy ID to search for
+ * @returns {Object|null} Boss data or null if not found
+ */
+export function getBossById(enemyId) {
+    return gameConfig.bosses.data.find(boss => boss.enemy_id === enemyId) || null;
+}
+
+/**
+ * Convert API boss data to format expected by Boss class
+ * @param {Object} bossData - Boss data from API
+ * @returns {Object} Formatted boss data for game engine
+ */
+export function formatBossDataForGame(bossData) {
+    return {
+        enemyId: bossData.enemy_id,
+        name: bossData.name,
+        maxHp: bossData.max_hp,
+        description: bossData.description,
+        attacks: bossData.moves.map(move => ({
+            name: move.name,
+            description: move.description,
+            phase: move.phase,
+            cooldown: 3000, // Default cooldown, could be added to API later
+            execute: (self) => {
+                console.log(`${bossData.name} uses ${move.name}!`);
+                // Default attack logic - can be customized per boss
+            }
+        }))
+    };
 } 

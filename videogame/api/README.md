@@ -1637,6 +1637,183 @@ curl -X GET http://localhost:3000/api/enemies
 3. Returns enemy catalog for frontend use
 4. Frontend uses data for combat, display, and game mechanics
 
+### GET /api/bosses
+Retrieves all boss types from the database with their moves, stats, and complete information.
+
+**URL**: `/api/bosses`
+
+**Method**: `GET`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**: None required
+
+**Success Response** (200 OK):
+```json
+[
+  {
+    "enemy_id": 100,
+    "name": "Shadow Lord",
+    "max_hp": 1000,
+    "description": "Dark ruler of the shadow realm",
+    "moves": [
+      {
+        "move_id": 1,
+        "name": "Shadow Strike",
+        "description": "Quick shadow attack",
+        "phase": 1
+      },
+      {
+        "move_id": 2,
+        "name": "Dark Explosion",
+        "description": "Area damage attack",
+        "phase": 2
+      }
+    ]
+  },
+  {
+    "enemy_id": 101,
+    "name": "Fire Dragon",
+    "max_hp": 2000,
+    "description": "Ancient fire-breathing dragon",
+    "moves": [
+      {
+        "move_id": 3,
+        "name": "Fire Breath",
+        "description": "Breath of fire",
+        "phase": 1
+      }
+    ]
+  },
+  {
+    "enemy_id": 102,
+    "name": "Ice Queen",
+    "max_hp": 1500,
+    "description": "Mystical ice queen with freezing powers",
+    "moves": []
+  }
+]
+```
+
+**Error Responses**:
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Information**:
+This endpoint is **read-only** and can be safely called from any part of the application:
+
+1. **Boss catalog** - Display available boss types with moves and stats
+2. **Combat mechanics** - Boss stats and move information for boss encounters
+3. **Game initialization** - Load boss data for boss encounter systems
+4. **Level design** - Boss placement and difficulty balancing
+5. **Admin interfaces** - Boss management and editing tools
+6. **Phase-based combat** - Move selection based on boss health phases
+7. **No authentication required** - Public endpoint for game data
+
+**Database Schema Requirements**:
+The endpoint joins three tables to provide complete boss information:
+
+**boss_details table**:
+```sql
+CREATE TABLE boss_details (
+  enemy_id INT PRIMARY KEY,
+  max_hp SMALLINT,
+  description TEXT,
+  FOREIGN KEY (enemy_id) REFERENCES enemy_types(enemy_id)
+);
+```
+
+**enemy_types table** (for boss names):
+```sql
+CREATE TABLE enemy_types (
+  enemy_id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50),
+  floor INT,
+  is_rare BOOLEAN DEFAULT FALSE,
+  base_hp SMALLINT,
+  base_damage SMALLINT,
+  movement_speed SMALLINT,
+  attack_cooldown_seconds SMALLINT,
+  attack_range SMALLINT,
+  sprite_url VARCHAR(255)
+);
+```
+
+**boss_moves table**:
+```sql
+CREATE TABLE boss_moves (
+  move_id INT AUTO_INCREMENT PRIMARY KEY,
+  enemy_id INT NOT NULL,
+  name VARCHAR(100),
+  description TEXT,
+  phase SMALLINT,
+  FOREIGN KEY (enemy_id) REFERENCES boss_details(enemy_id)
+);
+```
+
+**Query Logic**:
+```sql
+SELECT bd.enemy_id, et.name, bd.max_hp, bd.description, bm.move_id, bm.name as move_name, bm.description as move_description, bm.phase 
+FROM boss_details bd 
+INNER JOIN enemy_types et ON bd.enemy_id = et.enemy_id 
+LEFT JOIN boss_moves bm ON bd.enemy_id = bm.enemy_id 
+ORDER BY bd.enemy_id, bm.phase, bm.move_id
+```
+
+**Response Details**:
+- **enemy_id**: Unique identifier for the boss type
+- **name**: Display name of the boss (from enemy_types)
+- **max_hp**: Maximum health points for the boss
+- **description**: Detailed description of the boss
+- **moves**: Array of boss moves/abilities
+  - **move_id**: Unique identifier for the move
+  - **name**: Name of the move/ability
+  - **description**: Description of what the move does
+  - **phase**: Combat phase when this move becomes available (1, 2, 3)
+
+**Boss Phase System**:
+- **Phase 1**: 100% - 67% health (all phase 1 moves available)
+- **Phase 2**: 66% - 34% health (phase 1 + 2 moves available)
+- **Phase 3**: 33% - 0% health (all moves available)
+
+**Example Usage**:
+```bash
+curl -X GET http://localhost:3000/api/bosses
+```
+
+**Integration Points**:
+- Boss encounter initialization and move selection
+- Boss catalog and information displays
+- Combat system for phase-based boss fights
+- Game balance and boss difficulty scaling
+- Boss move execution and AI systems
+
+**Data Flow**:
+1. Frontend requests boss data for boss encounter systems
+2. API joins boss_details, enemy_types, and boss_moves tables
+3. Results are grouped by boss with moves nested as arrays
+4. Frontend uses data for boss encounters, move selection, and combat mechanics
+
+**Frontend Integration**:
+The endpoint integrates with the game configuration system:
+
+```javascript
+import { getBosses } from '../../utils/api.js';
+import { loadBossData, formatBossDataForGame } from '../../classes/config/gameConfig.js';
+
+// Load boss data into game configuration
+const bossData = await loadBossData();
+
+// Format for game engine
+const formattedBoss = formatBossDataForGame(bossData[0]);
+```
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -1714,6 +1891,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    POST http://localhost:3000/api/runs/{runId}/weapon-upgrade
    GET  http://localhost:3000/api/rooms
    GET  http://localhost:3000/api/enemies
+   GET  http://localhost:3000/api/bosses
    ```
 
 2. **Send data in JSON format**:
@@ -1769,7 +1947,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    {
      "userId": 123,
      "roomId": 2,
-     "goldReceived": 120
+    "goldReceived": 120
    }
    ```
    - For shop purchase:
@@ -1836,6 +2014,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    - Weapon Upgrade Success (201): Upgrade saved, receives confirmation message
    - Get Rooms Success (200): Array of room objects, receives room data
    - Get Enemies Success (200): Array of enemy objects, receives enemy data
+   - Get Bosses Success (200): Array of boss objects with moves, receives boss data
    - Error (400): Missing fields or parameters
    - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)
@@ -1850,6 +2029,7 @@ The frontend integration is implemented in:
 - `videogame/src/pages/html/stats.html` - Player statistics display
 - `videogame/src/pages/html/runs.html` - Game run creation
 - `videogame/src/utils/api.js` - API communication layer
+- `videogame/src/classes/config/gameConfig.js` - Boss data integration
 
 All pages automatically:
 - Validate input fields
@@ -1858,6 +2038,21 @@ All pages automatically:
 - Redirect on success
 - Session token is stored in localStorage
 
+**Boss Data Integration:**
+```javascript
+// Load boss data into game configuration
+import { loadBossData, getBossById, formatBossDataForGame } from './classes/config/gameConfig.js';
+
+// Initialize boss data
+await loadBossData();
+
+// Get specific boss
+const shadowLord = getBossById(100);
+
+// Format for game engine
+const bossConfig = formatBossDataForGame(shadowLord);
+```
+
 To use the application:
 1. Ensure the API server is running (`node app.js`)
 2. Open `landing.html` to access the main menu
@@ -1865,4 +2060,5 @@ To use the application:
 4. Use `login.html` to authenticate
 5. Use `stats.html` to view player statistics
 6. Use `runs.html` to start new game runs
-7. Use `game.html` for the main game with logout functionality 
+7. Use `game.html` for the main game with logout functionality
+8. Use `admin-test-bosses.html` to test boss data integration (development only) 
