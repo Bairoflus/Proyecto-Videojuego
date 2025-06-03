@@ -287,5 +287,15 @@ export async function getBosses() {
     });
 }
 
+/**
+ * Get all lookup data for dropdowns and form options
+ * @returns {Promise<Object>} Object containing all lookup arrays (eventTypes, weaponSlots, upgradeTypes, bossResults, roomTypes, itemTypes)
+ */
+export async function getLookups() {
+    return apiRequest('/lookups', {
+        method: 'GET'
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 

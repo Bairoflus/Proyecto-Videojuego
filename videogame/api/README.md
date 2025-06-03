@@ -1814,229 +1814,207 @@ const bossData = await loadBossData();
 const formattedBoss = formatBossDataForGame(bossData[0]);
 ```
 
-## Security Features
-- Use of placeholders (?) in SQL queries to prevent SQL injection
-- Proper database connection management (always closed)
-- Basic field validation
-- **Passwords hashed with bcrypt** (10 salt rounds)
-- **CORS enabled** for frontend integration
+### GET /api/lookups
+Retrieves all lookup data from static reference tables for populating form dropdowns and UI elements.
 
-## Implementation Notes
-- Each endpoint opens its own database connection
-- Connections are always closed in the `finally` block
-- Errors are logged to console with `console.error`
-- No authentication or authorization implemented in this MVP
-- **Passwords are hashed with bcrypt before storage**
+**URL**: `/api/lookups`
 
-## Database Table Structure
+**Method**: `GET`
 
-### Users Table
-The `users` table must have the following columns:
-- `user_id` (INT, AUTO_INCREMENT, PRIMARY KEY)
-- `username` (VARCHAR(30), UNIQUE)
-- `email` (VARCHAR(100), UNIQUE)
-- `password_hash` (CHAR(60)) - Stores the bcrypt hash
-- `created_at` (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+**Headers**:
+```
+Content-Type: application/json
+```
 
-### Sessions Table
-The `sessions` table must have the following columns:
-- `session_id` (INT, AUTO_INCREMENT, PRIMARY KEY)
-- `user_id` (INT, FOREIGN KEY)
-- `session_token` (VARCHAR(36), UNIQUE)
-- `created_at` (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+**Body**: None required
 
-### Player Stats Table
-The `player_stats` table must have the following columns:
-- `user_id` (INT, PRIMARY KEY, FOREIGN KEY)
-- `games_played` (INT, DEFAULT 0)
-- `wins` (INT, DEFAULT 0)
-- `losses` (INT, DEFAULT 0)
-- `total_score` (BIGINT, DEFAULT 0)
-- `highest_score` (INT, DEFAULT 0)
-- `total_playtime_minutes` (INT, DEFAULT 0)
-- `last_played_at` (DATETIME, NULL)
+**Success Response** (200 OK):
+```json
+{
+  "eventTypes": [],
+  "weaponSlots": [
+    { "name": "melee" },
+    { "name": "primary" },
+    { "name": "secondary" },
+    { "name": "special" },
+    { "name": "throwable" }
+  ],
+  "upgradeTypes": [
+    { "name": "critical_chance" },
+    { "name": "damage_boost" },
+    { "name": "gold_multiplier" },
+    { "name": "max_health" },
+    { "name": "max_stamina" },
+    { "name": "speed_boost" }
+  ],
+  "bossResults": [
+    { "name": "defeat" },
+    { "name": "escape" },
+    { "name": "timeout" },
+    { "name": "victory" }
+  ],
+  "roomTypes": [
+    { "name": "boss" },
+    { "name": "combat" },
+    { "name": "entrance" },
+    { "name": "shop" }
+  ],
+  "itemTypes": [
+    { "name": "armor" },
+    { "name": "consumable" },
+    { "name": "health_potion" },
+    { "name": "upgrade" },
+    { "name": "weapon" }
+  ]
+}
+```
 
-### Run History Table
-The `run_history` table must have the following columns:
-- `run_id` (INT, AUTO_INCREMENT, PRIMARY KEY)
-- `user_id` (INT, FOREIGN KEY)
-- `started_at` (DATETIME, DEFAULT CURRENT_TIMESTAMP)
-- `ended_at` (DATETIME, NULL)
-- `score` (INT, DEFAULT 0)
-- `status` (ENUM('active', 'completed', 'abandoned'), DEFAULT 'active')
+**Error Responses**:
 
-## Dependencies
-- `express`: ^4.18.2
-- `mysql2`: ^3.6.5
-- `bcrypt`: ^5.1.1
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
 
-## Frontend Integration
+**Usage Information**:
+This endpoint is **read-only** and designed for frontend consumption:
 
-The API is ready to be consumed by the frontend. To integrate with your frontend application:
+1. **Form dropdowns** - Populate select elements with valid options
+2. **Data validation** - Validate user input against allowed values
+3. **UI filters** - Create filter options for lists and searches
+4. **Admin interfaces** - Provide lookup options for content management
+5. **Game configuration** - Load reference data for game mechanics
+6. **Static data cache** - Load once and cache for session duration
+7. **No authentication required** - Public endpoint for reference data
 
-1. **Make HTTP requests to**:
-   ```
-   POST http://localhost:3000/api/auth/register
-   POST http://localhost:3000/api/auth/login  
-   POST http://localhost:3000/api/auth/logout
-   GET  http://localhost:3000/api/users/{userId}/stats
-   POST http://localhost:3000/api/runs
-   POST http://localhost:3000/api/runs/{runId}/save-state
-   POST http://localhost:3000/api/runs/{runId}/enemy-kill
-   POST http://localhost:3000/api/runs/{runId}/chest-event
-   POST http://localhost:3000/api/runs/{runId}/shop-purchase
-   POST http://localhost:3000/api/runs/{runId}/boss-encounter
-   POST http://localhost:3000/api/runs/{runId}/upgrade-purchase
-   POST http://localhost:3000/api/runs/{runId}/equip-weapon
-   POST http://localhost:3000/api/runs/{runId}/weapon-upgrade
-   GET  http://localhost:3000/api/rooms
-   GET  http://localhost:3000/api/enemies
-   GET  http://localhost:3000/api/bosses
-   ```
+**Database Schema Requirements**:
+The endpoint queries six lookup tables:
 
-2. **Send data in JSON format**:
-   - For registration:
-   ```json
-   {
-     "username": "user",
-     "email": "email@example.com",
-     "password": "password"
-   }
-   ```
-   - For login:
-   ```json
-   {
-     "email": "email@example.com",
-     "password": "password"
-   }
-   ```
-   - For logout:
-   ```json
-   {
-     "sessionToken": "uuid-string"
-   }
-   ```
-   - For stats: No body required, userId in URL path
-   - For runs:
-   ```json
-   {
-     "userId": 123
-   }
-   ```
-   - For save state:
-   ```json
-   {
-     "userId": 123,
-     "sessionId": 456,
-     "roomId": 1,
-     "currentHp": 85,
-     "currentStamina": 45,
-     "gold": 150
-   }
-   ```
-   - For enemy kill:
-   ```json
-   {
-     "userId": 123,
-     "enemyId": 1,
-     "roomId": 2
-   }
-   ```
-   - For chest event:
-   ```json
-   {
-     "userId": 123,
-     "roomId": 2,
-    "goldReceived": 120
-   }
-   ```
-   - For shop purchase:
-   ```json
-   {
-     "userId": 123,
-     "roomId": 2,
-     "itemType": "health_potion",
-     "itemName": "Health Potion",
-     "goldSpent": 80
-   }
-   ```
-   - For boss encounter:
-   ```json
-   {
-     "userId": 123,
-     "enemyId": 100,
-     "damageDealt": 120,
-     "damageTaken": 30,
-     "resultCode": "victory"
-   }
-   ```
-   - For upgrade purchase:
-   ```json
-   {
-     "userId": 123,
-     "upgradeType": "max_health",
-     "levelBefore": 1,
-     "levelAfter": 2,
-     "goldSpent": 200
-   }
-   ```
-   - For equip weapon:
-   ```json
-   {
-     "userId": 123,
-     "slotType": "primary"
-   }
-   ```
-   - For weapon upgrade:
-   ```json
-   {
-     "userId": 123,
-     "slotType": "primary",
-     "level": 2,
-     "damagePerUpgrade": 15,
-     "goldCostPerUpgrade": 100
-   }
-   ```
+**event_types table**:
+```sql
+CREATE TABLE event_types (
+  event_type VARCHAR(50) NOT NULL PRIMARY KEY
+);
+```
 
-3. **Handle responses**:
-   - Registration Success (201): User created, receives `userId`
-   - Login Success (200): Session created, receives `sessionToken`
-   - Logout Success (204): Session invalidated, empty response
-   - Stats Success (200): Player stats data as JSON
-   - Runs Success (201): New run created, receives `runId` and `startedAt`
-   - Save State Success (201): Save state created, receives `saveId`
-   - Enemy Kill Success (201): Kill registered, receives `killId`
-   - Chest Event Success (201): Chest event registered, receives `eventId`
-   - Shop Purchase Success (201): Purchase registered, receives `purchaseId`
-   - Boss Encounter Success (201): Encounter registered, receives `encounterId`
-   - Upgrade Purchase Success (201): Purchase registered, receives `purchaseId`
-   - Equip Weapon Success (201): Weapon equipped, receives confirmation message
-   - Weapon Upgrade Success (201): Upgrade saved, receives confirmation message
-   - Get Rooms Success (200): Array of room objects, receives room data
-   - Get Enemies Success (200): Array of enemy objects, receives enemy data
-   - Get Bosses Success (200): Array of boss objects with moves, receives boss data
-   - Error (400): Missing fields or parameters
-   - Error (404): Invalid credentials or stats not found
-   - Error (409): Duplicate user (registration only)
-   - Error (500): Server error
+**weapon_slots table**:
+```sql
+CREATE TABLE weapon_slots (
+  slot_type VARCHAR(50) NOT NULL PRIMARY KEY
+);
+```
 
-### Frontend Integration Example
+**upgrade_types table**:
+```sql
+CREATE TABLE upgrade_types (
+  upgrade_type VARCHAR(50) NOT NULL PRIMARY KEY
+);
+```
 
-The frontend integration is implemented in:
-- `videogame/src/pages/auth/register.js` - Registration form handling
-- `videogame/src/pages/auth/login.js` - Login form handling
-- `videogame/src/pages/html/game.html` - Logout functionality
-- `videogame/src/pages/html/stats.html` - Player statistics display
-- `videogame/src/pages/html/runs.html` - Game run creation
-- `videogame/src/utils/api.js` - API communication layer
-- `videogame/src/classes/config/gameConfig.js` - Boss data integration
+**boss_results table**:
+```sql
+CREATE TABLE boss_results (
+  result_code VARCHAR(50) NOT NULL PRIMARY KEY
+);
+```
 
-All pages automatically:
-- Validate input fields
-- Show error/success messages
-- Handle loading states
-- Redirect on success
-- Session token is stored in localStorage
+**room_types table**:
+```sql
+CREATE TABLE room_types (
+  room_type VARCHAR(50) NOT NULL PRIMARY KEY
+);
+```
+
+**item_types table**:
+```sql
+CREATE TABLE item_types (
+  item_type VARCHAR(50) NOT NULL PRIMARY KEY
+);
+```
+
+**Query Logic**:
+```sql
+SELECT event_type as name FROM event_types;
+SELECT slot_type as name FROM weapon_slots;
+SELECT upgrade_type as name FROM upgrade_types;
+SELECT result_code as name FROM boss_results;
+SELECT room_type as name FROM room_types;
+SELECT item_type as name FROM item_types;
+```
+
+**Response Details**:
+- **eventTypes**: Array of event type options (may be empty)
+- **weaponSlots**: Array of weapon slot types for equipment
+- **upgradeTypes**: Array of available upgrade categories
+- **bossResults**: Array of possible boss encounter outcomes
+- **roomTypes**: Array of room categories for level design
+- **itemTypes**: Array of item categories for inventory systems
+
+**Data Usage Examples**:
+
+**Form Integration**:
+```javascript
+import { getLookups } from '../../utils/api.js';
+
+// Load lookup data
+const lookups = await getLookups();
+
+// Populate weapon slot dropdown
+const weaponSelect = document.getElementById('weaponSlot');
+lookups.weaponSlots.forEach(slot => {
+    const option = document.createElement('option');
+    option.value = slot.name;
+    option.textContent = slot.name;
+    weaponSelect.appendChild(option);
+});
+```
+
+**Validation Usage**:
+```javascript
+// Validate user input against lookup data
+function isValidUpgradeType(upgradeType) {
+    return lookups.upgradeTypes.some(upgrade => upgrade.name === upgradeType);
+}
+```
+
+**Example Usage**:
+```bash
+curl -X GET http://localhost:3000/api/lookups
+```
+
+**Integration Points**:
+- Form dropdown population across all admin interfaces
+- Data validation for API endpoints requiring lookup values
+- UI filter generation for search and browse interfaces
+- Game configuration loading for valid option sets
+- Content management system reference data
+
+**Data Flow**:
+1. Frontend requests all lookup data on application initialization
+2. API queries all 6 lookup tables simultaneously
+3. Results formatted with consistent structure (arrays of {name} objects)
+4. Frontend caches data and uses for dropdowns, validation, and UI elements
+
+**Frontend Integration**:
+```javascript
+import { getLookups } from '../../utils/api.js';
+
+// Initialize application with lookup data
+async function initializeApp() {
+    try {
+        const lookups = await getLookups();
+        
+        // Cache for session
+        window.gameData = { lookups };
+        
+        // Populate all form dropdowns
+        populateDropdowns(lookups);
+        
+    } catch (error) {
+        console.error('Failed to load lookup data:', error);
+    }
+}
+```
 
 **Boss Data Integration:**
 ```javascript
@@ -2053,6 +2031,30 @@ const shadowLord = getBossById(100);
 const bossConfig = formatBossDataForGame(shadowLord);
 ```
 
+**Lookup Data Integration:**
+```javascript
+// Load lookup data for forms and dropdowns
+import { getLookups } from '../../utils/api.js';
+
+// Initialize lookup data
+const lookups = await getLookups();
+
+// Use for form population
+function populateWeaponSlots(selectElement) {
+    lookups.weaponSlots.forEach(slot => {
+        const option = document.createElement('option');
+        option.value = slot.name;
+        option.textContent = slot.name;
+        selectElement.appendChild(option);
+    });
+}
+
+// Use for validation
+function validateUpgradeType(upgradeType) {
+    return lookups.upgradeTypes.some(upgrade => upgrade.name === upgradeType);
+}
+```
+
 To use the application:
 1. Ensure the API server is running (`node app.js`)
 2. Open `landing.html` to access the main menu
@@ -2061,4 +2063,5 @@ To use the application:
 5. Use `stats.html` to view player statistics
 6. Use `runs.html` to start new game runs
 7. Use `game.html` for the main game with logout functionality
-8. Use `admin-test-bosses.html` to test boss data integration (development only) 
+8. Use `admin-test-bosses.html` to test boss data integration (development only)
+9. Use `admin-test-lookups.html` to test lookup data integration (development only) 

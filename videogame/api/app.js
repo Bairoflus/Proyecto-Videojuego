@@ -1289,6 +1289,52 @@ app.get('/api/bosses', async (req, res) => {
     }
 });
 
+// GET /api/lookups
+app.get('/api/lookups', async (req, res) => {
+    let connection;
+    
+    try {
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Query all lookup tables
+        const [eventTypes] = await connection.execute('SELECT event_type as name FROM event_types');
+        const [weaponSlots] = await connection.execute('SELECT slot_type as name FROM weapon_slots');
+        const [upgradeTypes] = await connection.execute('SELECT upgrade_type as name FROM upgrade_types');
+        const [bossResults] = await connection.execute('SELECT result_code as name FROM boss_results');
+        const [roomTypes] = await connection.execute('SELECT room_type as name FROM room_types');
+        const [itemTypes] = await connection.execute('SELECT item_type as name FROM item_types');
+        
+        // Build response object
+        const lookups = {
+            eventTypes: eventTypes,
+            weaponSlots: weaponSlots,
+            upgradeTypes: upgradeTypes,
+            bossResults: bossResults,
+            roomTypes: roomTypes,
+            itemTypes: itemTypes
+        };
+        
+        // Return lookups object
+        res.status(200).json(lookups);
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
