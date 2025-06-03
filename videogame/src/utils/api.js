@@ -138,5 +138,21 @@ export async function completeRun(runId, completionData) {
     });
 }
 
+/**
+ * Register an enemy kill during gameplay
+ * @param {string|number} runId - Run ID where the kill occurred
+ * @param {Object} killData - Kill event data
+ * @param {number} killData.userId - User ID who made the kill
+ * @param {number} killData.enemyId - Enemy type ID that was killed
+ * @param {number} killData.roomId - Room ID where the kill occurred
+ * @returns {Promise<Object>} Kill registration confirmation with killId
+ */
+export async function registerEnemyKill(runId, killData) {
+    return apiRequest(`/runs/${runId}/enemy-kill`, {
+        method: 'POST',
+        body: JSON.stringify(killData)
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 

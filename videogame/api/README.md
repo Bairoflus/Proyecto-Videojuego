@@ -400,6 +400,141 @@ curl -X POST http://localhost:3000/api/runs/123/save-state \
 5. State saved to `save_states` table with timestamp
 6. Returns `saveId` for confirmation
 
+### POST /api/runs/:runId/enemy-kill
+Registers an enemy kill event during an active game run.
+
+**URL**: `/api/runs/{runId}/enemy-kill`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "userId": 123,
+  "enemyId": 1,
+  "roomId": 2
+}
+```
+
+**Success Response** (201 Created):
+```json
+{
+  "killId": 456,
+  "message": "Enemy kill registered"
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing runId parameter:
+```
+Missing runId parameter
+```
+
+- **400 Bad Request** - Missing required fields:
+```
+Missing required fields: userId, enemyId, roomId
+```
+
+- **400 Bad Request** - Invalid field types:
+```
+Invalid field types: userId, enemyId, roomId, runId must be integers
+```
+
+- **400 Bad Request** - User ID mismatch:
+```
+User ID does not match run owner
+```
+
+- **400 Bad Request** - Run already completed:
+```
+Run is already completed
+```
+
+- **404 Not Found** - Run not found:
+```
+Run not found
+```
+
+- **404 Not Found** - Enemy type not found:
+```
+Enemy type not found
+```
+
+- **404 Not Found** - Room not found:
+```
+Room not found
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Restrictions**:
+This endpoint is **NOT** exposed in the landing page or main user interface. It should **ONLY** be called:
+
+1. **During active gameplay** - When an enemy is killed by the player
+2. **For active runs only** - Cannot register kills for completed runs
+3. **With valid game data** - Must reference existing enemies, rooms, and runs
+4. **By the run owner** - userId must match the run's user_id
+
+**Database Schema Requirements**:
+The endpoint validates against the actual database schema:
+
+**enemy_kills table**:
+```sql
+CREATE TABLE enemy_kills (
+  kill_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  enemy_id INT NOT NULL,
+  run_id INT NOT NULL,
+  room_id INT NOT NULL,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (enemy_id) REFERENCES enemy_types(enemy_id),
+  FOREIGN KEY (run_id) REFERENCES run_history(run_id),
+  FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+);
+```
+
+**Validation Logic**:
+1. **Run Exists Check**: `SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?`
+2. **User Ownership Check**: Validates `userId` matches run owner
+3. **Run Active Check**: Validates `ended_at IS NULL` (run not completed)
+4. **Enemy Exists Check**: `SELECT enemy_id FROM enemy_types WHERE enemy_id = ?`
+5. **Room Exists Check**: `SELECT room_id FROM rooms WHERE room_id = ?`
+6. **Data Type Validation**: All fields must be integers
+
+**Example Usage**:
+```bash
+curl -X POST http://localhost:3000/api/runs/123/enemy-kill \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 123,
+    "enemyId": 1,
+    "roomId": 2
+  }'
+```
+
+**Integration Points**:
+- Should be integrated with enemy death logic in the game engine
+- Called when `Enemy.die()` method is triggered
+- Tracks kill statistics for player progress and achievements
+
+**Data Flow**:
+1. Player kills an enemy during gameplay
+2. Game engine detects enemy death
+3. Frontend calls this endpoint with kill details
+4. API validates run ownership and entity existence
+5. Kill registered in `enemy_kills` table with timestamp
+6. Returns `killId` for confirmation/tracking
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -468,6 +603,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    GET  http://localhost:3000/api/users/{userId}/stats
    POST http://localhost:3000/api/runs
    POST http://localhost:3000/api/runs/{runId}/save-state
+   POST http://localhost:3000/api/runs/{runId}/enemy-kill
    ```
 
 2. **Send data in JSON format**:
@@ -510,6 +646,14 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
      "gold": 150
    }
    ```
+   - For enemy kill:
+   ```json
+   {
+     "userId": 123,
+     "enemyId": 1,
+     "roomId": 2
+   }
+   ```
 
 3. **Handle responses**:
    - Registration Success (201): User created, receives `userId`
@@ -518,6 +662,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    - Stats Success (200): Player stats data as JSON
    - Runs Success (201): New run created, receives `runId` and `startedAt`
    - Save State Success (201): Save state created, receives `saveId`
+   - Enemy Kill Success (201): Kill registered, receives `killId`
    - Error (400): Missing fields or parameters
    - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)

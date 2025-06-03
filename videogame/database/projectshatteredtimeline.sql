@@ -55,10 +55,13 @@ CREATE TABLE `sessions` (
   `user_id` INT NOT NULL COMMENT 'References users(user_id)',
   `session_token` CHAR(36) NOT NULL DEFAULT (UUID()) COMMENT 'Session token (UUID)',
   `started_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Session start timestamp',
-  `closed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Session closed timestamp',
+  `closed_at` DATETIME NULL DEFAULT NULL COMMENT 'Session closed timestamp',
   `last_active` DATETIME NULL DEFAULT NULL COMMENT 'Last active timestamp',
   PRIMARY KEY (`session_id`),
-  FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
+  FOREIGN KEY (`user_id`)
+    REFERENCES `users`(`user_id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Active player sessions';
 
 CREATE TABLE `player_stats` (
