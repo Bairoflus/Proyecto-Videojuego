@@ -763,6 +763,108 @@ app.post('/api/runs/:runId/shop-purchase', async (req, res) => {
     }
 });
 
+// POST /api/runs/:runId/boss-encounter
+app.post('/api/runs/:runId/boss-encounter', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get runId from URL parameters
+        const { runId } = req.params;
+        
+        // Get data from request body
+        const { userId, enemyId, damageDealt, damageTaken, resultCode } = req.body;
+        
+        // Basic validation - runId parameter
+        if (!runId) {
+            return res.status(400).send('Missing runId parameter');
+        }
+        
+        // Input validation - required fields
+        if (!userId || !enemyId || damageDealt === undefined || damageTaken === undefined || !resultCode) {
+            return res.status(400).send('Missing required fields: userId, enemyId, damageDealt, damageTaken, resultCode');
+        }
+        
+        // Type validation - userId, enemyId, damageDealt, damageTaken must be integers; resultCode must be string
+        if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(enemyId)) || !Number.isInteger(Number(damageDealt)) || !Number.isInteger(Number(damageTaken)) || !Number.isInteger(Number(runId))) {
+            return res.status(400).send('Invalid field types: userId, enemyId, damageDealt, damageTaken, runId must be integers');
+        }
+        
+        if (typeof resultCode !== 'string') {
+            return res.status(400).send('Invalid field types: resultCode must be string');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Validate runId exists and is active in run_history
+        const [runs] = await connection.execute(
+            'SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        if (runs.length === 0) {
+            return res.status(404).send('Run not found');
+        }
+        
+        // Validate userId matches the run owner
+        if (runs[0].user_id !== parseInt(userId)) {
+            return res.status(400).send('User ID does not match run owner');
+        }
+        
+        // Validate run is still active
+        if (runs[0].ended_at !== null) {
+            return res.status(400).send('Run is already completed');
+        }
+        
+        // Validate enemyId exists in boss_details
+        const [bosses] = await connection.execute(
+            'SELECT enemy_id FROM boss_details WHERE enemy_id = ?',
+            [enemyId]
+        );
+        
+        if (bosses.length === 0) {
+            return res.status(404).send('Boss not found');
+        }
+        
+        // Validate resultCode exists in boss_results
+        const [results] = await connection.execute(
+            'SELECT result_code FROM boss_results WHERE result_code = ?',
+            [resultCode]
+        );
+        
+        if (results.length === 0) {
+            return res.status(404).send('Result code not found');
+        }
+        
+        // Insert boss encounter record
+        const [result] = await connection.execute(
+            'INSERT INTO boss_encounters (user_id, enemy_id, run_id, damage_dealt, damage_taken, result_code) VALUES (?, ?, ?, ?, ?, ?)',
+            [userId, enemyId, runId, damageDealt, damageTaken, resultCode]
+        );
+        
+        // Success response
+        res.status(201).json({
+            encounterId: result.insertId,
+            message: 'Boss encounter registered'
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

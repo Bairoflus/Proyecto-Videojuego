@@ -809,6 +809,152 @@ curl -X POST http://localhost:3000/api/runs/123/shop-purchase \
 5. Purchase registered in `shop_purchases` table with timestamp
 6. Returns `purchaseId` for confirmation/tracking
 
+### POST /api/runs/:runId/boss-encounter
+Registers a boss encounter event during an active game run.
+
+**URL**: `/api/runs/{runId}/boss-encounter`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "userId": 123,
+  "enemyId": 100,
+  "damageDealt": 120,
+  "damageTaken": 30,
+  "resultCode": "victory"
+}
+```
+
+**Success Response** (201 Created):
+```json
+{
+  "encounterId": 456,
+  "message": "Boss encounter registered"
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing runId parameter:
+```
+Missing runId parameter
+```
+
+- **400 Bad Request** - Missing required fields:
+```
+Missing required fields: userId, enemyId, damageDealt, damageTaken, resultCode
+```
+
+- **400 Bad Request** - Invalid integer field types:
+```
+Invalid field types: userId, enemyId, damageDealt, damageTaken, runId must be integers
+```
+
+- **400 Bad Request** - Invalid string field types:
+```
+Invalid field types: resultCode must be string
+```
+
+- **400 Bad Request** - User ID mismatch:
+```
+User ID does not match run owner
+```
+
+- **400 Bad Request** - Run already completed:
+```
+Run is already completed
+```
+
+- **404 Not Found** - Run not found:
+```
+Run not found
+```
+
+- **404 Not Found** - Boss not found:
+```
+Boss not found
+```
+
+- **404 Not Found** - Result code not found:
+```
+Result code not found
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Restrictions**:
+This endpoint is **NOT** exposed in the landing page or main user interface. It should **ONLY** be called:
+
+1. **During active gameplay** - When a boss encounter occurs
+2. **For active runs only** - Cannot register encounters for completed runs
+3. **With valid game data** - Must reference existing runs, bosses, and result codes
+4. **By the run owner** - userId must match the run's user_id
+
+**Database Schema Requirements**:
+The endpoint validates against the actual database schema:
+
+**boss_encounters table**:
+```sql
+CREATE TABLE boss_encounters (
+  encounter_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  enemy_id INT NOT NULL,
+  run_id INT NOT NULL,
+  damage_dealt INT,
+  damage_taken INT,
+  result_code VARCHAR(50) NOT NULL,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (enemy_id) REFERENCES boss_details(enemy_id),
+  FOREIGN KEY (run_id) REFERENCES run_history(run_id),
+  FOREIGN KEY (result_code) REFERENCES boss_results(result_code)
+);
+```
+
+**Validation Logic**:
+1. **Run Exists Check**: `SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?`
+2. **User Ownership Check**: Validates `userId` matches run owner
+3. **Run Active Check**: Validates `ended_at IS NULL` (run not completed)
+4. **Boss Exists Check**: `SELECT enemy_id FROM boss_details WHERE enemy_id = ?`
+5. **Result Code Exists Check**: `SELECT result_code FROM boss_results WHERE result_code = ?`
+6. **Data Type Validation**: Integers for userId, enemyId, damageDealt, damageTaken, runId; string for resultCode
+
+**Example Usage**:
+```bash
+curl -X POST http://localhost:3000/api/runs/123/boss-encounter \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 123,
+    "enemyId": 100,
+    "damageDealt": 120,
+    "damageTaken": 30,
+    "resultCode": "victory"
+  }'
+```
+
+**Integration Points**:
+- Should be integrated with boss combat mechanics in the game engine
+- Called when player engages in combat with boss enemies
+- Tracks combat statistics for player progress and boss difficulty balancing
+
+**Data Flow**:
+1. Player encounters a boss during gameplay
+2. Combat system processes the encounter
+3. Frontend calls this endpoint with encounter details
+4. API validates run ownership and entity existence
+5. Encounter registered in `boss_encounters` table with timestamp
+6. Returns `encounterId` for confirmation/tracking
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -880,6 +1026,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    POST http://localhost:3000/api/runs/{runId}/enemy-kill
    POST http://localhost:3000/api/runs/{runId}/chest-event
    POST http://localhost:3000/api/runs/{runId}/shop-purchase
+   POST http://localhost:3000/api/runs/{runId}/boss-encounter
    ```
 
 2. **Send data in JSON format**:
@@ -948,6 +1095,16 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
      "goldSpent": 80
    }
    ```
+   - For boss encounter:
+   ```json
+   {
+     "userId": 123,
+     "enemyId": 100,
+     "damageDealt": 120,
+     "damageTaken": 30,
+     "resultCode": "victory"
+   }
+   ```
 
 3. **Handle responses**:
    - Registration Success (201): User created, receives `userId`
@@ -959,6 +1116,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    - Enemy Kill Success (201): Kill registered, receives `killId`
    - Chest Event Success (201): Chest event registered, receives `eventId`
    - Shop Purchase Success (201): Purchase registered, receives `purchaseId`
+   - Boss Encounter Success (201): Encounter registered, receives `encounterId`
    - Error (400): Missing fields or parameters
    - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)

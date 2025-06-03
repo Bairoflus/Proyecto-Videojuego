@@ -188,5 +188,23 @@ export async function registerShopPurchase(runId, purchaseData) {
     });
 }
 
+/**
+ * Register a boss encounter during gameplay
+ * @param {string|number} runId - Run ID where the boss encounter occurred
+ * @param {Object} encounterData - Boss encounter event data
+ * @param {number} encounterData.userId - User ID who encountered the boss
+ * @param {number} encounterData.enemyId - Boss enemy ID (must exist in boss_details)
+ * @param {number} encounterData.damageDealt - Damage dealt to the boss
+ * @param {number} encounterData.damageTaken - Damage taken from the boss
+ * @param {string} encounterData.resultCode - Result of the encounter (must exist in boss_results)
+ * @returns {Promise<Object>} Boss encounter registration confirmation with encounterId
+ */
+export async function registerBossEncounter(runId, encounterData) {
+    return apiRequest(`/runs/${runId}/boss-encounter`, {
+        method: 'POST',
+        body: JSON.stringify(encounterData)
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 
