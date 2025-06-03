@@ -1425,6 +1425,102 @@ curl -X POST http://localhost:3000/api/runs/123/weapon-upgrade \
 5. Upgrade saved/updated in `weapon_upgrades_temp` table with timestamp
 6. Returns confirmation with run, user, and slot details
 
+### GET /api/rooms
+Retrieves all rooms from the database ordered by floor and sequence order.
+
+**URL**: `/api/rooms`
+
+**Method**: `GET`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**: None required
+
+**Success Response** (200 OK):
+```json
+[
+  {
+    "room_id": 1,
+    "floor": 1,
+    "name": "Entrance Room",
+    "room_type": "entrance",
+    "sequence_order": 1
+  },
+  {
+    "room_id": 2,
+    "floor": 1,
+    "name": "Combat Room 1",
+    "room_type": "combat",
+    "sequence_order": 2
+  }
+]
+```
+
+**Error Responses**:
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Information**:
+This endpoint is **read-only** and can be safely called from any part of the application:
+
+1. **Frontend initialization** - Load room data for game setup
+2. **Game map generation** - Display available rooms and sequences
+3. **Navigation systems** - Room-to-room movement logic
+4. **Admin interfaces** - Room management and editing tools
+5. **No authentication required** - Public endpoint for game data
+
+**Database Schema Requirements**:
+The endpoint queries the rooms table:
+
+**rooms table**:
+```sql
+CREATE TABLE rooms (
+  room_id INT AUTO_INCREMENT PRIMARY KEY,
+  floor INT,
+  name VARCHAR(50),
+  room_type VARCHAR(50) NOT NULL,
+  sequence_order SMALLINT,
+  FOREIGN KEY (room_type) REFERENCES room_types(room_type)
+);
+```
+
+**Query Logic**:
+```sql
+SELECT room_id, floor, name, room_type, sequence_order 
+FROM rooms 
+ORDER BY floor ASC, sequence_order ASC
+```
+
+**Response Details**:
+- **room_id**: Unique identifier for the room
+- **floor**: Floor number where the room is located
+- **name**: Display name of the room
+- **room_type**: Type classification (entrance, combat, shop, boss, etc.)
+- **sequence_order**: Order within the floor for progression logic
+
+**Example Usage**:
+```bash
+curl -X GET http://localhost:3000/api/rooms
+```
+
+**Integration Points**:
+- Room layout generation for game maps
+- Navigation and progression systems
+- Game state initialization
+- Level design and room sequence planning
+
+**Data Flow**:
+1. Frontend requests room data on game initialization
+2. API queries all rooms with proper ordering
+3. Returns complete room array for frontend use
+4. Frontend uses data for map generation and navigation
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -1500,6 +1596,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    POST http://localhost:3000/api/runs/{runId}/upgrade-purchase
    POST http://localhost:3000/api/runs/{runId}/equip-weapon
    POST http://localhost:3000/api/runs/{runId}/weapon-upgrade
+   GET  http://localhost:3000/api/rooms
    ```
 
 2. **Send data in JSON format**:
@@ -1620,6 +1717,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    - Upgrade Purchase Success (201): Purchase registered, receives `purchaseId`
    - Equip Weapon Success (201): Weapon equipped, receives confirmation message
    - Weapon Upgrade Success (201): Upgrade saved, receives confirmation message
+   - Get Rooms Success (200): Array of room objects, receives room data
    - Error (400): Missing fields or parameters
    - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)
