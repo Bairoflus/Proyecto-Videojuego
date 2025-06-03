@@ -661,6 +661,108 @@ app.post('/api/runs/:runId/chest-event', async (req, res) => {
     }
 });
 
+// POST /api/runs/:runId/shop-purchase
+app.post('/api/runs/:runId/shop-purchase', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get runId from URL parameters
+        const { runId } = req.params;
+        
+        // Get data from request body
+        const { userId, roomId, itemType, itemName, goldSpent } = req.body;
+        
+        // Basic validation - runId parameter
+        if (!runId) {
+            return res.status(400).send('Missing runId parameter');
+        }
+        
+        // Input validation - required fields
+        if (!userId || !roomId || !itemType || !itemName || goldSpent === undefined) {
+            return res.status(400).send('Missing required fields: userId, roomId, itemType, itemName, goldSpent');
+        }
+        
+        // Type validation - userId, roomId, goldSpent must be integers; itemType and itemName must be strings
+        if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(roomId)) || !Number.isInteger(Number(goldSpent)) || !Number.isInteger(Number(runId))) {
+            return res.status(400).send('Invalid field types: userId, roomId, goldSpent, runId must be integers');
+        }
+        
+        if (typeof itemType !== 'string' || typeof itemName !== 'string') {
+            return res.status(400).send('Invalid field types: itemType and itemName must be strings');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Validate runId exists and is active in run_history
+        const [runs] = await connection.execute(
+            'SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        if (runs.length === 0) {
+            return res.status(404).send('Run not found');
+        }
+        
+        // Validate userId matches the run owner
+        if (runs[0].user_id !== parseInt(userId)) {
+            return res.status(400).send('User ID does not match run owner');
+        }
+        
+        // Validate run is still active
+        if (runs[0].ended_at !== null) {
+            return res.status(400).send('Run is already completed');
+        }
+        
+        // Validate roomId exists in rooms
+        const [rooms] = await connection.execute(
+            'SELECT room_id FROM rooms WHERE room_id = ?',
+            [roomId]
+        );
+        
+        if (rooms.length === 0) {
+            return res.status(404).send('Room not found');
+        }
+        
+        // Validate itemType exists in item_types
+        const [itemTypes] = await connection.execute(
+            'SELECT item_type FROM item_types WHERE item_type = ?',
+            [itemType]
+        );
+        
+        if (itemTypes.length === 0) {
+            return res.status(404).send('Item type not found');
+        }
+        
+        // Insert shop purchase record
+        const [result] = await connection.execute(
+            'INSERT INTO shop_purchases (user_id, run_id, room_id, item_type, item_name, gold_spent) VALUES (?, ?, ?, ?, ?, ?)',
+            [userId, runId, roomId, itemType, itemName, goldSpent]
+        );
+        
+        // Success response
+        res.status(201).json({
+            purchaseId: result.insertId,
+            message: 'Shop purchase registered'
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

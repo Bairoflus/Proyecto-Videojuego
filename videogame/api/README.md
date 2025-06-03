@@ -663,6 +663,152 @@ curl -X POST http://localhost:3000/api/runs/123/chest-event \
 5. Chest event registered in `chest_events` table with timestamp
 6. Returns `eventId` for confirmation/tracking
 
+### POST /api/runs/:runId/shop-purchase
+Registers a shop purchase event during an active game run.
+
+**URL**: `/api/runs/{runId}/shop-purchase`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "userId": 123,
+  "roomId": 2,
+  "itemType": "health_potion",
+  "itemName": "Health Potion",
+  "goldSpent": 80
+}
+```
+
+**Success Response** (201 Created):
+```json
+{
+  "purchaseId": 456,
+  "message": "Shop purchase registered"
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing runId parameter:
+```
+Missing runId parameter
+```
+
+- **400 Bad Request** - Missing required fields:
+```
+Missing required fields: userId, roomId, itemType, itemName, goldSpent
+```
+
+- **400 Bad Request** - Invalid integer field types:
+```
+Invalid field types: userId, roomId, goldSpent, runId must be integers
+```
+
+- **400 Bad Request** - Invalid string field types:
+```
+Invalid field types: itemType and itemName must be strings
+```
+
+- **400 Bad Request** - User ID mismatch:
+```
+User ID does not match run owner
+```
+
+- **400 Bad Request** - Run already completed:
+```
+Run is already completed
+```
+
+- **404 Not Found** - Run not found:
+```
+Run not found
+```
+
+- **404 Not Found** - Room not found:
+```
+Room not found
+```
+
+- **404 Not Found** - Item type not found:
+```
+Item type not found
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Restrictions**:
+This endpoint is **NOT** exposed in the landing page or main user interface. It should **ONLY** be called:
+
+1. **During active gameplay** - When a shop purchase is made by the player
+2. **For active runs only** - Cannot register purchases for completed runs
+3. **With valid game data** - Must reference existing rooms, runs, and item types
+4. **By the run owner** - userId must match the run's user_id
+
+**Database Schema Requirements**:
+The endpoint validates against the actual database schema:
+
+**shop_purchases table**:
+```sql
+CREATE TABLE shop_purchases (
+  purchase_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  run_id INT NOT NULL,
+  room_id INT NOT NULL,
+  item_type VARCHAR(50) NOT NULL,
+  item_name VARCHAR(50),
+  gold_spent INT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (run_id) REFERENCES run_history(run_id),
+  FOREIGN KEY (room_id) REFERENCES rooms(room_id),
+  FOREIGN KEY (item_type) REFERENCES item_types(item_type)
+);
+```
+
+**Validation Logic**:
+1. **Run Exists Check**: `SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?`
+2. **User Ownership Check**: Validates `userId` matches run owner
+3. **Run Active Check**: Validates `ended_at IS NULL` (run not completed)
+4. **Room Exists Check**: `SELECT room_id FROM rooms WHERE room_id = ?`
+5. **Item Type Exists Check**: `SELECT item_type FROM item_types WHERE item_type = ?`
+6. **Data Type Validation**: Integers for userId, roomId, goldSpent, runId; strings for itemType, itemName
+
+**Example Usage**:
+```bash
+curl -X POST http://localhost:3000/api/runs/123/shop-purchase \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 123,
+    "roomId": 2,
+    "itemType": "health_potion",
+    "itemName": "Health Potion",
+    "goldSpent": 80
+  }'
+```
+
+**Integration Points**:
+- Should be integrated with shop transaction logic in the game engine
+- Called when player purchases items from shop NPCs or interfaces
+- Tracks spending patterns for player progress and economy balancing
+
+**Data Flow**:
+1. Player makes purchase in shop during gameplay
+2. Game engine processes transaction and item acquisition
+3. Frontend calls this endpoint with purchase details
+4. API validates run ownership and entity existence
+5. Purchase registered in `shop_purchases` table with timestamp
+6. Returns `purchaseId` for confirmation/tracking
+
 ## Security Features
 - Use of placeholders (?) in SQL queries to prevent SQL injection
 - Proper database connection management (always closed)
@@ -733,6 +879,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    POST http://localhost:3000/api/runs/{runId}/save-state
    POST http://localhost:3000/api/runs/{runId}/enemy-kill
    POST http://localhost:3000/api/runs/{runId}/chest-event
+   POST http://localhost:3000/api/runs/{runId}/shop-purchase
    ```
 
 2. **Send data in JSON format**:
@@ -791,6 +938,16 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
      "goldReceived": 120
    }
    ```
+   - For shop purchase:
+   ```json
+   {
+     "userId": 123,
+     "roomId": 2,
+     "itemType": "health_potion",
+     "itemName": "Health Potion",
+     "goldSpent": 80
+   }
+   ```
 
 3. **Handle responses**:
    - Registration Success (201): User created, receives `userId`
@@ -801,6 +958,7 @@ The API is ready to be consumed by the frontend. To integrate with your frontend
    - Save State Success (201): Save state created, receives `saveId`
    - Enemy Kill Success (201): Kill registered, receives `killId`
    - Chest Event Success (201): Chest event registered, receives `eventId`
+   - Shop Purchase Success (201): Purchase registered, receives `purchaseId`
    - Error (400): Missing fields or parameters
    - Error (404): Invalid credentials or stats not found
    - Error (409): Duplicate user (registration only)
