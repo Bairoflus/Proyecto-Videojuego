@@ -170,5 +170,23 @@ export async function registerChestEvent(runId, chestData) {
     });
 }
 
+/**
+ * Register a shop purchase during gameplay
+ * @param {string|number} runId - Run ID where the purchase was made
+ * @param {Object} purchaseData - Purchase event data
+ * @param {number} purchaseData.userId - User ID who made the purchase
+ * @param {number} purchaseData.roomId - Room ID where the purchase was made
+ * @param {string} purchaseData.itemType - Type of item purchased (must exist in item_types)
+ * @param {string} purchaseData.itemName - Name of the item purchased
+ * @param {number} purchaseData.goldSpent - Gold amount spent on the purchase
+ * @returns {Promise<Object>} Shop purchase registration confirmation with purchaseId
+ */
+export async function registerShopPurchase(runId, purchaseData) {
+    return apiRequest(`/runs/${runId}/shop-purchase`, {
+        method: 'POST',
+        body: JSON.stringify(purchaseData)
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 
