@@ -224,5 +224,20 @@ export async function registerUpgradePurchase(runId, upgradeData) {
     });
 }
 
+/**
+ * Equip a weapon in a specific slot during gameplay
+ * @param {string|number} runId - Run ID where the weapon is being equipped
+ * @param {Object} equipmentData - Weapon equipment event data
+ * @param {number} equipmentData.userId - User ID who is equipping the weapon
+ * @param {string} equipmentData.slotType - Type of weapon slot (must exist in weapon_slots)
+ * @returns {Promise<Object>} Weapon equipment confirmation
+ */
+export async function equipWeapon(runId, equipmentData) {
+    return apiRequest(`/runs/${runId}/equip-weapon`, {
+        method: 'POST',
+        body: JSON.stringify(equipmentData)
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 

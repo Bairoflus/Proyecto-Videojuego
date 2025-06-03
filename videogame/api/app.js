@@ -968,6 +968,103 @@ app.post('/api/runs/:runId/upgrade-purchase', async (req, res) => {
     }
 });
 
+// POST /api/runs/:runId/equip-weapon
+app.post('/api/runs/:runId/equip-weapon', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get runId from URL parameters
+        const { runId } = req.params;
+        
+        // Get data from request body
+        const { userId, slotType } = req.body;
+        
+        // Basic validation - runId parameter
+        if (!runId) {
+            return res.status(400).send('Missing runId parameter');
+        }
+        
+        // Input validation - required fields
+        if (!userId || !slotType) {
+            return res.status(400).send('Missing required fields: userId, slotType');
+        }
+        
+        // Type validation - userId must be integer; slotType must be string
+        if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(runId))) {
+            return res.status(400).send('Invalid field types: userId, runId must be integers');
+        }
+        
+        if (typeof slotType !== 'string') {
+            return res.status(400).send('Invalid field types: slotType must be string');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Validate runId exists and is active in run_history
+        const [runs] = await connection.execute(
+            'SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        if (runs.length === 0) {
+            return res.status(404).send('Run not found');
+        }
+        
+        // Validate userId matches the run owner
+        if (runs[0].user_id !== parseInt(userId)) {
+            return res.status(400).send('User ID does not match run owner');
+        }
+        
+        // Validate run is still active
+        if (runs[0].ended_at !== null) {
+            return res.status(400).send('Run is already completed');
+        }
+        
+        // Validate slotType exists in weapon_slots
+        const [weaponSlots] = await connection.execute(
+            'SELECT slot_type FROM weapon_slots WHERE slot_type = ?',
+            [slotType]
+        );
+        
+        if (weaponSlots.length === 0) {
+            return res.status(404).send('Weapon slot type not found');
+        }
+        
+        // Insert weapon equipment record
+        const [result] = await connection.execute(
+            'INSERT INTO equipped_weapons (run_id, user_id, slot_type) VALUES (?, ?, ?)',
+            [runId, userId, slotType]
+        );
+        
+        // Success response
+        res.status(201).json({
+            message: 'Weapon equipped for run'
+        });
+        
+    } catch (err) {
+        console.error(err);
+        
+        // Handle primary key constraint violation (duplicate equipment)
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(409).send('Weapon already equipped for this slot in this run');
+        }
+        
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
