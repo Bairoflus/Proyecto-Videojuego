@@ -30,9 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Call API to login user
             const result = await loginUser(email, password);
             
-            // Store session token and userId
+            // Store session token, userId, and sessionId
             localStorage.setItem('sessionToken', result.sessionToken);
             localStorage.setItem('currentUserId', result.userId);
+            localStorage.setItem('currentSessionId', result.sessionId);
             
             // Create a new run for the login session
             try {

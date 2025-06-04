@@ -138,10 +138,11 @@ app.post('/api/auth/login', async (req, res) => {
             [sessionResult.insertId]
         );
         
-        // Return success response with userId
+        // Return success response with userId, sessionToken and sessionId
         res.status(200).json({
             userId: user.user_id,
-            sessionToken: sessions[0].session_token
+            sessionToken: sessions[0].session_token,
+            sessionId: sessionResult.insertId
         });
         
     } catch (err) {

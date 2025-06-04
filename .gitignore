@@ -46,6 +46,9 @@ videogame/BACKEND_FRONTEND_INTEGRATION_ISSUES.md
 *CLEANUP_REPORT.md
 *TEST_REPORT.md
 
+# Carpeta de reportes del proyecto
+videogame/reports/
+
 # Archivos de respaldo y temporales
 *.bak
 *.backup
