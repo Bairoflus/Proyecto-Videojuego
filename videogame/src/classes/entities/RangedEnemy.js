@@ -19,13 +19,27 @@ export class RangedEnemy extends Enemy {
     movementSpeed,
     baseDamage,
     maxHealth,
-    projectileType = "arrow" // Default projectile type, can be overridden
+    projectileType = "arrow", // Default projectile type, can be overridden
+    range = 150,
+    projectileRange = 300
   ) {
-    super(position, width, height, color, sheetCols, type, movementSpeed, baseDamage, maxHealth);
+    super(
+      position, 
+      width, 
+      height, 
+      color, 
+      sheetCols, 
+      type, 
+      movementSpeed, 
+      baseDamage, 
+      maxHealth,
+      range,
+      projectileRange
+    );
     
     // Ranged enemy specific properties
-    this.attackRange = 150; // Default attack range
-    this.retreatDistance = 80; // Distance to maintain from target
+    this.attackRange = range; // Use the configurable range
+    this.retreatDistance = Math.max(range * 0.5, 80); // Distance to maintain from target (half of attack range)
     this.projectileSpeed = 200; // Default projectile speed
     this.projectileType = projectileType; // Projectile type for this enemy
 
@@ -107,15 +121,19 @@ export class RangedEnemy extends Enemy {
       this.position,
       targetCenter,
       this.projectileSpeed,
-      this.baseDamage,
+      this.baseDamage, // Use enemy's base damage
       this.projectileType // Use the enemy's specific projectile type
     );
+    
+    // Set projectile max travel distance
+    projectile.maxTravelDistance = this.projectileRange;
+    projectile.initialPosition = new Vec(this.position.x, this.position.y);
     
     // Set room reference for wall collision detection
     projectile.setCurrentRoom(this.currentRoom);
     
     this.projectiles.push(projectile);
     
-    log.verbose(`${this.type} fired ${this.projectileType} projectile at player`);
+    log.verbose(`${this.type} fired ${this.projectileType} projectile at player (damage: ${this.baseDamage}, range: ${this.projectileRange})`);
   }
 }

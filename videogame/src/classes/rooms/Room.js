@@ -12,6 +12,7 @@ import { Shop } from "../entities/Shop.js";
 import { GoblinDagger } from "../enemies/floor1/GoblinDagger.js";
 import { GoblinArcher } from "../enemies/floor1/GoblinArcher.js";
 import { MageGoblin } from "../enemies/floor1/MageGoblin.js";
+import { GreatBowGoblin } from "../enemies/floor1/GreatBowGoblin.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
 import { ROOM_CONSTANTS, PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
@@ -389,19 +390,26 @@ export class Room {
     // Generate enemies randomly within defined range
     const enemyCount = Math.floor(Math.random() * (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)) + ROOM_CONSTANTS.MIN_ENEMIES;
 
-    // Random proportion using constants for three enemy types
+    // Random proportion using constants for enemy types
     const commonPercentage = Math.random() * (ROOM_CONSTANTS.COMMON_ENEMY_RATIO.max - ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min) + ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min;
     const commonCount = Math.floor(enemyCount * commonPercentage);
     const rareAndVeryRareCount = enemyCount - commonCount;
     
-    // Split rare enemies between GoblinArcher and MageGoblin (60% archer, 40% mage)
-    const archerCount = Math.floor(rareAndVeryRareCount * 0.6);
-    const mageCount = rareAndVeryRareCount - archerCount;
+    // Calculate GreatBowGoblin count (testing - guaranteed 1 per room)
+    let greatBowCount = 0;
+    if (rareAndVeryRareCount > 0) {
+      greatBowCount = 1; // Guaranteed spawn for testing
+    }
+    
+    // Split remaining rare enemies between GoblinArcher and MageGoblin (60% archer, 40% mage)
+    const remainingRareCount = rareAndVeryRareCount - greatBowCount;
+    const archerCount = Math.floor(remainingRareCount * 0.6);
+    const mageCount = remainingRareCount - archerCount;
 
     log.debug(
       `Enemy distribution: ${enemyCount} total | ${commonCount} GoblinDagger (${Math.round(
         commonPercentage * 100
-      )}%) | ${archerCount} GoblinArcher | ${mageCount} MageGoblin`
+      )}%) | ${archerCount} GoblinArcher | ${mageCount} MageGoblin | ${greatBowCount} GreatBowGoblin`
     );
 
     // Safe zone definition using constants
@@ -475,6 +483,27 @@ export class Room {
       }
     }
 
+    // Generate GreatBowGoblin enemies (right half, very rare)
+    if (greatBowCount > 0) {
+      log.debug("Generating GreatBowGoblin enemies (right half)...");
+      for (let i = 0; i < greatBowCount; i++) {
+        const position = this.getValidEnemyPosition(false, safeZone);
+        if (position) {
+          const enemy = new GreatBowGoblin(position);
+          enemy.setCurrentRoom(this); // Set room reference for collision detection
+          this.objects.enemies.push(enemy);
+          successfulPlacements++;
+          log.verbose(
+            `  GreatBowGoblin ${i + 1} placed at (${Math.round(
+              position.x
+            )}, ${Math.round(position.y)})`
+          );
+        } else {
+          log.warn(`  Failed to place GreatBowGoblin ${i + 1}`);
+        }
+      }
+    }
+
     log.info(
       `Enemy generation complete: ${successfulPlacements}/${enemyCount} enemies successfully placed`
     );
@@ -489,9 +518,12 @@ export class Room {
     const mageGoblinCount = this.objects.enemies.filter(
       (e) => e.type === "mage_goblin"
     ).length;
+    const greatBowGoblinCount = this.objects.enemies.filter(
+      (e) => e.type === "great_bow_goblin"
+    ).length;
 
     log.debug(
-      `Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher, ${mageGoblinCount} MageGoblin instances created`
+      `Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher, ${mageGoblinCount} MageGoblin, ${greatBowGoblinCount} GreatBowGoblin instances created`
     );
   }
 

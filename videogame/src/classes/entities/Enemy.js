@@ -18,7 +18,9 @@ export class Enemy extends AnimatedObject {
     type,
     movementSpeed,
     baseDamage,
-    maxHealth
+    maxHealth,
+    range = 50,
+    projectileRange = 200
   ) {
     super(position, width, height, color, "enemy", sheetCols);
 
@@ -27,9 +29,13 @@ export class Enemy extends AnimatedObject {
     this.health = this.maxHealth;
     this.movementSpeed = movementSpeed;
     this.baseDamage = baseDamage;
-    this.attackRange = 50;
+    this.attackRange = range; // Use the new range parameter
     this.attackCooldown = 0;
     this.attackDuration = 500;
+
+    // Ranged combat properties
+    this.range = range; // Distance to begin attacking
+    this.projectileRange = projectileRange; // How far projectiles can travel
 
     // State
     this.state = "idle"; // idle, chasing, attacking, dead

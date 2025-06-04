@@ -118,6 +118,19 @@ export const ENEMY_CONSTANTS = {
     projectileSpeed: 250,
     retreatDistance: 100, // Keeps distance while casting
   },
+
+  // Great Bow Goblin - Enhanced version of Goblin Archer
+  GREAT_BOW_GOBLIN: {
+    size: { width: 48, height: 48 }, // Same size as other goblins
+    health: 30, // Same health as archer
+    damage: 30, // Double the archer's damage (15 * 2)
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 3.0, // Double the archer's speed (1.5 * 2)
+    attackRange: 200, // Same range as archer
+    attackCooldown: 2000, // Same cooldown as archer
+    projectileSpeed: 300, // Same projectile speed as archer
+    retreatDistance: 80, // Same retreat distance as archer
+    projectileRange: 300, // Same projectile range as archer
+  },
 };
 
 // Room constants

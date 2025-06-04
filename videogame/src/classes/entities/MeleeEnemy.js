@@ -16,12 +16,26 @@ export class MeleeEnemy extends Enemy {
     type,
     movementSpeed,
     baseDamage,
-    maxHealth
+    maxHealth,
+    range = 50
   ) {
-    super(position, width, height, color, sheetCols, type, movementSpeed, baseDamage, maxHealth);
+    super(
+      position, 
+      width, 
+      height, 
+      color, 
+      sheetCols, 
+      type, 
+      movementSpeed, 
+      baseDamage, 
+      maxHealth,
+      range, // Pass range to parent
+      0, // No projectile range for melee
+      0  // No projectile damage for melee
+    );
     
     // Melee-specific properties can be set here if needed
-    this.attackRange = this.attackRange || 50; // Default melee range
+    this.attackRange = range; // Ensure attackRange is set correctly for melee
   }
 
   // Override moveTo for simple chase behavior

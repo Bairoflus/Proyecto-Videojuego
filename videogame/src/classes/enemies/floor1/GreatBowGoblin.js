@@ -1,7 +1,7 @@
 /**
- * Mage Goblin enemy class
- * Ranged spellcaster enemy that uses magic bolt projectiles
- * Slower but deals more damage with longer cooldowns
+ * Great Bow Goblin enemy class
+ * Enhanced ranged enemy type - stronger and faster version of Goblin Archer
+ * Double damage and double movement speed, but identical behavior and animations
  */
 import { RangedEnemy } from "../../entities/RangedEnemy.js";
 import { ENEMY_CONSTANTS } from "../../../constants/gameConstants.js";
@@ -9,23 +9,23 @@ import { Vec } from "../../../utils/Vec.js";
 import { variables } from "../../../config.js";
 import { Projectile } from "../../entities/Projectile.js";
 
-export class MageGoblin extends RangedEnemy {
+export class GreatBowGoblin extends RangedEnemy {
   constructor(position) {
-    const config = ENEMY_CONSTANTS.MAGE_GOBLIN;
+    const config = ENEMY_CONSTANTS.GREAT_BOW_GOBLIN;
 
     super(
       position,
       config.size.width,
       config.size.height,
-      "purple", // color (temporary, will be replaced by sprite)
-      9, // sheetCols for walk sprites (mage_goblin has same layout as player)
-      "mage_goblin", // type
+      "darkred", // color (temporary, will be replaced by sprite) - darker red to distinguish from regular archer
+      9, // sheetCols for walk sprites (great_bow_goblin has same layout as bow_goblin and player)
+      "great_bow_goblin", // type
       config.speed,
       config.damage,
       config.health,
-      "magic_bolt", // projectile type - mages use magic bolts
-      config.attackRange || 150, // range parameter
-      config.projectileRange || 250 // projectileRange parameter
+      "arrow", // projectile type - goblins use arrows
+      config.attackRange || 200, // range - distance to begin shooting
+      config.projectileRange || 300 // projectileRange - how far arrows can travel
     );
 
     // Set specific properties
@@ -35,23 +35,23 @@ export class MageGoblin extends RangedEnemy {
     this.retreatDistance = config.retreatDistance;
 
     // Animation properties
-    this.isCasting = false;
+    this.isAttacking = false;
+    this.isShooting = false;
+    this.hasCreatedProjectile = false;
     this.attackCooldown = 0;
     this.currentDirection = "down"; // Default direction
-    this.hasCreatedProjectile = false; // Track if projectile was created during cast
-    this.currentTarget = null; // Store target for projectile creation
 
     // Sprite scaling configuration - per animation type
     this.spriteScaling = {
-      walk: 1.0, // Mage goblins walk animation at normal size
-      spellcast: 1.0, // Spellcast animation at normal size
+      walk: 1.0, // Great bow goblins walk animation at normal size for proper scaling
+      shoot: 1.0, // Great bow goblins look fine at normal size when shooting
     };
 
-    // Sprite paths
+    // Sprite paths - using great_bow_goblin sprites
     this.walkSpritePath =
-      "../assets/sprites/enemies/floor1/mage_goblin/walk.png";
-    this.spellcastSpritePath =
-      "../assets/sprites/enemies/floor1/mage_goblin/spellcast.png";
+      "../assets/sprites/enemies/floor1/great_bow_goblin/walk.png";
+    this.shootSpritePath =
+      "../assets/sprites/enemies/floor1/great_bow_goblin/shoot.png";
 
     // Initialize with walking sprite and proper animation
     this.setSprite(this.walkSpritePath);
@@ -63,7 +63,7 @@ export class MageGoblin extends RangedEnemy {
 
   // Override moveTo for retreat/advance behavior with sprite animation
   moveTo(targetPosition) {
-    if (this.state === "dead" || this.isCasting) return;
+    if (this.state === "dead" || this.isShooting) return;
 
     // Calculate direction from enemy's hitbox center to target position
     const enemyHitbox = this.getHitboxBounds();
@@ -100,7 +100,7 @@ export class MageGoblin extends RangedEnemy {
       const newPosition = this.position.plus(this.velocity);
       this.moveToPosition(newPosition);
     } else {
-      // Stay in range and cast spells
+      // Stay in range and attack
       this.velocity = new Vec(0, 0);
       if (this.state !== "attacking") {
         this.state = "idle"; // Set to idle, will change to attacking when attack() is called
@@ -136,7 +136,7 @@ export class MageGoblin extends RangedEnemy {
   }
 
   attack(target) {
-    if (this.state === "dead" || this.isCasting || this.attackCooldown > 0) return;
+    if (this.state === "dead" || this.isShooting || this.attackCooldown > 0) return;
 
     // Calculate target hitbox center position
     const targetHitbox = target.getHitboxBounds();
@@ -145,28 +145,29 @@ export class MageGoblin extends RangedEnemy {
       targetHitbox.y + targetHitbox.height / 2
     );
 
-    // Calculate direction from mage center to target center for aiming
-    const mageHitbox = this.getHitboxBounds();
-    const mageCenter = new Vec(
-      mageHitbox.x + mageHitbox.width / 2,
-      mageHitbox.y + mageHitbox.height / 2
+    // Calculate direction from archer center to target center for aiming
+    const archerHitbox = this.getHitboxBounds();
+    const archerCenter = new Vec(
+      archerHitbox.x + archerHitbox.width / 2,
+      archerHitbox.y + archerHitbox.height / 2
     );
 
-    const aimDirection = targetCenter.minus(mageCenter);
+    const aimDirection = targetCenter.minus(archerCenter);
     const distance = aimDirection.magnitude();
     
     if (distance <= this.attackRange) {
       // Set state to attacking
       this.state = "attacking";
-      this.isCasting = true;
+      this.isShooting = true;
+      this.hasCreatedProjectile = false;
+      this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
-      this.velocity = new Vec(0, 0); // Stop moving during casting
-      this.hasCreatedProjectile = false; // Reset projectile creation flag
+      this.velocity = new Vec(0, 0); // Stop moving during attack
 
-      // Update direction for spellcasting animation
+      // Update direction for shooting animation
       this.updateDirectionFromAiming(aimDirection);
 
-      // Update animation to spellcast sprite
+      // Update animation to shoot sprite
       this.updateAnimation();
 
       // Store target for projectile creation at middle frame
@@ -174,7 +175,7 @@ export class MageGoblin extends RangedEnemy {
     }
   }
 
-  // Update direction based on aiming direction (for spellcasting animation)
+  // Update direction based on aiming direction (for shooting animation)
   updateDirectionFromAiming(aimDirection) {
     const newDirection =
       Math.abs(aimDirection.y) > Math.abs(aimDirection.x)
@@ -188,7 +189,7 @@ export class MageGoblin extends RangedEnemy {
     this.currentDirection = newDirection;
   }
 
-  // Override fireProjectile to spawn from mage center
+  // Override fireProjectile to spawn from archer center
   fireProjectile(target) {
     if (this.state === "dead") return;
 
@@ -199,25 +200,24 @@ export class MageGoblin extends RangedEnemy {
       targetHitbox.y + targetHitbox.height / 2
     );
 
-    // Calculate mage center position for projectile spawn
-    const mageHitbox = this.getHitboxBounds();
-    const mageCenter = new Vec(
-      mageHitbox.x + mageHitbox.width / 2,
-      mageHitbox.y + mageHitbox.height / 2
+    // Calculate archer center position for projectile spawn
+    const archerHitbox = this.getHitboxBounds();
+    const archerCenter = new Vec(
+      archerHitbox.x + archerHitbox.width / 2,
+      archerHitbox.y + archerHitbox.height / 2
     );
 
     const projectile = new Projectile(
-      mageCenter,
+      archerCenter,
       targetCenter,
       this.projectileSpeed,
-      this.baseDamage, // Use enemy's base damage
-      this.projectileType // Use inherited projectile type (magic_bolt)
+      this.baseDamage, // Use enemy's base damage (which is doubled)
+      this.projectileType // Use inherited projectile type
     );
     
-    // Set projectile travel distance limit
-    if (this.projectileRange) {
-      projectile.setMaxTravelDistance(this.projectileRange);
-    }
+    // Set projectile max travel distance and initial position
+    projectile.maxTravelDistance = this.projectileRange;
+    projectile.initialPosition = new Vec(archerCenter.x, archerCenter.y);
     
     // Set room reference for wall collision detection
     projectile.setCurrentRoom(this.currentRoom);
@@ -225,18 +225,18 @@ export class MageGoblin extends RangedEnemy {
     this.projectiles.push(projectile);
   }
 
-  // Get spellcast frame ranges based on direction (mage_goblin spellcast.png has 7 columns)
-  getSpellcastFrames(direction) {
+  // Get shoot frame ranges based on direction (great_bow_goblin shoot.png has 13 columns, same as bow_goblin)
+  getShootFrames(direction) {
     const frameRanges = {
-      up: [0, 6], // spellcast.png, row 0, 7 frames (0-6)
-      left: [7, 13], // spellcast.png, row 1, 7 frames (7-13)
-      down: [14, 20], // spellcast.png, row 2, 7 frames (14-20)
-      right: [21, 27], // spellcast.png, row 3, 7 frames (21-27)
+      up: [0, 12], // shoot.png, row 0, 13 frames (0-12)
+      left: [13, 25], // shoot.png, row 1, 13 frames (13-25)
+      down: [26, 38], // shoot.png, row 2, 13 frames (26-38)
+      right: [39, 51], // shoot.png, row 3, 13 frames (39-51)
     };
     return frameRanges[direction] || frameRanges.down;
   }
 
-  // Get walking frame ranges based on direction (mage_goblin walk.png has 9 columns, same as player)
+  // Get walking frame ranges based on direction (great_bow_goblin walk.png has 9 columns, same as player and bow_goblin)
   getWalkFrames(direction) {
     const frameRanges = {
       up: [0, 8], // walk.png, row 0, frames 0-8
@@ -262,12 +262,12 @@ export class MageGoblin extends RangedEnemy {
         break;
 
       case "attacking":
-        // Use spellcast animation for attacking state
-        this.sheetCols = 7; // Spellcast sprites have 7 columns
-        this.setSprite(this.spellcastSpritePath);
+        // Use shoot animation for attacking state
+        this.sheetCols = 13; // Shoot sprites have 13 columns
+        this.setSprite(this.shootSpritePath);
 
-        const spellcastFrames = this.getSpellcastFrames(this.currentDirection);
-        this.setAnimation(spellcastFrames[0], spellcastFrames[1], false, 150); // Slower casting animation
+        const shootFrames = this.getShootFrames(this.currentDirection);
+        this.setAnimation(shootFrames[0], shootFrames[1], false, 100);
         break;
 
       case "dead":
@@ -283,7 +283,7 @@ export class MageGoblin extends RangedEnemy {
     }
   }
 
-  // Override update to handle spellcast completion and projectile timing
+  // Override update to handle attack completion and state transitions
   update(deltaTime, player) {
     // Call parent update for projectiles and base functionality
     super.update(deltaTime, player);
@@ -293,11 +293,11 @@ export class MageGoblin extends RangedEnemy {
       this.attackCooldown -= deltaTime;
     }
 
-    // Handle spellcast animation and projectile creation at middle frame
-    if (this.isCasting && this.currentTarget) {
-      const spellcastFrames = this.getSpellcastFrames(this.currentDirection);
-      const minFrame = spellcastFrames[0];
-      const maxFrame = spellcastFrames[1];
+    // Handle shooting animation and projectile creation at middle frame
+    if (this.isShooting && this.currentTarget) {
+      const shootFrames = this.getShootFrames(this.currentDirection);
+      const minFrame = shootFrames[0];
+      const maxFrame = shootFrames[1];
       const middleFrame = Math.floor((minFrame + maxFrame) / 2);
 
       // Create projectile at middle frame if not already created
@@ -306,9 +306,10 @@ export class MageGoblin extends RangedEnemy {
         this.hasCreatedProjectile = true;
       }
 
-      // Check if spellcast animation is complete
+      // Check if attack animation is complete
       if (this.frame >= maxFrame) {
-        this.isCasting = false;
+        this.isShooting = false;
+        this.isAttacking = false;
         this.hasCreatedProjectile = false;
         this.currentTarget = null;
 
@@ -329,7 +330,7 @@ export class MageGoblin extends RangedEnemy {
     // Custom sprite rendering with proper per-animation scaling
     if (this.spriteImage && this.spriteRect) {
       // Determine current animation type for scaling
-      const animationType = this.state === "attacking" ? "spellcast" : "walk";
+      const animationType = this.state === "attacking" ? "shoot" : "walk";
       const scaleFactor = this.spriteScaling[animationType] || 1.0;
 
       // Calculate frame dimensions and scaled draw dimensions
@@ -371,7 +372,7 @@ export class MageGoblin extends RangedEnemy {
     // Call parent draw method for health bar and hitbox debugging (skip sprite part)
     if (variables.showHitboxes) {
       const hitbox = this.getHitboxBounds();
-      ctx.strokeStyle = "purple";
+      ctx.strokeStyle = "red";
       ctx.lineWidth = 2;
       ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
     }

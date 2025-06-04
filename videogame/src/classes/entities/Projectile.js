@@ -32,6 +32,11 @@ export class Projectile {
     this.isActive = true;
     this.hasHit = false;
     
+    // Travel distance tracking
+    this.initialPosition = new Vec(position.x, position.y); // Store initial position
+    this.maxTravelDistance = null; // Will be set by the entity that creates the projectile
+    this.traveledDistance = 0; // Track how far the projectile has traveled
+    
     // Reference to current room for wall collision detection
     this.currentRoom = null;
 
@@ -49,6 +54,11 @@ export class Projectile {
     this.currentRoom = room;
   }
 
+  // Set the maximum travel distance for the projectile
+  setMaxTravelDistance(distance) {
+    this.maxTravelDistance = distance;
+  }
+
   update(deltaTime, entities) {
     if (!this.isActive) return;
 
@@ -57,6 +67,18 @@ export class Projectile {
 
     // Move projectile
     this.position = this.position.plus(this.velocity.times(deltaTime / 1000));
+
+    // Update traveled distance and check max travel distance
+    if (this.initialPosition) {
+      this.traveledDistance = this.position.minus(this.initialPosition).magnitude();
+      
+      // Check if projectile has traveled beyond its maximum range
+      if (this.maxTravelDistance && this.traveledDistance >= this.maxTravelDistance) {
+        this.isActive = false;
+        log.verbose(`Projectile reached maximum travel distance (${this.maxTravelDistance})`);
+        return;
+      }
+    }
 
     // Check wall collision first (prioritize wall collision over entity collision)
     if (this.currentRoom && this.checkWallCollision()) {

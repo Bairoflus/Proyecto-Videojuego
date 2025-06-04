@@ -23,7 +23,9 @@ export class GoblinArcher extends RangedEnemy {
       config.speed,
       config.damage,
       config.health,
-      "arrow" // projectile type - goblins use arrows
+      "arrow", // projectile type - goblins use arrows
+      config.attackRange || 200, // range - distance to begin shooting
+      config.projectileRange || 300 // projectileRange - how far arrows can travel
     );
 
     // Set specific properties
@@ -209,9 +211,13 @@ export class GoblinArcher extends RangedEnemy {
       archerCenter,
       targetCenter,
       this.projectileSpeed,
-      this.baseDamage,
+      this.baseDamage, // Use enemy's base damage
       this.projectileType // Use inherited projectile type
     );
+    
+    // Set projectile max travel distance and initial position
+    projectile.maxTravelDistance = this.projectileRange;
+    projectile.initialPosition = new Vec(archerCenter.x, archerCenter.y);
     
     // Set room reference for wall collision detection
     projectile.setCurrentRoom(this.currentRoom);
