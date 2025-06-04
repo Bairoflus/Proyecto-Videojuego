@@ -52,16 +52,16 @@ const attackFrames = {
     right: [18, 23], // slash.png, row 3, 6 frames
   },
   slingshot: {
-    up: [0, 11], // shoot.png, row 0, 12 frames (exclude frame 12)
-    left: [13, 24], // shoot.png, row 1, 12 frames (exclude frame 25)
-    down: [26, 37], // shoot.png, row 2, 12 frames (exclude frame 38)
-    right: [39, 50], // shoot.png, row 3, 12 frames (exclude frame 51)
+    up: [0, 12], // shoot.png, row 0, 13 frames (0-12)
+    left: [13, 25], // shoot.png, row 1, 13 frames (13-25)
+    down: [26, 38], // shoot.png, row 2, 13 frames (26-38)
+    right: [39, 51], // shoot.png, row 3, 13 frames (39-51)
   },
   bow: {
-    up: [0, 11], // shoot.png, row 0, 12 frames (exclude frame 12)
-    left: [13, 24], // shoot.png, row 1, 12 frames (exclude frame 25)
-    down: [26, 37], // shoot.png, row 2, 12 frames (exclude frame 38)
-    right: [39, 50], // shoot.png, row 3, 12 frames (exclude frame 51)
+    up: [0, 12], // shoot.png, row 0, 13 frames (0-12)
+    left: [13, 25], // shoot.png, row 1, 13 frames (13-25)  
+    down: [26, 38], // shoot.png, row 2, 13 frames (26-38)
+    right: [39, 51], // shoot.png, row 3, 13 frames (39-51)
   },
   crossbow: {
     up: [0, 7], // shoot.png, row 0, 8 frames

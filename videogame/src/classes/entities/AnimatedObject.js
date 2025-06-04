@@ -45,8 +45,15 @@ export class AnimatedObject extends GameObject {
 
       // Ensure spriteRect exists before updating
       if (this.spriteRect) {
+        const oldX = this.spriteRect.x;
+        const oldY = this.spriteRect.y;
         this.spriteRect.x = this.frame % this.sheetCols;
         this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
+        
+        // Debug logging for sprite frame changes during attacks (only for significant changes)
+        if (this.type === 'player' && this.isAttacking && (oldX !== this.spriteRect.x || oldY !== this.spriteRect.y)) {
+          console.log(`[FRAME DEBUG] Attack frame: ${this.frame} -> (${this.spriteRect.x}, ${this.spriteRect.y})`);
+        }
       }
       this.totalTime = 0;
     }

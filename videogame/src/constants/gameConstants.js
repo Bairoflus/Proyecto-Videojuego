@@ -26,7 +26,7 @@ export const PLAYER_CONSTANTS = {
   // Attack constants
   DAGGER_ATTACK_RANGE: 1000,
   DAGGER_ATTACK_WIDTH: 1000,
-  DAGGER_ATTACK_DAMAGE: 1000,
+  DAGGER_ATTACK_DAMAGE: 100,
   DAGGER_STAMINA_COST: 8,
 
   SLINGSHOT_DAMAGE: 15,
@@ -93,8 +93,6 @@ export const ENEMY_CONSTANTS = {
     speed: PLAYER_CONSTANTS.BASE_SPEED * 2,
     attackRange: 32,
     attackCooldown: 1000,
-    // Sprite scaling - since dagger_goblin has same layout as player dagger (64x64 frames)
-    spriteScale: 1.2, // Make sprite slightly bigger than base size
   },
 
   // Goblin Archer
@@ -102,13 +100,11 @@ export const ENEMY_CONSTANTS = {
     size: { width: 48, height: 48 }, // Increased from 32x32 to make them slightly bigger
     health: 30,
     damage: 15,
-    speed: 0, // Static enemy
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 1.5, // Mobile archer that chases and retreats
     attackRange: 200,
     attackCooldown: 2000,
     projectileSpeed: 300,
     retreatDistance: 80,
-    // Sprite scaling - assuming bow_goblin has similar layout to player bow
-    spriteScale: 1.2, // Make sprite slightly bigger than base size
   },
 };
 

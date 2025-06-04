@@ -410,7 +410,7 @@ export class Player extends AnimatedObject {
       const attackSpritePath = weaponInfo.attackSpritePath;
       const currentWeapon = this.getCurrentWeapon();
 
-      // Set correct sheetCols for attack sprites based on weapon type
+      // Set correct sheetCols for attack sprites based on weapon type BEFORE setting sprite
       if (this.isRangedWeapon()) {
         if (currentWeapon === "crossbow") {
           this.sheetCols = 8; // Crossbow attack sprites have 8 columns
@@ -421,7 +421,12 @@ export class Player extends AnimatedObject {
         this.sheetCols = 6; // All melee attack sprites have 6 columns
       }
 
+      console.log(`[ATTACK DEBUG] Switching to attack sprite: ${currentWeapon}, sheetCols: ${this.sheetCols}, sprite: ${attackSpritePath}`);
+      console.log(`[ATTACK DEBUG] Pre-attack sprite dimensions: ${this.spriteRect ? this.spriteRect.width + 'x' + this.spriteRect.height : 'null'}`);
+
       this.setSprite(attackSpritePath);
+      
+      console.log(`[ATTACK DEBUG] Post-setSprite dimensions: ${this.spriteRect ? this.spriteRect.width + 'x' + this.spriteRect.height : 'null'}`);
 
       // Set attack animation
       const attackFrames = getAttackFrames(
@@ -440,6 +445,7 @@ export class Player extends AnimatedObject {
       if (this.spriteRect) {
         this.spriteRect.x = this.frame % this.sheetCols;
         this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
+        console.log(`[ATTACK DEBUG] Attack frame set: ${this.frame} -> (${this.spriteRect.x}, ${this.spriteRect.y}), dimensions: ${this.spriteRect.width}x${this.spriteRect.height}`);
       }
     } else {
       console.log(
@@ -620,8 +626,14 @@ export class Player extends AnimatedObject {
           this.hasAppliedMeleeDamage = false; // Reset the flag
 
           // Restore walking sprite sheet and sheetCols
+          console.log(`[ATTACK RESTORE] Restoring sprite: ${this.preAttackSpritePath}, sheetCols: ${this.preAttackSheetCols}`);
+          console.log(`[ATTACK RESTORE] Current sprite dimensions before restore: ${this.spriteRect ? this.spriteRect.width + 'x' + this.spriteRect.height : 'null'}`);
+          
+          // Set sheetCols BEFORE setting sprite to ensure correct dimension calculations
+          this.sheetCols = this.preAttackSheetCols;
           this.setSprite(this.preAttackSpritePath);
-          this.sheetCols = this.preAttackSheetCols; // Restore original sheetCols
+
+          console.log(`[ATTACK RESTORE] Sprite dimensions after restore: ${this.spriteRect ? this.spriteRect.width + 'x' + this.spriteRect.height : 'null'}`);
 
           // Return to the exact frame and direction we were in before the attack
           const anim = playerMovement[this.preAttackDirection];
@@ -630,8 +642,14 @@ export class Player extends AnimatedObject {
           this.frame = this.preAttackFrame;
           this.repeat = anim.repeat;
           this.frameDuration = anim.duration;
-          this.spriteRect.x = this.frame % this.sheetCols;
-          this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
+          
+          // Ensure spriteRect position is updated with the restored frame
+          if (this.spriteRect) {
+            this.spriteRect.x = this.frame % this.sheetCols;
+            this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
+          }
+          
+          console.log(`[ATTACK RESTORE] Animation restored: frame=${this.frame}, spriteRect=(${this.spriteRect ? this.spriteRect.x + ',' + this.spriteRect.y : 'null'})`);
         }
       }
 
@@ -905,6 +923,11 @@ export class Player extends AnimatedObject {
       // Center the scaled sprite on the original position
       const offsetX = (scaledWidth - this.width) / 2;
       const offsetY = (scaledHeight - this.height) / 2;
+
+      // Debug logging for sprite rendering during attacks
+      if (this.isAttacking && (currentWeapon === 'katana' || currentWeapon === 'bow')) {
+        console.log(`[DRAW DEBUG] ${currentWeapon} ${animationState}: frame=${this.frame}, spriteRect=(${this.spriteRect.x},${this.spriteRect.y}), size=${this.spriteRect.width}x${this.spriteRect.height}, scale=${scaleFactor}`);
+      }
 
       ctx.drawImage(
         this.spriteImage,

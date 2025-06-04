@@ -48,7 +48,7 @@ export class Enemy extends AnimatedObject {
     this.currentRoom = room;
   }
 
-  // Safe movement method that respects wall collisions
+  // Safe movement method that respects wall and enemy collisions
   moveToPosition(newPosition) {
     if (this.state === "dead" || !this.currentRoom) {
       return false;
@@ -61,8 +61,11 @@ export class Enemy extends AnimatedObject {
     const newPositionX = new Vec(newPosition.x, this.position.y);
     this.position = newPositionX;
 
-    if (this.currentRoom.checkWallCollision(this)) {
-      // Revert X movement if it collides
+    if (
+      this.currentRoom.checkWallCollision(this) ||
+      this.checkEnemyCollision()
+    ) {
+      // Revert X movement if it collides with walls or other enemies
       this.position.x = originalPosition.x;
       collisionDetected = true;
     }
@@ -71,14 +74,56 @@ export class Enemy extends AnimatedObject {
     const newPositionY = new Vec(this.position.x, newPosition.y);
     this.position = newPositionY;
 
-    if (this.currentRoom.checkWallCollision(this)) {
-      // Revert Y movement if it collides
+    if (
+      this.currentRoom.checkWallCollision(this) ||
+      this.checkEnemyCollision()
+    ) {
+      // Revert Y movement if it collides with walls or other enemies
       this.position.y = originalPosition.y;
       collisionDetected = true;
     }
 
     // Return true if we moved at all
-    return this.position.x !== originalPosition.x || this.position.y !== originalPosition.y;
+    return (
+      this.position.x !== originalPosition.x ||
+      this.position.y !== originalPosition.y
+    );
+  }
+
+  // Check collision with other enemies
+  checkEnemyCollision() {
+    if (!this.currentRoom || !this.currentRoom.objects.enemies) {
+      return false;
+    }
+
+    const thisHitbox = this.getHitboxBounds();
+
+    // Check collision with all other alive enemies
+    for (const otherEnemy of this.currentRoom.objects.enemies) {
+      // Skip self and dead enemies
+      if (otherEnemy === this || otherEnemy.state === "dead") {
+        continue;
+      }
+
+      const otherHitbox = otherEnemy.getHitboxBounds();
+
+      // Check rectangle collision between hitboxes
+      if (this.checkRectangleCollision(thisHitbox, otherHitbox)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Helper method for rectangle collision detection
+  checkRectangleCollision(rect1, rect2) {
+    return (
+      rect1.x < rect2.x + rect2.width &&
+      rect1.x + rect1.width > rect2.x &&
+      rect1.y < rect2.y + rect2.height &&
+      rect1.y + rect1.height > rect2.y
+    );
   }
 
   takeDamage(amount) {
@@ -111,7 +156,14 @@ export class Enemy extends AnimatedObject {
   moveTo(targetPosition) {
     if (this.state === "dead") return;
 
-    const direction = targetPosition.minus(this.position);
+    // Calculate direction from enemy's hitbox center to target position
+    const enemyHitbox = this.getHitboxBounds();
+    const enemyCenter = new Vec(
+      enemyHitbox.x + enemyHitbox.width / 2,
+      enemyHitbox.y + enemyHitbox.height / 2
+    );
+
+    const direction = targetPosition.minus(enemyCenter);
     const distance = direction.magnitude();
 
     if (distance > this.attackRange) {
@@ -137,7 +189,14 @@ export class Enemy extends AnimatedObject {
       targetHitbox.y + targetHitbox.height / 2
     );
 
-    const distance = targetCenter.minus(this.position).magnitude();
+    // Calculate distance from enemy's hitbox center to target center
+    const enemyHitbox = this.getHitboxBounds();
+    const enemyCenter = new Vec(
+      enemyHitbox.x + enemyHitbox.width / 2,
+      enemyHitbox.y + enemyHitbox.height / 2
+    );
+
+    const distance = targetCenter.minus(enemyCenter).magnitude();
     if (distance <= this.attackRange) {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
