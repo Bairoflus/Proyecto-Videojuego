@@ -7,7 +7,7 @@ import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
 import { Boss } from "../entities/Boss.js";
 import { saveRunState } from "../../utils/api.js";
-import { enemyMappingService } from "../../utils/enemyMapping.js";
+import { serviceManager, SERVICE_STATUS, SERVICE_CRITICALITY } from "../../utils/serviceManager.js";
 
 export class Game {
   constructor() {
@@ -26,6 +26,9 @@ export class Game {
     
     // Service initialization status
     this.servicesInitialized = false;
+    this.serviceInitializationResult = null;
+    this.lastServiceHealthCheck = null;
+    this.serviceHealthCheckInterval = 60000; // Check every minute
     
     // Run statistics tracking
     this.runStats = {
@@ -38,7 +41,7 @@ export class Game {
     this.floorGenerator = new FloorGenerator();
     this.enemies = [];
 
-    // Initialize backend integration services
+    // Initialize backend integration services using ServiceManager
     this.initializeServices();
 
     this.initObjects();
@@ -51,37 +54,147 @@ export class Game {
   }
 
   /**
-   * Initialize all backend integration services
+   * Initialize all backend integration services using ServiceManager
+   * Enhanced with comprehensive orchestration and monitoring
    * @returns {Promise<void>}
    */
   async initializeServices() {
     try {
-      console.log('🔄 Initializing backend integration services...');
+      console.log('🚀 Initializing Backend Integration Services with Service Manager...');
       
-      // Initialize services in parallel for optimal performance
-      const servicePromises = [
-        this.floorGenerator.initializeRoomMapping(),
-        enemyMappingService.initialize()
-      ];
+      // Initialize services with configuration
+      this.serviceInitializationResult = await serviceManager.initializeServices({
+        blockOnCritical: true,   // Block game start if critical services fail
+        timeout: 30000          // 30 second timeout
+      });
       
-      const results = await Promise.all(servicePromises);
+      // Check if critical services failed
+      if (this.serviceInitializationResult.criticalServicesFailed) {
+        console.error('⚠️ Critical services failed - game functionality may be limited');
+        this.gameState = "service_error";
+      } else {
+        this.servicesInitialized = true;
+        console.log('✅ All critical services initialized successfully');
+      }
       
-      // Check results
-      const roomMappingSuccess = results[0];
-      const enemyMappingSuccess = results[1];
+      // Schedule periodic health checks
+      this.scheduleServiceHealthChecks();
       
-      console.log('📋 Service initialization results:');
-      console.log(`  Room Mapping: ${roomMappingSuccess ? '✅ SUCCESS' : '⚠️ FALLBACK'}`);
-      console.log(`  Enemy Mapping: ${enemyMappingSuccess ? '✅ SUCCESS' : '⚠️ FALLBACK'}`);
-      
-      this.servicesInitialized = true;
-      console.log('✅ All backend integration services initialized successfully');
+      // Enable debug commands for service management if debug mode is active
+      if (variables.debug) {
+        this.initializeServiceDebugCommands();
+      }
       
     } catch (error) {
-      console.error('❌ Failed to initialize backend integration services:', error);
-      console.log('⚠️ Game will continue with fallback functionality');
-      this.servicesInitialized = false;
+      console.error('❌ Failed to initialize backend services:', error);
+      this.serviceInitializationResult = { 
+        success: false, 
+        error: error.message,
+        criticalServicesFailed: true
+      };
+      this.gameState = "service_error";
     }
+  }
+
+  /**
+   * Schedule periodic service health checks
+   * @private
+   */
+  scheduleServiceHealthChecks() {
+    // Initial health check after 10 seconds
+    setTimeout(() => this.performServiceHealthCheck(), 10000);
+    
+    // Regular health checks
+    setInterval(() => this.performServiceHealthCheck(), this.serviceHealthCheckInterval);
+  }
+
+  /**
+   * Perform service health check and handle degraded services
+   * @private
+   */
+  async performServiceHealthCheck() {
+    try {
+      this.lastServiceHealthCheck = await serviceManager.performHealthCheck();
+      
+      const criticalServicesDown = Object.values(this.lastServiceHealthCheck.services)
+        .filter(service => service.criticality === SERVICE_CRITICALITY.CRITICAL && !service.healthy);
+      
+      if (criticalServicesDown.length > 0) {
+        console.warn('⚠️ Critical services are unhealthy:', criticalServicesDown.map(s => s.name));
+        
+        // Attempt to restart failed services
+        const restartResult = await serviceManager.restartFailedServices();
+        if (restartResult.restarted > 0) {
+          console.log(`✅ Successfully restarted ${restartResult.restarted} services`);
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ Service health check failed:', error);
+    }
+  }
+
+  /**
+   * Initialize debug commands for service management
+   * @private
+   */
+  initializeServiceDebugCommands() {
+    if (typeof window !== 'undefined') {
+      // Global debug commands for service management
+      window.gameServiceDebug = {
+        status: () => serviceManager.getOverallStatus(),
+        health: () => serviceManager.performHealthCheck(),
+        restart: () => serviceManager.restartFailedServices(),
+        serviceStatus: (serviceId) => serviceManager.getServiceStatus(serviceId),
+        reinitialize: () => this.initializeServices()
+      };
+      
+      console.log('🛠️ Service debug commands available:');
+      console.log('  window.gameServiceDebug.status() - Get overall service status');
+      console.log('  window.gameServiceDebug.health() - Perform health check');
+      console.log('  window.gameServiceDebug.restart() - Restart failed services');
+      console.log('  window.gameServiceDebug.serviceStatus(id) - Get specific service status');
+      console.log('  window.gameServiceDebug.reinitialize() - Reinitialize all services');
+    }
+  }
+
+  /**
+   * Check if game is ready to start based on service status
+   * @returns {boolean} True if game can start
+   */
+  isGameReadyToStart() {
+    if (!this.serviceInitializationResult) {
+      return false;
+    }
+    
+    // Game can start if no critical services failed
+    return !this.serviceInitializationResult.criticalServicesFailed;
+  }
+
+  /**
+   * Get service status summary for UI display
+   * @returns {Object} Service status summary
+   */
+  getServiceStatusSummary() {
+    if (!this.serviceInitializationResult) {
+      return { status: 'initializing', ready: false };
+    }
+    
+    const criticalServices = Object.values(this.serviceInitializationResult.services)
+      .filter(service => service.criticality === SERVICE_CRITICALITY.CRITICAL);
+    
+    const criticalSuccessRate = criticalServices.length > 0 
+      ? (criticalServices.filter(s => s.success).length / criticalServices.length) * 100
+      : 100;
+    
+    return {
+      status: this.serviceInitializationResult.success ? 'ready' : 'degraded',
+      ready: this.isGameReadyToStart(),
+      criticalSuccessRate: Math.round(criticalSuccessRate),
+      totalServices: Object.keys(this.serviceInitializationResult.services).length,
+      initializationTime: this.serviceInitializationResult.totalTime,
+      lastHealthCheck: this.lastServiceHealthCheck?.timestamp
+    };
   }
 
   initObjects() {
