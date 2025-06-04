@@ -1,1 +1,27 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# Build files
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Project specific
+BACKEND_FRONTEND_INTEGRATION_ANALISYS.md
+BACKEND_FRONTEND_INTEGRATION_ISSUES.md
