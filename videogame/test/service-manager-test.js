@@ -32,21 +32,21 @@ console.error = (...args) => {
 };
 
 async function testServiceManager() {
-    console.log('🧪 Starting Service Manager Test Suite...\n');
+    console.log('Starting Service Manager Test Suite...\n');
     
     try {
         // Import the service manager
         const { serviceManager, SERVICE_STATUS, SERVICE_CRITICALITY } = await import('../src/utils/serviceManager.js');
         
-        console.log('✅ Service Manager imported successfully');
+        console.log('Service Manager imported successfully');
         
         // Test 1: Check initial state
-        console.log('\n📋 Test 1: Initial State');
+        console.log('\nTest 1: Initial State');
         const initialStatus = serviceManager.getOverallStatus();
         console.log('Initial status:', initialStatus);
         
         // Test 2: Initialize services
-        console.log('\n📋 Test 2: Service Initialization');
+        console.log('\nTest 2: Service Initialization');
         const initResult = await serviceManager.initializeServices({
             blockOnCritical: false, // Don't block for testing
             timeout: 10000
@@ -60,7 +60,7 @@ async function testServiceManager() {
         });
         
         // Test 3: Check individual service status
-        console.log('\n📋 Test 3: Individual Service Status');
+        console.log('\nTest 3: Individual Service Status');
         const services = ['roomMapping', 'enemyMapping', 'bossData'];
         for (const serviceId of services) {
             const status = serviceManager.getServiceStatus(serviceId);
@@ -72,7 +72,7 @@ async function testServiceManager() {
         }
         
         // Test 4: Health check
-        console.log('\n📋 Test 4: Health Check');
+        console.log('\nTest 4: Health Check');
         const healthStatus = await serviceManager.performHealthCheck();
         console.log('Health check result:', {
             overall: healthStatus.overall,
@@ -81,15 +81,15 @@ async function testServiceManager() {
         });
         
         // Test 5: Final status
-        console.log('\n📋 Test 5: Final Status');
+        console.log('\nTest 5: Final Status');
         const finalStatus = serviceManager.getOverallStatus();
         console.log('Final status:', finalStatus);
         
-        console.log('\n🎉 Service Manager Test Suite: COMPLETED');
+        console.log('\nService Manager Test Suite: COMPLETED');
         return true;
         
     } catch (error) {
-        console.error('❌ Test Suite Failed:', error);
+        console.error('Test Suite Failed:', error);
         return false;
     }
 }

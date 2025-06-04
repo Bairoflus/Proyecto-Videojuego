@@ -164,7 +164,7 @@ export class Enemy extends AnimatedObject {
         roomId: roomId
       };
 
-      console.log(`🎯 Registering enemy kill:`, {
+      console.log(`Registering enemy kill:`, {
         enemyType: this.enemyTypeName,
         enemyId: enemyId,
         roomId: roomId,
@@ -174,11 +174,11 @@ export class Enemy extends AnimatedObject {
       // Call backend API to register kill
       const result = await registerEnemyKill(runId, killData);
       
-      console.log('✅ Enemy kill registered successfully:', result);
+      console.log('Enemy kill registered successfully:', result);
       return true;
 
     } catch (error) {
-      console.error('❌ Failed to register enemy kill:', error);
+      console.error('Failed to register enemy kill:', error);
       // Don't throw error to prevent game disruption
       return false;
     }
