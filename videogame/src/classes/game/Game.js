@@ -60,7 +60,7 @@ export class Game {
    */
   async initializeServices() {
     try {
-      console.log('🚀 Initializing Backend Integration Services with Service Manager...');
+      console.log('Initializing Backend Integration Services with Service Manager...');
       
       // Initialize services with configuration
       this.serviceInitializationResult = await serviceManager.initializeServices({
@@ -70,11 +70,11 @@ export class Game {
       
       // Check if critical services failed
       if (this.serviceInitializationResult.criticalServicesFailed) {
-        console.error('⚠️ Critical services failed - game functionality may be limited');
+        console.error('Critical services failed - game functionality may be limited');
         this.gameState = "service_error";
       } else {
         this.servicesInitialized = true;
-        console.log('✅ All critical services initialized successfully');
+        console.log('All critical services initialized successfully');
       }
       
       // Schedule periodic health checks
@@ -86,7 +86,7 @@ export class Game {
       }
       
     } catch (error) {
-      console.error('❌ Failed to initialize backend services:', error);
+      console.error('Failed to initialize backend services:', error);
       this.serviceInitializationResult = { 
         success: false, 
         error: error.message,
@@ -120,17 +120,17 @@ export class Game {
         .filter(service => service.criticality === SERVICE_CRITICALITY.CRITICAL && !service.healthy);
       
       if (criticalServicesDown.length > 0) {
-        console.warn('⚠️ Critical services are unhealthy:', criticalServicesDown.map(s => s.name));
+        console.warn('Critical services are unhealthy:', criticalServicesDown.map(s => s.name));
         
         // Attempt to restart failed services
         const restartResult = await serviceManager.restartFailedServices();
         if (restartResult.restarted > 0) {
-          console.log(`✅ Successfully restarted ${restartResult.restarted} services`);
+          console.log(`Successfully restarted ${restartResult.restarted} services`);
         }
       }
       
     } catch (error) {
-      console.error('❌ Service health check failed:', error);
+      console.error('Service health check failed:', error);
     }
   }
 
@@ -149,7 +149,7 @@ export class Game {
         reinitialize: () => this.initializeServices()
       };
       
-      console.log('🛠️ Service debug commands available:');
+      console.log('Service debug commands available:');
       console.log('  window.gameServiceDebug.status() - Get overall service status');
       console.log('  window.gameServiceDebug.health() - Perform health check');
       console.log('  window.gameServiceDebug.restart() - Restart failed services');
@@ -363,7 +363,7 @@ export class Game {
 
     if (this.currentRoom.canTransition()) {
       // Auto-save current state before room transition
-      console.log(`🔄 Auto-saving before ${direction} room transition...`);
+      console.log(`Auto-saving before ${direction} room transition...`);
       await this.saveCurrentState();
 
       this.floorGenerator.updateRoomState(
@@ -389,7 +389,7 @@ export class Game {
       }
 
       // Auto-save after successful room transition
-      console.log(`💾 Auto-saving after successful ${direction} room transition...`);
+      console.log(`Auto-saving after successful ${direction} room transition...`);
       await this.saveCurrentState();
 
     } else {
@@ -572,11 +572,11 @@ export class Game {
       // Call save state API
       const result = await saveRunState(runId, stateData);
       
-      console.log('✅ Game state saved successfully:', result);
+      console.log('Game state saved successfully:', result);
       return true;
 
     } catch (error) {
-      console.error('❌ Failed to save game state:', error);
+      console.error('Failed to save game state:', error);
       // Don't throw error to prevent game disruption
       return false;
     }

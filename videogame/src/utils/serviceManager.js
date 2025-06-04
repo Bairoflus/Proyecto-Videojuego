@@ -111,8 +111,8 @@ class ServiceManager {
         this.initializationAttempts++;
         const startTime = Date.now();
 
-        console.log('🚀 Starting Backend Integration Services Orchestration...');
-        console.log(`📊 Initialization attempt: ${this.initializationAttempts}/${this.maxRetryAttempts}`);
+        console.log('Starting Backend Integration Services Orchestration...');
+        console.log(`Initialization attempt: ${this.initializationAttempts}/${this.maxRetryAttempts}`);
 
         this.initializationPromise = this._performInitialization(blockOnCritical, timeout, startTime);
         
@@ -122,7 +122,7 @@ class ServiceManager {
             this.lastInitializationTime = Date.now();
             return result;
         } catch (error) {
-            console.error('❌ Service orchestration failed:', error);
+            console.error('Service orchestration failed:', error);
             throw error;
         } finally {
             this.initializationPromise = null;
@@ -159,7 +159,7 @@ class ServiceManager {
             }
 
             // Phase 1: Initialize critical services in parallel
-            console.log('🔥 Phase 1: Initializing critical services...');
+            console.log('Phase 1: Initializing critical services...');
             await this._initializeServiceGroup(criticalServices, results, 'critical');
 
             // Check if critical services failed
@@ -175,11 +175,11 @@ class ServiceManager {
             }
 
             // Phase 2: Initialize important services
-            console.log('⚡ Phase 2: Initializing important services...');
+            console.log('Phase 2: Initializing important services...');
             await this._initializeServiceGroup(importantServices, results, 'important');
 
             // Phase 3: Initialize optional services
-            console.log('🌟 Phase 3: Initializing optional services...');
+            console.log('Phase 3: Initializing optional services...');
             await this._initializeServiceGroup(optionalServices, results, 'optional');
 
             // Calculate total time
@@ -229,7 +229,7 @@ class ServiceManager {
                     initializationTime: service.initializationTime
                 };
 
-                console.log(`  ${success ? '✅' : '⚠️'} ${service.name}: ${service.status.toUpperCase()}`);
+                console.log(`  ${success ? 'SUCCESS' : 'FALLBACK'} ${service.name}: ${service.status.toUpperCase()}`);
             } else {
                 service.status = SERVICE_STATUS.FAILED;
                 service.lastError = result.reason;
@@ -244,7 +244,7 @@ class ServiceManager {
                     retryCount: service.retryCount
                 };
 
-                console.log(`  ❌ ${service.name}: FAILED - ${result.reason.message}`);
+                console.log(`  FAILED ${service.name}: FAILED - ${result.reason.message}`);
                 results.errors.push(`${service.name}: ${result.reason.message}`);
             }
         });
@@ -281,7 +281,7 @@ class ServiceManager {
             if (service.retryCount < this.maxRetryAttempts && 
                 service.criticality === SERVICE_CRITICALITY.CRITICAL) {
                 
-                console.log(`🔄 Retrying ${service.name} (attempt ${service.retryCount + 1}/${this.maxRetryAttempts})`);
+                console.log(`Retrying ${service.name} (attempt ${service.retryCount + 1}/${this.maxRetryAttempts})`);
                 await new Promise(resolve => setTimeout(resolve, 1000 * (service.retryCount + 1))); // Exponential backoff
                 
                 service.retryCount++;
@@ -297,7 +297,7 @@ class ServiceManager {
      * @private
      */
     _generateInitializationSummary(results) {
-        console.log('\n📋 SERVICE INITIALIZATION SUMMARY');
+        console.log('\nSERVICE INITIALIZATION SUMMARY');
         console.log('=====================================');
         
         const serviceStats = {
@@ -324,12 +324,12 @@ class ServiceManager {
         for (const [level, stats] of Object.entries(serviceStats)) {
             if (stats.total > 0) {
                 const successRate = Math.round((stats.success / stats.total) * 100);
-                console.log(`${level.toUpperCase()} Services: ${stats.success}/${stats.total} ✅ | ${stats.fallback} ⚠️ | ${stats.failed} ❌ (${successRate}% success)`);
+                console.log(`${level.toUpperCase()} Services: ${stats.success}/${stats.total} SUCCESS | ${stats.fallback} FALLBACK | ${stats.failed} FAILED (${successRate}% success)`);
             }
         }
 
         console.log(`Total Initialization Time: ${results.totalTime}ms`);
-        console.log(`Overall Status: ${results.success ? '✅ SUCCESS' : '❌ FAILED'}`);
+        console.log(`Overall Status: ${results.success ? 'SUCCESS' : 'FAILED'}`);
         
         if (results.errors.length > 0) {
             console.log('\nErrors:');
@@ -428,7 +428,7 @@ class ServiceManager {
             return { success: true, restarted: 0 };
         }
 
-        console.log(`🔄 Restarting ${failedServices.length} failed services...`);
+        console.log(`Restarting ${failedServices.length} failed services...`);
         
         const results = {
             success: true,

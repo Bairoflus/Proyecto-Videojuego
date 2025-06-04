@@ -8,6 +8,7 @@ class EnemyMappingService {
     constructor() {
         this.enemyMappings = new Map();
         this.initialized = false;
+        this.hasApiData = false;
         this.fallbackMappings = new Map([
             // Regular enemies (IDs based on actual database data)
             ['goblin', 1], // Basic Goblin
@@ -36,41 +37,46 @@ class EnemyMappingService {
      */
     async initialize() {
         try {
-            console.log('🔄 Initializing Enemy Mapping Service...');
+            console.log('Initializing Enemy Mapping Service...');
             
-            // Load enemy data from API
-            const enemies = await apiRequest('/enemies');
+            // Try to load enemy data from API
+            const response = await fetch('/api/enemies');
             
-            if (enemies && Array.isArray(enemies)) {
-                // Clear existing mappings
-                this.enemyMappings.clear();
-                
-                // Build mappings from API data
-                enemies.forEach(enemy => {
-                    if (enemy.name && enemy.enemy_id) {
-                        this.enemyMappings.set(enemy.name.toLowerCase(), enemy.enemy_id);
-                        console.log(`📋 Mapped enemy: ${enemy.name} → ID ${enemy.enemy_id}`);
-                    }
-                });
-                
-                this.initialized = true;
-                console.log(`✅ Enemy Mapping Service initialized with ${this.enemyMappings.size} enemies from API`);
-                return true;
-                
-            } else {
-                throw new Error('Invalid enemy data format from API');
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
             }
             
-        } catch (error) {
-            console.error('❌ Failed to initialize Enemy Mapping Service from API:', error);
-            console.log('🔄 Using fallback enemy mappings...');
+            const enemies = await response.json();
             
-            // Use fallback mappings
-            this.enemyMappings = new Map(this.fallbackMappings);
+            // Clear existing mappings and populate from API data
+            this.enemyMappings.clear();
+            enemies.forEach(enemy => {
+                if (enemy.name && enemy.enemy_id) {
+                    console.log(`Mapped enemy: ${enemy.name} → ID ${enemy.enemy_id}`);
+                    this.enemyMappings.set(enemy.name.toLowerCase(), enemy.enemy_id);
+                }
+            });
+            
             this.initialized = true;
+            this.hasApiData = true;
+            console.log(`Enemy Mapping Service initialized with ${this.enemyMappings.size} enemies from API`);
+            return true;
             
-            console.log(`⚠️ Enemy Mapping Service initialized with ${this.enemyMappings.size} fallback mappings`);
-            return false;
+        } catch (error) {
+            // If API fails, fall back to hardcoded mappings
+            console.error('Failed to initialize Enemy Mapping Service from API:', error);
+            console.log('Using fallback enemy mappings...');
+            
+            this.enemyMappings.clear();
+            // Convert fallbackMappings Map to properly set mappings
+            for (const [name, id] of this.fallbackMappings) {
+                this.enemyMappings.set(name, id);
+            }
+            
+            this.initialized = true;
+            this.hasApiData = false;
+            console.log(`Enemy Mapping Service initialized with ${this.enemyMappings.size} fallback mappings`);
+            return false; // Indicates fallback was used
         }
     }
 
@@ -88,10 +94,10 @@ class EnemyMappingService {
         const enemyId = this.enemyMappings.get(enemyTypeName.toLowerCase());
         
         if (enemyId) {
-            console.log(`🎯 Enemy mapped: ${enemyTypeName} → ID ${enemyId}`);
+            console.log(`Enemy mapped: ${enemyTypeName} → ID ${enemyId}`);
             return enemyId;
         } else {
-            console.warn(`⚠️ Unknown enemy type: ${enemyTypeName}, using fallback ID`);
+            console.warn(`Unknown enemy type: ${enemyTypeName}, using fallback ID`);
             // Try fallback mappings
             return this.fallbackMappings.get(enemyTypeName.toLowerCase()) || 1; // Default to ID 1
         }

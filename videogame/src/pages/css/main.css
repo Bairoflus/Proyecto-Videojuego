@@ -184,3 +184,136 @@ h2 {
 .test-button:hover {
   background: #34495e;
 }
+
+/* Message styles */
+#error-message {
+  background: rgba(255, 82, 82, 0.15);
+  border: 1px solid #ff5252;
+  color: #ff5252;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+#success-message {
+  background: rgba(76, 175, 80, 0.15);
+  border: 1px solid #4caf50;
+  color: #4caf50;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+/* Login Status Indicator Styles - Issue #7 Enhancement */
+.status-indicator {
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin: 10px 0;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.status-indicator.idle {
+  display: none;
+}
+
+.status-indicator.clearing {
+  background: rgba(156, 39, 176, 0.15);
+  border-color: #9c27b0;
+  color: #e1bee7;
+  animation: statusPulse 2s infinite;
+}
+
+.status-indicator.authenticating {
+  background: rgba(33, 150, 243, 0.15);
+  border-color: #2196f3;
+  color: #bbdefb;
+  animation: statusPulse 2s infinite;
+}
+
+.status-indicator.creating-run {
+  background: rgba(255, 152, 0, 0.15);
+  border-color: #ff9800;
+  color: #ffcc02;
+  animation: statusPulse 2s infinite;
+}
+
+.status-indicator.success {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: #4caf50;
+  color: #c8e6c9;
+  animation: statusGlow 1.5s ease-in-out;
+}
+
+.status-indicator.error {
+  background: rgba(244, 67, 54, 0.15);
+  border-color: #f44336;
+  color: #ffcdd2;
+  animation: statusShake 0.5s ease-in-out;
+}
+
+/* Status indicator animations */
+@keyframes statusPulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes statusGlow {
+  0% {
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+  }
+}
+
+@keyframes statusShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+/* Enhanced button states for better feedback */
+button:disabled {
+  background: #666;
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+button:disabled:hover {
+  background: #666;
+}
+
+/* Responsive improvements */
+@media (max-width: 480px) {
+  .page-container {
+    padding: 30px 20px;
+    max-width: 95%;
+  }
+  
+  .status-indicator {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+}
