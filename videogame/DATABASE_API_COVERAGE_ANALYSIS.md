@@ -57,7 +57,7 @@ This document analyzes the database schema (`videogame/database/projectshattered
 
 ## ✅ **API ENDPOINT COVERAGE ANALYSIS**
 
-### **FULLY COVERED TABLES (14/21 - 67%)**
+### **FULLY COVERED TABLES (15/21 - 71%)**
 
 #### **Authentication & Sessions**
 | Table | Endpoint | Coverage |
@@ -77,6 +77,7 @@ This document analyzes the database schema (`videogame/database/projectshattered
 | `chest_events` | POST /api/runs/:runId/chest-event | ✅ CREATE |
 | `shop_purchases` | POST /api/runs/:runId/shop-purchase | ✅ CREATE |
 | `boss_encounters` | POST /api/runs/:runId/boss-encounter | ✅ CREATE |
+| `boss_kills` | POST /api/runs/:runId/boss-kill | ✅ CREATE |
 | `equipped_weapons` | POST /api/runs/:runId/equip-weapon | ✅ CREATE |
 | `weapon_upgrades_temp` | POST /api/runs/:runId/weapon-upgrade | ✅ CREATE/UPDATE |
 | `permanent_upgrade_purchases` | POST /api/runs/:runId/upgrade-purchase | ✅ CREATE |
@@ -91,21 +92,11 @@ This document analyzes the database schema (`videogame/database/projectshattered
 
 ---
 
-## ❌ **MISSING OR PARTIAL COVERAGE (7/21 - 33%)**
+## ❌ **MISSING OR PARTIAL COVERAGE (6/21 - 29%)**
 
 ### **🔴 CRITICAL GAPS**
 
-#### **1. Boss Kills Table**
-| Table | Issue | Impact |
-|-------|-------|--------|
-| `boss_kills` | No dedicated endpoint | Boss kills not tracked separately from encounters |
-
-**Details:**
-- `boss_encounters` tracks combat statistics
-- `boss_kills` should track successful boss defeats
-- Currently no way to distinguish between boss encounters and actual kills
-
-#### **2. Player Settings**
+#### **1. Player Settings**
 | Table | Issue | Impact |
 |-------|-------|--------|
 | `player_settings` | No endpoints | Audio settings cannot be persisted |
@@ -114,7 +105,7 @@ This document analyzes the database schema (`videogame/database/projectshattered
 - No CREATE, READ, UPDATE endpoints for player audio preferences
 - Settings lost between sessions
 
-#### **3. Player Events Logging**
+#### **2. Player Events Logging**
 | Table | Issue | Impact |
 |-------|-------|--------|
 | `player_events` | No endpoints | General event logging not available |
@@ -174,7 +165,7 @@ This document analyzes the database schema (`videogame/database/projectshattered
 ### **By Operation Type**
 | Operation | Covered Tables | Total Tables | Percentage |
 |-----------|----------------|--------------|------------|
-| CREATE | 12 | 21 | 57% |
+| CREATE | 13 | 21 | 62% |
 | READ | 8 | 21 | 38% |
 | UPDATE | 4 | 21 | 19% |
 | DELETE | 0 | 21 | 0% |
@@ -182,7 +173,7 @@ This document analyzes the database schema (`videogame/database/projectshattered
 ### **By Priority Level**
 | Priority | Missing Features | Impact |
 |----------|------------------|--------|
-| **CRITICAL** | 3 | Game functionality gaps |
+| **CRITICAL** | 2 | Management and debugging issues |
 | **MEDIUM** | 2 | Management and debugging issues |
 | **LOW** | 2 | Administrative limitations |
 
@@ -192,16 +183,12 @@ This document analyzes the database schema (`videogame/database/projectshattered
 
 ### **Immediate Action Required (CRITICAL)**
 
-1. **Implement Boss Kills Endpoint**
-   - POST /api/runs/:runId/boss-kill
-   - Track successful boss defeats separately
-
-2. **Implement Player Settings Endpoints**
+1. **Implement Player Settings Endpoints**
    - GET /api/users/:userId/settings
    - PUT /api/users/:userId/settings
    - Enable audio preference persistence
 
-3. **Implement Player Events Logging**
+2. **Implement Player Events Logging**
    - POST /api/runs/:runId/events
    - Enable comprehensive action tracking
 
@@ -229,13 +216,13 @@ This document analyzes the database schema (`videogame/database/projectshattered
 ## 🧪 **TESTING IMPLICATIONS**
 
 ### **Current State**
-- **67% table coverage** is sufficient for core gameplay
+- **71% table coverage** is sufficient for core gameplay
 - **Critical gaps** prevent complete feature implementation
 - **Analytics and debugging** capabilities limited
 
 ### **Post-Implementation**
-- **95%+ table coverage** expected after critical fixes
-- **Complete feature parity** with database design
+- **95%+ table coverage** expected after remaining critical fixes
+- **Complete feature parity** with database design (boss kills now implemented)
 - **Enhanced monitoring** and management capabilities
 
 ---
@@ -244,7 +231,6 @@ This document analyzes the database schema (`videogame/database/projectshattered
 
 ### **Game Functionality**
 - ✅ Core gameplay loop fully supported
-- ❌ Boss kill tracking incomplete  
 - ❌ Player preferences not persisted
 - ❌ Comprehensive logging missing
 
@@ -263,7 +249,7 @@ This document analyzes the database schema (`videogame/database/projectshattered
 ## 📞 **NEXT STEPS**
 
 1. **Review and prioritize** missing endpoints based on project timeline
-2. **Implement critical endpoints** for boss kills and player settings
+2. **Implement critical endpoints** for player settings and events
 3. **Add comprehensive logging** for player events
 4. **Enhance testing coverage** for new endpoints
 5. **Update documentation** to reflect complete API coverage
