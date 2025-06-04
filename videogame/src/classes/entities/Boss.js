@@ -1,5 +1,7 @@
 import { Enemy } from "./Enemy.js";
 import { AnimatedObject } from "./AnimatedObject.js";
+import { registerBossKill } from "../../utils/api.js";
+import { enemyMappingService } from "../../utils/enemyMapping.js";
 
 export class Boss extends Enemy {
     constructor(position, width, height, color, maxHp, attacks = [], enemyTypeName = "dragon") {
@@ -35,6 +37,101 @@ export class Boss extends Enemy {
             }
         }
     }
+
+    /**
+     * Override die method to register both enemy kill and boss kill
+     */
+    die() {
+        this.state = "dead";
+        console.log(`Boss ${this.type} died`);
+        
+        // Track kill in global game statistics
+        if (window.game && typeof window.game.trackKill === 'function') {
+            window.game.trackKill();
+        }
+
+        // Register enemy kill with backend (from parent class)
+        this.registerKill().catch(error => {
+            console.error('Failed to register enemy kill for boss:', error);
+        });
+
+        // Register specific boss kill
+        this.registerBossKill().catch(error => {
+            console.error('Failed to register boss kill:', error);
+        });
+
+        // EVENT-DRIVEN UPDATE: Update room state when boss dies
+        if (this.currentRoom) {
+            console.log("Updating room after boss death");
+            
+            // Update the room state in floor generator
+            if (window.game && window.game.floorGenerator) {
+                window.game.floorGenerator.updateRoomState(undefined, this.currentRoom);
+                console.log("Room state updated due to boss death");
+            }
+        }
+    }
+
+    /**
+     * Register boss kill with backend system
+     * @returns {Promise<boolean>} Success status
+     */
+    async registerBossKill() {
+        try {
+            // Get required data from localStorage and game state
+            const userId = localStorage.getItem('currentUserId');
+            const runId = localStorage.getItem('currentRunId');
+            
+            // Validate required data exists
+            if (!userId || !runId) {
+                console.warn('Boss kill registration skipped: Missing required session data', {
+                    userId: !!userId,
+                    runId: !!runId
+                });
+                return false;
+            }
+
+            // Get current room ID from floor generator
+            const roomId = window.game?.floorGenerator?.getCurrentRoomId();
+            if (!roomId) {
+                console.warn('Boss kill registration skipped: Could not determine current room ID');
+                return false;
+            }
+
+            // Get enemy ID from mapping service (for boss we need the boss ID)
+            const enemyId = enemyMappingService.getEnemyId(this.enemyTypeName);
+            if (!enemyId) {
+                console.warn(`Boss kill registration skipped: Could not map boss type "${this.enemyTypeName}" to ID`);
+                return false;
+            }
+
+            // Prepare boss kill data
+            const killData = {
+                userId: parseInt(userId),
+                enemyId: enemyId,
+                roomId: roomId
+            };
+
+            console.log(`Registering boss kill:`, {
+                bossType: this.enemyTypeName,
+                enemyId: enemyId,
+                roomId: roomId,
+                userId: parseInt(userId)
+            });
+
+            // Call backend API to register boss kill
+            const result = await registerBossKill(runId, killData);
+            
+            console.log('Boss kill registered successfully:', result);
+            return true;
+
+        } catch (error) {
+            console.error('Failed to register boss kill:', error);
+            // Don't throw error to prevent game disruption
+            return false;
+        }
+    }
+
     draw(ctx) {
         AnimatedObject.prototype.draw.call(this, ctx);
     }

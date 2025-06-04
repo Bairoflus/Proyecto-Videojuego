@@ -207,6 +207,22 @@ export async function registerBossEncounter(runId, encounterData) {
 }
 
 /**
+ * Register a successful boss kill during gameplay
+ * @param {string|number} runId - Run ID where the boss was killed
+ * @param {Object} killData - Boss kill event data
+ * @param {number} killData.userId - User ID who killed the boss
+ * @param {number} killData.enemyId - Boss enemy ID (must exist in boss_details)
+ * @param {number} killData.roomId - Room ID where the boss was killed
+ * @returns {Promise<Object>} Boss kill registration confirmation with killId
+ */
+export async function registerBossKill(runId, killData) {
+    return apiRequest(`/runs/${runId}/boss-kill`, {
+        method: 'POST',
+        body: JSON.stringify(killData)
+    });
+}
+
+/**
  * Register a permanent upgrade purchase during gameplay
  * @param {string|number} runId - Run ID where the upgrade was purchased
  * @param {Object} upgradeData - Upgrade purchase event data

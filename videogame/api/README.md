@@ -955,6 +955,161 @@ curl -X POST http://localhost:3000/api/runs/123/boss-encounter \
 5. Encounter registered in `boss_encounters` table with timestamp
 6. Returns `encounterId` for confirmation/tracking
 
+### POST /api/runs/:runId/boss-kill
+Registers a successful boss kill during an active game run.
+
+**URL**: `/api/runs/{runId}/boss-kill`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "userId": 123,
+  "enemyId": 100,
+  "roomId": 2
+}
+```
+
+**Success Response** (201 Created):
+```json
+{
+  "killId": 456,
+  "message": "Boss kill registered"
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing runId parameter:
+```
+Missing runId parameter
+```
+
+- **400 Bad Request** - Missing required fields:
+```
+Missing required fields: userId, enemyId, roomId
+```
+
+- **400 Bad Request** - Invalid field types:
+```
+Invalid field types: userId, enemyId, roomId, runId must be integers
+```
+
+- **400 Bad Request** - User ID mismatch:
+```
+User ID does not match run owner
+```
+
+- **400 Bad Request** - Run already completed:
+```
+Run is already completed
+```
+
+- **404 Not Found** - Run not found:
+```
+Run not found
+```
+
+- **404 Not Found** - Boss not found:
+```
+Boss not found
+```
+
+- **404 Not Found** - Room not found:
+```
+Room not found
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Restrictions**:
+This endpoint is **NOT** exposed in the landing page or main user interface. It should **ONLY** be called:
+
+1. **During active gameplay** - When a boss is successfully defeated
+2. **For active runs only** - Cannot register kills for completed runs
+3. **With valid game data** - Must reference existing runs, bosses, and rooms
+4. **By the run owner** - userId must match the run's user_id
+5. **For bosses only** - enemyId must exist in boss_details table
+
+**Database Schema Requirements**:
+The endpoint validates against the actual database schema:
+
+**boss_kills table**:
+```sql
+CREATE TABLE boss_kills (
+  kill_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  enemy_id INT NOT NULL,
+  run_id INT NOT NULL,
+  room_id INT NOT NULL,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (enemy_id) REFERENCES boss_details(enemy_id),
+  FOREIGN KEY (run_id) REFERENCES run_history(run_id),
+  FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+);
+```
+
+**Validation Logic**:
+1. **Run Exists Check**: `SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?`
+2. **User Ownership Check**: Validates `userId` matches run owner
+3. **Run Active Check**: Validates `ended_at IS NULL` (run not completed)
+4. **Boss Exists Check**: `SELECT enemy_id FROM boss_details WHERE enemy_id = ?`
+5. **Room Exists Check**: `SELECT room_id FROM rooms WHERE room_id = ?`
+6. **Data Type Validation**: All fields must be integers
+
+**Distinction from Boss Encounters**:
+- **Boss Encounters**: Track combat statistics, damage, and results (including defeats)
+- **Boss Kills**: Track only successful boss defeats for achievement and progression tracking
+- Both endpoints can be called for the same boss fight - encounter for combat stats, kill for successful defeat
+
+**Example Usage**:
+```bash
+curl -X POST http://localhost:3000/api/runs/123/boss-kill \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 123,
+    "enemyId": 100,
+    "roomId": 2
+  }'
+```
+
+**Integration Points**:
+- Should be integrated with boss defeat logic in the game engine
+- Called when boss health reaches 0 and boss is successfully defeated
+- Tracks boss kill achievements and progression statistics
+- Works in conjunction with boss encounter endpoint for complete boss combat tracking
+
+**Data Flow**:
+1. Player defeats a boss during gameplay (boss health reaches 0)
+2. Game engine processes boss defeat
+3. Frontend calls this endpoint with kill details
+4. API validates run ownership and entity existence
+5. Kill registered in `boss_kills` table with timestamp
+6. Returns `killId` for confirmation/tracking
+
+**Recommended Usage Pattern**:
+```javascript
+// During boss combat
+await registerBossEncounter(runId, {
+  userId, enemyId, damageDealt, damageTaken, resultCode: "victory"
+});
+
+// When boss is defeated (health <= 0)
+await registerBossKill(runId, {
+  userId, enemyId, roomId
+});
+```
+
 ### POST /api/runs/:runId/upgrade-purchase
 Registers a permanent upgrade purchase during an active game run.
 
