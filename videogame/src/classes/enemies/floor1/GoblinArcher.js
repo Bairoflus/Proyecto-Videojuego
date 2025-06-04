@@ -34,6 +34,8 @@ export class GoblinArcher extends RangedEnemy {
 
     // Animation properties
     this.isAttacking = false;
+    this.isShooting = false;
+    this.hasCreatedProjectile = false;
     this.attackCooldown = 0;
     this.currentDirection = "down"; // Default direction
 
@@ -59,7 +61,7 @@ export class GoblinArcher extends RangedEnemy {
 
   // Override moveTo for retreat/advance behavior with sprite animation
   moveTo(targetPosition) {
-    if (this.state === "dead") return;
+    if (this.state === "dead" || this.isShooting) return;
 
     // Calculate direction from enemy's hitbox center to target position
     const enemyHitbox = this.getHitboxBounds();
@@ -132,7 +134,7 @@ export class GoblinArcher extends RangedEnemy {
   }
 
   attack(target) {
-    if (this.state === "dead" || this.isAttacking) return;
+    if (this.state === "dead" || this.isShooting || this.attackCooldown > 0) return;
 
     // Calculate target hitbox center position
     const targetHitbox = target.getHitboxBounds();
@@ -154,6 +156,8 @@ export class GoblinArcher extends RangedEnemy {
     if (distance <= this.attackRange) {
       // Set state to attacking
       this.state = "attacking";
+      this.isShooting = true;
+      this.hasCreatedProjectile = false;
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
       this.velocity = new Vec(0, 0); // Stop moving during attack
@@ -164,8 +168,8 @@ export class GoblinArcher extends RangedEnemy {
       // Update animation to shoot sprite
       this.updateAnimation();
 
-      // Fire projectile from archer center to target center
-      this.fireProjectile(target);
+      // Store target for projectile creation at middle frame
+      this.currentTarget = target;
     }
   }
 
@@ -283,13 +287,30 @@ export class GoblinArcher extends RangedEnemy {
       this.attackCooldown -= deltaTime;
     }
 
-    // Check if attack animation is complete
-    if (this.isAttacking && this.frame >= this.maxFrame) {
-      this.isAttacking = false;
+    // Handle shooting animation and projectile creation at middle frame
+    if (this.isShooting && this.currentTarget) {
+      const shootFrames = this.getShootFrames(this.currentDirection);
+      const minFrame = shootFrames[0];
+      const maxFrame = shootFrames[1];
+      const middleFrame = Math.floor((minFrame + maxFrame) / 2);
 
-      // Transition back to previous state (will be updated by moveTo next frame)
-      this.state = "idle";
-      this.updateAnimation();
+      // Create projectile at middle frame if not already created
+      if (this.frame === middleFrame && !this.hasCreatedProjectile) {
+        this.fireProjectile(this.currentTarget);
+        this.hasCreatedProjectile = true;
+      }
+
+      // Check if attack animation is complete
+      if (this.frame >= maxFrame) {
+        this.isShooting = false;
+        this.isAttacking = false;
+        this.hasCreatedProjectile = false;
+        this.currentTarget = null;
+
+        // Transition back to previous state (will be updated by moveTo next frame)
+        this.state = "idle";
+        this.updateAnimation();
+      }
     }
   }
 

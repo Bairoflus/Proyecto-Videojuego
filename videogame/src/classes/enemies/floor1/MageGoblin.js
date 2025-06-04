@@ -37,6 +37,7 @@ export class MageGoblin extends RangedEnemy {
     this.attackCooldown = 0;
     this.currentDirection = "down"; // Default direction
     this.hasCreatedProjectile = false; // Track if projectile was created during cast
+    this.currentTarget = null; // Store target for projectile creation
 
     // Sprite scaling configuration - per animation type
     this.spriteScaling = {
@@ -60,7 +61,7 @@ export class MageGoblin extends RangedEnemy {
 
   // Override moveTo for retreat/advance behavior with sprite animation
   moveTo(targetPosition) {
-    if (this.state === "dead") return;
+    if (this.state === "dead" || this.isCasting) return;
 
     // Calculate direction from enemy's hitbox center to target position
     const enemyHitbox = this.getHitboxBounds();
@@ -133,7 +134,7 @@ export class MageGoblin extends RangedEnemy {
   }
 
   attack(target) {
-    if (this.state === "dead" || this.isCasting) return;
+    if (this.state === "dead" || this.isCasting || this.attackCooldown > 0) return;
 
     // Calculate target hitbox center position
     const targetHitbox = target.getHitboxBounds();
@@ -165,6 +166,9 @@ export class MageGoblin extends RangedEnemy {
 
       // Update animation to spellcast sprite
       this.updateAnimation();
+
+      // Store target for projectile creation at middle frame
+      this.currentTarget = target;
     }
   }
 
@@ -282,18 +286,24 @@ export class MageGoblin extends RangedEnemy {
       this.attackCooldown -= deltaTime;
     }
 
-    // Handle spellcast animation and projectile firing
-    if (this.isCasting && this.state === "attacking") {
-      // Fire projectile at midpoint of animation (frame 3-4)
-      if (!this.hasCreatedProjectile && this.frame >= 3) {
-        this.fireProjectile(player);
+    // Handle spellcast animation and projectile creation at middle frame
+    if (this.isCasting && this.currentTarget) {
+      const spellcastFrames = this.getSpellcastFrames(this.currentDirection);
+      const minFrame = spellcastFrames[0];
+      const maxFrame = spellcastFrames[1];
+      const middleFrame = Math.floor((minFrame + maxFrame) / 2);
+
+      // Create projectile at middle frame if not already created
+      if (this.frame === middleFrame && !this.hasCreatedProjectile) {
+        this.fireProjectile(this.currentTarget);
         this.hasCreatedProjectile = true;
       }
 
       // Check if spellcast animation is complete
-      if (this.frame >= this.maxFrame) {
+      if (this.frame >= maxFrame) {
         this.isCasting = false;
         this.hasCreatedProjectile = false;
+        this.currentTarget = null;
 
         // Transition back to previous state (will be updated by moveTo next frame)
         this.state = "idle";
