@@ -11,6 +11,7 @@ import { Chest } from "../entities/Chest.js";
 import { Shop } from "../entities/Shop.js";
 import { GoblinDagger } from "../enemies/floor1/GoblinDagger.js";
 import { GoblinArcher } from "../enemies/floor1/GoblinArcher.js";
+import { MageGoblin } from "../enemies/floor1/MageGoblin.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
 import { ROOM_CONSTANTS, PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
@@ -388,17 +389,19 @@ export class Room {
     // Generate enemies randomly within defined range
     const enemyCount = Math.floor(Math.random() * (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)) + ROOM_CONSTANTS.MIN_ENEMIES;
 
-    // Random proportion using constants
+    // Random proportion using constants for three enemy types
     const commonPercentage = Math.random() * (ROOM_CONSTANTS.COMMON_ENEMY_RATIO.max - ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min) + ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min;
     const commonCount = Math.floor(enemyCount * commonPercentage);
-    const rareCount = enemyCount - commonCount;
+    const rareAndVeryRareCount = enemyCount - commonCount;
+    
+    // Split rare enemies between GoblinArcher and MageGoblin (60% archer, 40% mage)
+    const archerCount = Math.floor(rareAndVeryRareCount * 0.6);
+    const mageCount = rareAndVeryRareCount - archerCount;
 
     log.debug(
       `Enemy distribution: ${enemyCount} total | ${commonCount} GoblinDagger (${Math.round(
         commonPercentage * 100
-      )}%) | ${rareCount} GoblinArcher (${Math.round(
-        (1 - commonPercentage) * 100
-      )}%)`
+      )}%) | ${archerCount} GoblinArcher | ${mageCount} MageGoblin`
     );
 
     // Safe zone definition using constants
@@ -434,9 +437,9 @@ export class Room {
       }
     }
 
-    // Generate rare enemies (right half)
+    // Generate GoblinArcher enemies (right half)
     log.debug("Generating GoblinArcher enemies (right half)...");
-    for (let i = 0; i < rareCount; i++) {
+    for (let i = 0; i < archerCount; i++) {
       const position = this.getValidEnemyPosition(false, safeZone);
       if (position) {
         const enemy = new GoblinArcher(position);
@@ -453,6 +456,25 @@ export class Room {
       }
     }
 
+    // Generate MageGoblin enemies (right half)
+    log.debug("Generating MageGoblin enemies (right half)...");
+    for (let i = 0; i < mageCount; i++) {
+      const position = this.getValidEnemyPosition(false, safeZone);
+      if (position) {
+        const enemy = new MageGoblin(position);
+        enemy.setCurrentRoom(this); // Set room reference for collision detection
+        this.objects.enemies.push(enemy);
+        successfulPlacements++;
+        log.verbose(
+          `  MageGoblin ${i + 1} placed at (${Math.round(
+            position.x
+          )}, ${Math.round(position.y)})`
+        );
+      } else {
+        log.warn(`  Failed to place MageGoblin ${i + 1}`);
+      }
+    }
+
     log.info(
       `Enemy generation complete: ${successfulPlacements}/${enemyCount} enemies successfully placed`
     );
@@ -464,9 +486,12 @@ export class Room {
     const goblinArcherCount = this.objects.enemies.filter(
       (e) => e.type === "goblin_archer"
     ).length;
+    const mageGoblinCount = this.objects.enemies.filter(
+      (e) => e.type === "mage_goblin"
+    ).length;
 
     log.debug(
-      `Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher instances created`
+      `Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher, ${mageGoblinCount} MageGoblin instances created`
     );
   }
 

@@ -6,14 +6,18 @@
 import { Vec } from "../../utils/Vec.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
-import { PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
+import { PHYSICS_CONSTANTS, PROJECTILE_TYPES } from "../../constants/gameConstants.js";
 
 export class Projectile {
-  constructor(position, target, speed, damage, radius = PHYSICS_CONSTANTS.PROJECTILE_RADIUS) {
+  constructor(position, target, speed, damage, type = "arrow", radius = null) {
     this.position = position;
-    this.radius = radius;
     this.speed = speed;
     this.damage = damage;
+    this.type = type;
+
+    // Get projectile type configuration
+    this.config = PROJECTILE_TYPES[type] || PROJECTILE_TYPES.arrow;
+    this.radius = radius !== null ? radius : this.config.radius;
 
     // Calculate direction to target
     // Handle both Vec objects and objects with position property
@@ -21,12 +25,23 @@ export class Projectile {
     const direction = targetPosition.minus(position);
     this.velocity = direction.normalize().times(speed);
 
+    // Calculate rotation angle for sprite rendering
+    this.angle = Math.atan2(direction.y, direction.x);
+
     // Projectile state
     this.isActive = true;
     this.hasHit = false;
     
     // Reference to current room for wall collision detection
     this.currentRoom = null;
+
+    // Load sprite
+    this.spriteImage = new Image();
+    this.spriteImage.src = this.config.sprite;
+    this.spriteLoaded = false;
+    this.spriteImage.onload = () => {
+      this.spriteLoaded = true;
+    };
   }
   
   // Set the current room reference for wall collision detection
@@ -76,20 +91,77 @@ export class Projectile {
   draw(ctx) {
     if (!this.isActive) return;
 
-    ctx.beginPath();
-    ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
-    ctx.fillStyle = "white";
-    ctx.fill();
-    ctx.closePath();
+    // Draw sprite if loaded, otherwise fallback to circle
+    if (this.spriteLoaded && this.spriteImage) {
+      // Save canvas state
+      ctx.save();
+
+      // Translate to projectile center
+      ctx.translate(this.position.x, this.position.y);
+      
+      // Rotate based on projectile angle
+      ctx.rotate(this.angle);
+
+      // Calculate scaled dimensions
+      const drawWidth = this.config.width * this.config.scale;
+      const drawHeight = this.config.height * this.config.scale;
+
+      // Draw sprite centered
+      ctx.drawImage(
+        this.spriteImage,
+        -drawWidth / 2,
+        -drawHeight / 2,
+        drawWidth,
+        drawHeight
+      );
+
+      // Restore canvas state
+      ctx.restore();
+
+      // Draw damage box if debug mode is enabled
+      if (variables.showHitboxes) {
+        this.drawDamageBox(ctx);
+      }
+    } else {
+      // Fallback: draw white circle if sprite not loaded
+      ctx.beginPath();
+      ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
+      ctx.fillStyle = "white";
+      ctx.fill();
+      ctx.closePath();
+
+      // Draw damage box if debug mode is enabled
+      if (variables.showHitboxes) {
+        this.drawDamageBox(ctx);
+      }
+    }
+  }
+
+  // Draw the damage/hitbox visualization
+  drawDamageBox(ctx) {
+    const damageBoxWidth = this.config.damageBoxWidth * this.config.scale;
+    const damageBoxHeight = this.config.damageBoxHeight * this.config.scale;
+    
+    ctx.strokeStyle = this.config.damageBoxColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+      this.position.x - damageBoxWidth / 2,
+      this.position.y - damageBoxHeight / 2,
+      damageBoxWidth,
+      damageBoxHeight
+    );
   }
 
   // Helper method to get projectile bounds for collision detection
   getProjectileBounds() {
+    const damageBoxWidth = this.config.damageBoxWidth * this.config.scale;
+    const damageBoxHeight = this.config.damageBoxHeight * this.config.scale;
+    
     return {
-      x: this.position.x - this.radius,
-      y: this.position.y - this.radius,
-      width: this.radius * 2,
-      height: this.radius * 2,
+      x: this.position.x - damageBoxWidth / 2,
+      y: this.position.y - damageBoxHeight / 2,
+      width: damageBoxWidth,
+      height: damageBoxHeight,
     };
   }
 
@@ -140,12 +212,15 @@ export class Projectile {
   checkWallCollision() {
     if (!this.currentRoom || !this.isActive) return false;
     
+    // Get projectile bounds for collision detection  
+    const bounds = this.getProjectileBounds();
+    
     // Create a temporary object representing the projectile for collision detection
     const tempProjectile = {
       position: this.position,
-      width: this.radius * 2,
-      height: this.radius * 2,
-      getHitboxBounds: () => this.getProjectileBounds()
+      width: bounds.width,
+      height: bounds.height,
+      getHitboxBounds: () => bounds
     };
     
     return this.currentRoom.checkWallCollision(tempProjectile);

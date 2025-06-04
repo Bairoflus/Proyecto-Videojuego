@@ -106,6 +106,18 @@ export const ENEMY_CONSTANTS = {
     projectileSpeed: 300,
     retreatDistance: 80,
   },
+
+  // Mage Goblin
+  MAGE_GOBLIN: {
+    size: { width: 48, height: 48 },
+    health: 25,
+    damage: 25,
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 1.2, // Slower than archer
+    attackRange: 180,
+    attackCooldown: 3000, // 3-second cooldown
+    projectileSpeed: 250,
+    retreatDistance: 100, // Keeps distance while casting
+  },
 };
 
 // Room constants
@@ -166,6 +178,50 @@ export const PHYSICS_CONSTANTS = {
   // Projectile constants
   PROJECTILE_RADIUS: 5,
   PROJECTILE_LIFETIME: 5000, // ms
+};
+
+// Projectile type registry for different sprites and properties
+export const PROJECTILE_TYPES = {
+  arrow: {
+    sprite: "../assets/sprites/projectiles/arrow.png",
+    width: 48,
+    height: 12,
+    damageBoxColor: "yellow",
+    damageBoxWidth: 36,
+    damageBoxHeight: 9,
+    scale: 1.5,
+    radius: 6, // For collision detection
+  },
+  fireball: {
+    sprite: "../assets/sprites/projectiles/fireball.png",
+    width: 24,
+    height: 24,
+    damageBoxColor: "orange",
+    damageBoxWidth: 20,
+    damageBoxHeight: 20,
+    scale: 1.2,
+    radius: 6,
+  },
+  magic_bolt: {
+    sprite: "../assets/sprites/projectiles/magic_bolt.png",
+    width: 16,
+    height: 16,
+    damageBoxColor: "yellow",
+    damageBoxWidth: 14,
+    damageBoxHeight: 14,
+    scale: 1.0,
+    radius: 3,
+  },
+  crossbow_bolt: {
+    sprite: "../assets/sprites/projectiles/crossbow_bolt.png",
+    width: 28,
+    height: 6,
+    damageBoxColor: "gray",
+    damageBoxWidth: 22,
+    damageBoxHeight: 4,
+    scale: 1.0,
+    radius: 3,
+  },
 };
 
 // Animation constants

@@ -18,7 +18,8 @@ export class RangedEnemy extends Enemy {
     type,
     movementSpeed,
     baseDamage,
-    maxHealth
+    maxHealth,
+    projectileType = "arrow" // Default projectile type, can be overridden
   ) {
     super(position, width, height, color, sheetCols, type, movementSpeed, baseDamage, maxHealth);
     
@@ -26,6 +27,7 @@ export class RangedEnemy extends Enemy {
     this.attackRange = 150; // Default attack range
     this.retreatDistance = 80; // Distance to maintain from target
     this.projectileSpeed = 200; // Default projectile speed
+    this.projectileType = projectileType; // Projectile type for this enemy
 
     // Projectiles
     this.projectiles = [];
@@ -105,7 +107,8 @@ export class RangedEnemy extends Enemy {
       this.position,
       targetCenter,
       this.projectileSpeed,
-      this.baseDamage
+      this.baseDamage,
+      this.projectileType // Use the enemy's specific projectile type
     );
     
     // Set room reference for wall collision detection
@@ -113,6 +116,6 @@ export class RangedEnemy extends Enemy {
     
     this.projectiles.push(projectile);
     
-    log.verbose(`${this.type} fired projectile at player`);
+    log.verbose(`${this.type} fired ${this.projectileType} projectile at player`);
   }
 }

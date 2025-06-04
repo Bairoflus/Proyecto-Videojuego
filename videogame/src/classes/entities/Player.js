@@ -606,7 +606,8 @@ export class Player extends AnimatedObject {
             spawnPos,
             target,
             projectileSpeed,
-            projectileDamage
+            projectileDamage,
+            "arrow" // Use arrow projectile type for ranged weapons
           );
           projectile.setCurrentRoom(this.currentRoom); // Set room reference for wall collision
           this.projectiles.push(projectile);
