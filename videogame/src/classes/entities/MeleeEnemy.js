@@ -16,9 +16,10 @@ export class MeleeEnemy extends Enemy {
     type,
     movementSpeed,
     baseDamage,
-    maxHealth
+    maxHealth,
+    enemyTypeName = null
   ) {
-    super(position, width, height, color, sheetCols, type, movementSpeed, baseDamage, maxHealth);
+    super(position, width, height, color, sheetCols, type, movementSpeed, baseDamage, maxHealth, enemyTypeName);
     
     // Melee-specific properties can be set here if needed
     this.attackRange = this.attackRange || 50; // Default melee range

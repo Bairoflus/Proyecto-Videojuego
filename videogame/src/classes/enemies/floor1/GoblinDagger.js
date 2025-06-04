@@ -20,7 +20,8 @@ export class GoblinDagger extends MeleeEnemy {
       "goblin_dagger", // type
       config.speed,
       config.damage,
-      config.health
+      config.health,
+      "goblin" // enemyTypeName for backend mapping
     );
 
     // Set specific properties

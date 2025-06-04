@@ -7,6 +7,7 @@ import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
 import { Boss } from "../entities/Boss.js";
 import { saveRunState } from "../../utils/api.js";
+import { enemyMappingService } from "../../utils/enemyMapping.js";
 
 export class Game {
   constructor() {
@@ -23,6 +24,9 @@ export class Game {
     this.lastAutoSave = 0;
     this.autoSaveInterval = 30000; // 30 seconds
     
+    // Service initialization status
+    this.servicesInitialized = false;
+    
     // Run statistics tracking
     this.runStats = {
       goldSpent: 0,
@@ -33,12 +37,50 @@ export class Game {
     this.createEventListeners();
     this.floorGenerator = new FloorGenerator();
     this.enemies = [];
+
+    // Initialize backend integration services
+    this.initializeServices();
+
     this.initObjects();
 
     window.game = this;
 
     if (variables.debug) {
       this.initializeDebugCommands();
+    }
+  }
+
+  /**
+   * Initialize all backend integration services
+   * @returns {Promise<void>}
+   */
+  async initializeServices() {
+    try {
+      console.log('🔄 Initializing backend integration services...');
+      
+      // Initialize services in parallel for optimal performance
+      const servicePromises = [
+        this.floorGenerator.initializeRoomMapping(),
+        enemyMappingService.initialize()
+      ];
+      
+      const results = await Promise.all(servicePromises);
+      
+      // Check results
+      const roomMappingSuccess = results[0];
+      const enemyMappingSuccess = results[1];
+      
+      console.log('📋 Service initialization results:');
+      console.log(`  Room Mapping: ${roomMappingSuccess ? '✅ SUCCESS' : '⚠️ FALLBACK'}`);
+      console.log(`  Enemy Mapping: ${enemyMappingSuccess ? '✅ SUCCESS' : '⚠️ FALLBACK'}`);
+      
+      this.servicesInitialized = true;
+      console.log('✅ All backend integration services initialized successfully');
+      
+    } catch (error) {
+      console.error('❌ Failed to initialize backend integration services:', error);
+      console.log('⚠️ Game will continue with fallback functionality');
+      this.servicesInitialized = false;
     }
   }
 

@@ -20,7 +20,8 @@ export class GoblinArcher extends RangedEnemy {
       "goblin_archer", // type
       config.speed,
       config.damage,
-      config.health
+      config.health,
+      "goblin_archer" // enemyTypeName for backend mapping
     );
 
     // Set specific properties

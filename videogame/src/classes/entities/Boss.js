@@ -2,8 +2,8 @@ import { Enemy } from "./Enemy.js";
 import { AnimatedObject } from "./AnimatedObject.js";
 
 export class Boss extends Enemy {
-    constructor(position, width, height, color, maxHp, attacks = []) {
-        super(position, width, height, color, 1, "boss", 0, 0, maxHp);
+    constructor(position, width, height, color, maxHp, attacks = [], enemyTypeName = "dragon") {
+        super(position, width, height, color, 1, "boss", 0, 0, maxHp, enemyTypeName);
         this.attacks = attacks;
         this.phase = 1;
         this.nextAttackTime = 0;

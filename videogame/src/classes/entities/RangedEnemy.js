@@ -18,9 +18,10 @@ export class RangedEnemy extends Enemy {
     type,
     movementSpeed,
     baseDamage,
-    maxHealth
+    maxHealth,
+    enemyTypeName = null
   ) {
-    super(position, width, height, color, sheetCols, type, movementSpeed, baseDamage, maxHealth);
+    super(position, width, height, color, sheetCols, type, movementSpeed, baseDamage, maxHealth, enemyTypeName);
     
     // Ranged enemy specific properties
     this.attackRange = 150; // Default attack range
