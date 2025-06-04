@@ -91,6 +91,32 @@ export async function getUserStats(userId) {
 }
 
 /**
+ * Get player settings (audio and game preferences)
+ * @param {string|number} userId - User ID to get settings for
+ * @returns {Promise<Object>} Player settings data with music_volume, sfx_volume, and last_updated
+ */
+export async function getPlayerSettings(userId) {
+    return apiRequest(`/users/${userId}/settings`, {
+        method: 'GET'
+    });
+}
+
+/**
+ * Update player settings (audio and game preferences)
+ * @param {string|number} userId - User ID to update settings for
+ * @param {Object} settingsData - Settings data to update
+ * @param {number} [settingsData.musicVolume] - Music volume level (0-100)
+ * @param {number} [settingsData.sfxVolume] - SFX volume level (0-100)
+ * @returns {Promise<Object>} Update confirmation with updated settings
+ */
+export async function updatePlayerSettings(userId, settingsData) {
+    return apiRequest(`/users/${userId}/settings`, {
+        method: 'PUT',
+        body: JSON.stringify(settingsData)
+    });
+}
+
+/**
  * Create a new game run
  * @param {string|number} userId - User ID to create run for
  * @returns {Promise<Object>} Run data with runId and startedAt
