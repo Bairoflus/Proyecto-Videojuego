@@ -11,6 +11,18 @@ import { serviceManager, SERVICE_STATUS, SERVICE_CRITICALITY } from "../../utils
 
 export class Game {
   constructor() {
+    this.globalShop = new Shop();
+    this.createEventListeners();
+    this.floorGenerator = new FloorGenerator();
+    this.enemies = [];
+    this.initObjects();
+
+    window.game = this;
+
+    if (variables.debug) {
+      this.initializeDebugCommands();
+    }
+
     this.canvas = null;
     this.ctx = null;
     this.player = null;
@@ -36,21 +48,9 @@ export class Game {
       totalKills: 0
     };
 
-    this.globalShop = new Shop();
-    this.createEventListeners();
-    this.floorGenerator = new FloorGenerator();
-    this.enemies = [];
-
     // Initialize backend integration services using ServiceManager
     this.initializeServices();
 
-    this.initObjects();
-
-    window.game = this;
-
-    if (variables.debug) {
-      this.initializeDebugCommands();
-    }
   }
 
   /**
