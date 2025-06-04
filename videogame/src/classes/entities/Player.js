@@ -91,9 +91,7 @@ export class Player extends AnimatedObject {
 
     // Clear any active projectiles when changing rooms to prevent cross-room damage
     if (this.projectiles.length > 0) {
-      console.log(
-        `Clearing ${this.projectiles.length} active projectiles during room transition`
-      );
+      // Projectile clearing debugging removed to reduce console spam
       this.projectiles = [];
     }
   }
@@ -233,7 +231,7 @@ export class Player extends AnimatedObject {
 
   setWeapon(type) {
     if (type === "melee" || type === "ranged") {
-      console.log(`Switching weapon to ${type}`);
+      // Weapon switching debugging removed to reduce console spam
       this.weaponType = type;
 
       // Update sprite sheet based on weapon type
@@ -250,9 +248,7 @@ export class Player extends AnimatedObject {
       // Reset to current direction animation (walking or idle)
       this.resetToCurrentDirectionAnimation();
 
-      console.log(
-        `Weapon switched to ${type} with sprite: ${spritePath} (${this.sheetCols} columns)`
-      );
+      // Weapon switch completion debugging removed to reduce console spam
     } else {
       console.warn(
         `Invalid weapon type: ${type}. Valid types are 'melee' and 'ranged'`
@@ -286,7 +282,7 @@ export class Player extends AnimatedObject {
   updateWalkingFrames(weaponType) {
     // For now, all weapons use the same walking frames
     // This can be expanded later if different weapons have different walking animations
-    console.log(`Walking frames updated for weapon: ${weaponType}`);
+    // Weapon switching debugging removed to reduce console spam
   }
 
   /**
@@ -367,11 +363,7 @@ export class Player extends AnimatedObject {
     const staminaCost = weaponInfo.staminaCost;
 
     if (this.stamina < staminaCost) {
-      console.log(
-        `Not enough stamina to attack with ${
-          this.weaponType
-        } (need ${staminaCost}, have ${Math.floor(this.stamina)})`
-      );
+      // Stamina insufficient debugging removed to reduce console spam
       return;
     }
 
@@ -385,9 +377,7 @@ export class Player extends AnimatedObject {
       this.stamina -= staminaCost;
       this.staminaRegenCooldown = this.staminaRegenDelay;
 
-      console.log(
-        `Player attacking with ${this.weaponType} (${weaponInfo.category})`
-      );
+      // Attack initiation debugging removed to reduce console spam
 
       // Handle melee weapon attacks immediately
       if (this.isMeleeWeapon()) {
@@ -421,12 +411,9 @@ export class Player extends AnimatedObject {
         this.sheetCols = 6; // All melee attack sprites have 6 columns
       }
 
-      console.log(`[ATTACK DEBUG] Switching to attack sprite: ${currentWeapon}, sheetCols: ${this.sheetCols}, sprite: ${attackSpritePath}`);
-      console.log(`[ATTACK DEBUG] Pre-attack sprite dimensions: ${this.spriteRect ? this.spriteRect.width + 'x' + this.spriteRect.height : 'null'}`);
+      // Attack sprite switching debugging removed to reduce console spam
 
       this.setSprite(attackSpritePath);
-      
-      console.log(`[ATTACK DEBUG] Post-setSprite dimensions: ${this.spriteRect ? this.spriteRect.width + 'x' + this.spriteRect.height : 'null'}`);
 
       // Set attack animation
       const attackFrames = getAttackFrames(
@@ -445,16 +432,10 @@ export class Player extends AnimatedObject {
       if (this.spriteRect) {
         this.spriteRect.x = this.frame % this.sheetCols;
         this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
-        console.log(`[ATTACK DEBUG] Attack frame set: ${this.frame} -> (${this.spriteRect.x}, ${this.spriteRect.y}), dimensions: ${this.spriteRect.width}x${this.spriteRect.height}`);
+        // Attack frame debugging removed to reduce console spam
       }
     } else {
-      console.log(
-        this.isAttacking
-          ? "Attack blocked: Already attacking"
-          : `Attack blocked: Cooldown remaining ${Math.round(
-              this.attackCooldown
-            )}ms`
-      );
+      // Attack blocked debugging removed to reduce console spam
     }
   }
 
@@ -492,17 +473,11 @@ export class Player extends AnimatedObject {
           const damage = this.getWeaponDamage();
           enemy.takeDamage(damage);
           enemiesHit++;
-          console.log(
-            `${this.getCurrentWeapon()} hit ${enemy.type} for ${damage} damage`
-          );
+          // Combat hit debugging removed to reduce console spam
         }
       });
 
-      console.log(
-        enemiesHit === 0
-          ? `${this.getCurrentWeapon()} attack missed all enemies`
-          : `${this.getCurrentWeapon()} attack hit ${enemiesHit} enemies`
-      );
+      // Combat result debugging removed to reduce console spam
     } else {
       console.warn("No current room or enemies found for melee attack");
     }
@@ -614,9 +589,7 @@ export class Player extends AnimatedObject {
           this.hasCreatedProjectile = true; // Mark that we've created the projectile
 
           // Note: Stamina consumption is now handled in the attack() method
-          console.log(
-            `${weaponInfo.type} projectile created (direction: ${this.currentDirection}, damage: ${projectileDamage})`
-          );
+          // Projectile creation debugging removed to reduce console spam
         }
 
         // Apply melee damage is now handled in the attack() method
@@ -627,14 +600,13 @@ export class Player extends AnimatedObject {
           this.hasAppliedMeleeDamage = false; // Reset the flag
 
           // Restore walking sprite sheet and sheetCols
-          console.log(`[ATTACK RESTORE] Restoring sprite: ${this.preAttackSpritePath}, sheetCols: ${this.preAttackSheetCols}`);
-          console.log(`[ATTACK RESTORE] Current sprite dimensions before restore: ${this.spriteRect ? this.spriteRect.width + 'x' + this.spriteRect.height : 'null'}`);
-          
+          // Attack restore debugging removed to reduce console spam
+
           // Set sheetCols BEFORE setting sprite to ensure correct dimension calculations
           this.sheetCols = this.preAttackSheetCols;
           this.setSprite(this.preAttackSpritePath);
 
-          console.log(`[ATTACK RESTORE] Sprite dimensions after restore: ${this.spriteRect ? this.spriteRect.width + 'x' + this.spriteRect.height : 'null'}`);
+          // Attack restore debugging removed to reduce console spam
 
           // Return to the exact frame and direction we were in before the attack
           const anim = playerMovement[this.preAttackDirection];
@@ -643,14 +615,14 @@ export class Player extends AnimatedObject {
           this.frame = this.preAttackFrame;
           this.repeat = anim.repeat;
           this.frameDuration = anim.duration;
-          
+
           // Ensure spriteRect position is updated with the restored frame
           if (this.spriteRect) {
             this.spriteRect.x = this.frame % this.sheetCols;
             this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
           }
-          
-          console.log(`[ATTACK RESTORE] Animation restored: frame=${this.frame}, spriteRect=(${this.spriteRect ? this.spriteRect.x + ',' + this.spriteRect.y : 'null'})`);
+
+          // Attack restore debugging removed to reduce console spam
         }
       }
 
@@ -926,8 +898,11 @@ export class Player extends AnimatedObject {
       const offsetY = (scaledHeight - this.height) / 2;
 
       // Debug logging for sprite rendering during attacks
-      if (this.isAttacking && (currentWeapon === 'katana' || currentWeapon === 'bow')) {
-        console.log(`[DRAW DEBUG] ${currentWeapon} ${animationState}: frame=${this.frame}, spriteRect=(${this.spriteRect.x},${this.spriteRect.y}), size=${this.spriteRect.width}x${this.spriteRect.height}, scale=${scaleFactor}`);
+      if (
+        this.isAttacking &&
+        (currentWeapon === "katana" || currentWeapon === "bow")
+      ) {
+        // Debug logging removed to reduce console spam
       }
 
       ctx.drawImage(
@@ -1017,7 +992,7 @@ export class Player extends AnimatedObject {
   // startDash: start the dash if cooldown is over
   startDash() {
     if (this.stamina < DASH_STAMINA_COST) {
-      console.log("Not enough stamina to dash");
+      // Dash stamina debugging removed to reduce console spam
       return;
     }
     // Solo permitir dash si no está en cooldown y no está atacando
@@ -1265,9 +1240,7 @@ export class Player extends AnimatedObject {
       this.meleeLevel++;
       const newWeapon = this.getCurrentMeleeWeapon();
 
-      console.log(
-        `Melee weapon upgraded to level ${this.meleeLevel}! ${oldWeapon} → ${newWeapon}`
-      );
+      // Weapon upgrade debugging removed to reduce console spam
 
       // If currently using melee weapon, update sprite
       if (this.weaponType === "melee") {
@@ -1288,9 +1261,7 @@ export class Player extends AnimatedObject {
       this.rangedLevel++;
       const newWeapon = this.getCurrentRangedWeapon();
 
-      console.log(
-        `Ranged weapon upgraded to level ${this.rangedLevel}! ${oldWeapon} → ${newWeapon}`
-      );
+      // Weapon upgrade debugging removed to reduce console spam
 
       // If currently using ranged weapon, update sprite
       if (this.weaponType === "ranged") {
@@ -1315,11 +1286,7 @@ export class Player extends AnimatedObject {
     this.resetToCurrentDirectionAnimation();
 
     const currentWeapon = this.getCurrentWeapon();
-    console.log(
-      `Weapon sprite updated to ${currentWeapon} (${this.weaponType} level ${
-        this.weaponType === "melee" ? this.meleeLevel : this.rangedLevel
-      }) - ${this.sheetCols} columns`
-    );
+    // Weapon sprite update debugging removed to reduce console spam
   }
 
   /**

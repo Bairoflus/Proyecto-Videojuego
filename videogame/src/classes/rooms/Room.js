@@ -13,9 +13,13 @@ import { GoblinDagger } from "../enemies/floor1/GoblinDagger.js";
 import { GoblinArcher } from "../enemies/floor1/GoblinArcher.js";
 import { MageGoblin } from "../enemies/floor1/MageGoblin.js";
 import { GreatBowGoblin } from "../enemies/floor1/GreatBowGoblin.js";
+import { SwordGoblin } from "../enemies/floor1/SwordGoblin.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
-import { ROOM_CONSTANTS, PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
+import {
+  ROOM_CONSTANTS,
+  PHYSICS_CONSTANTS,
+} from "../../constants/gameConstants.js";
 
 export class Room {
   constructor(layout, isCombatRoom = false, roomType = "combat") {
@@ -301,7 +305,9 @@ export class Room {
   // Checks for wall collisions using hitboxes
   checkWallCollision(obj) {
     const objHitbox = obj.getHitboxBounds();
-    return this.objects.walls.some((wall) => this.checkRectangleCollision(objHitbox, wall));
+    return this.objects.walls.some((wall) =>
+      this.checkRectangleCollision(objHitbox, wall)
+    );
   }
 
   // Helper method for rectangle collision detection
@@ -375,10 +381,10 @@ export class Room {
 
     return new Vec(
       variables.canvasWidth -
-      this.transitionZone -
-      this.minSafeDistance -
-      playerWidth +
-      hitboxOffset,
+        this.transitionZone -
+        this.minSafeDistance -
+        playerWidth +
+        hitboxOffset,
       variables.canvasHeight / 2 - 32
     );
   }
@@ -388,26 +394,38 @@ export class Room {
     log.info("Starting procedural enemy generation for combat room...");
 
     // Generate enemies randomly within defined range
-    const enemyCount = Math.floor(Math.random() * (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)) + ROOM_CONSTANTS.MIN_ENEMIES;
+    const enemyCount =
+      Math.floor(
+        Math.random() *
+          (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)
+      ) + ROOM_CONSTANTS.MIN_ENEMIES;
 
     // Random proportion using constants for enemy types
-    const commonPercentage = Math.random() * (ROOM_CONSTANTS.COMMON_ENEMY_RATIO.max - ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min) + ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min;
+    const commonPercentage =
+      Math.random() *
+        (ROOM_CONSTANTS.COMMON_ENEMY_RATIO.max -
+          ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min) +
+      ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min;
     const commonCount = Math.floor(enemyCount * commonPercentage);
     const rareAndVeryRareCount = enemyCount - commonCount;
-    
+
     // Calculate GreatBowGoblin count (testing - guaranteed 1 per room)
     let greatBowCount = 0;
     if (rareAndVeryRareCount > 0) {
       greatBowCount = 1; // Guaranteed spawn for testing
     }
-    
+
     // Split remaining rare enemies between GoblinArcher and MageGoblin (60% archer, 40% mage)
     const remainingRareCount = rareAndVeryRareCount - greatBowCount;
     const archerCount = Math.floor(remainingRareCount * 0.6);
     const mageCount = remainingRareCount - archerCount;
 
+    // Split common enemies between GoblinDagger and SwordGoblin (70% dagger, 30% sword)
+    const daggerCount = Math.floor(commonCount * 0.7);
+    const swordCount = Math.max(1, commonCount - daggerCount); // Ensure at least 1 SwordGoblin
+
     log.debug(
-      `Enemy distribution: ${enemyCount} total | ${commonCount} GoblinDagger (${Math.round(
+      `Enemy distribution: ${enemyCount} total | ${daggerCount} GoblinDagger + ${swordCount} SwordGoblin (${Math.round(
         commonPercentage * 100
       )}%) | ${archerCount} GoblinArcher | ${mageCount} MageGoblin | ${greatBowCount} GreatBowGoblin`
     );
@@ -428,7 +446,7 @@ export class Room {
 
     // Generate common enemies (left half, excluding safe zone)
     log.debug("Generating GoblinDagger enemies (left half)...");
-    for (let i = 0; i < commonCount; i++) {
+    for (let i = 0; i < daggerCount; i++) {
       const position = this.getValidEnemyPosition(true, safeZone);
       if (position) {
         const enemy = new GoblinDagger(position);
@@ -442,6 +460,25 @@ export class Room {
         );
       } else {
         log.warn(`  Failed to place GoblinDagger ${i + 1}`);
+      }
+    }
+
+    // Generate SwordGoblin enemies (left half, excluding safe zone)
+    log.debug("Generating SwordGoblin enemies (left half)...");
+    for (let i = 0; i < swordCount; i++) {
+      const position = this.getValidEnemyPosition(true, safeZone);
+      if (position) {
+        const enemy = new SwordGoblin(position);
+        enemy.setCurrentRoom(this); // Set room reference for collision detection
+        this.objects.enemies.push(enemy);
+        successfulPlacements++;
+        log.verbose(
+          `  SwordGoblin ${i + 1} placed at (${Math.round(
+            position.x
+          )}, ${Math.round(position.y)})`
+        );
+      } else {
+        log.warn(`  Failed to place SwordGoblin ${i + 1}`);
       }
     }
 
@@ -512,6 +549,9 @@ export class Room {
     const goblinDaggerCount = this.objects.enemies.filter(
       (e) => e.type === "goblin_dagger"
     ).length;
+    const swordGoblinCount = this.objects.enemies.filter(
+      (e) => e.type === "sword_goblin"
+    ).length;
     const goblinArcherCount = this.objects.enemies.filter(
       (e) => e.type === "goblin_archer"
     ).length;
@@ -523,7 +563,7 @@ export class Room {
     ).length;
 
     log.debug(
-      `Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher, ${mageGoblinCount} MageGoblin, ${greatBowGoblinCount} GreatBowGoblin instances created`
+      `Validation: ${goblinDaggerCount} GoblinDagger, ${swordGoblinCount} SwordGoblin, ${goblinArcherCount} GoblinArcher, ${mageGoblinCount} MageGoblin, ${greatBowGoblinCount} GreatBowGoblin instances created`
     );
   }
 
@@ -541,7 +581,11 @@ export class Room {
       attempts++;
     }
 
-    log.warn("Could not find valid position for enemy after", ROOM_CONSTANTS.MAX_PLACEMENT_ATTEMPTS, "attempts");
+    log.warn(
+      "Could not find valid position for enemy after",
+      ROOM_CONSTANTS.MAX_PLACEMENT_ATTEMPTS,
+      "attempts"
+    );
     return null;
   }
 
@@ -551,7 +595,8 @@ export class Room {
 
     if (isCommon) {
       // Common enemies: left half (excluding safe zone)
-      x = Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE);
+      x =
+        Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE);
       y = Math.random() * (variables.canvasHeight - ROOM_CONSTANTS.TILE_SIZE);
 
       // Check if position overlaps with safe zone
@@ -560,7 +605,9 @@ export class Room {
       }
     } else {
       // Rare enemies: right half
-      x = Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE) + variables.canvasWidth / 2;
+      x =
+        Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE) +
+        variables.canvasWidth / 2;
       y = Math.random() * (variables.canvasHeight - ROOM_CONSTANTS.TILE_SIZE);
     }
 
@@ -587,9 +634,11 @@ export class Room {
   // Checks if the room can transition (no enemies alive)
   canTransition() {
     // Boss room: locked until boss (and any adds) are dead
-    if (this.roomType === 'boss') {
+    if (this.roomType === "boss") {
       const totalEnemies = this.objects.enemies.length;
-      const aliveEnemies = this.objects.enemies.filter(e => e.state !== 'dead');
+      const aliveEnemies = this.objects.enemies.filter(
+        (e) => e.state !== "dead"
+      );
       const deadEnemies = totalEnemies - aliveEnemies.length;
       const canTransition = aliveEnemies.length === 0;
 
@@ -598,7 +647,7 @@ export class Room {
           `Boss defeated! (${deadEnemies}/${totalEnemies} dead) — boss room unlocked.`
         );
       } else {
-        const aliveTypes = aliveEnemies.map(e => e.type).join(', ');
+        const aliveTypes = aliveEnemies.map((e) => e.type).join(", ");
         log.debug(
           `Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`
         );
@@ -615,7 +664,7 @@ export class Room {
 
     // Regular combat rooms: must clear all enemies
     const totalEnemies = this.objects.enemies.length;
-    const aliveEnemies = this.objects.enemies.filter(e => e.state !== 'dead');
+    const aliveEnemies = this.objects.enemies.filter((e) => e.state !== "dead");
     const deadEnemies = totalEnemies - aliveEnemies.length;
     const canTransition = aliveEnemies.length === 0;
 
@@ -624,7 +673,7 @@ export class Room {
         `Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
       );
     } else {
-      const aliveTypes = aliveEnemies.map(e => e.type).join(', ');
+      const aliveTypes = aliveEnemies.map((e) => e.type).join(", ");
       log.debug(
         `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
       );
@@ -640,7 +689,11 @@ export class Room {
     if (this.chestSpawned || !this.isCombatRoom) return;
 
     // Calculate safe spawn position near transition zone using constants
-    const x = variables.canvasWidth - this.transitionZone - ROOM_CONSTANTS.CHEST_SIZE - ROOM_CONSTANTS.CHEST_SAFE_MARGIN;
+    const x =
+      variables.canvasWidth -
+      this.transitionZone -
+      ROOM_CONSTANTS.CHEST_SIZE -
+      ROOM_CONSTANTS.CHEST_SAFE_MARGIN;
     const y = variables.canvasHeight / 2 - ROOM_CONSTANTS.CHEST_SIZE / 2;
 
     // Create chest at calculated position
@@ -652,7 +705,10 @@ export class Room {
     }
 
     // Try alternate position if wall collision
-    chestPosition.y = variables.canvasHeight / 2 - ROOM_CONSTANTS.CHEST_SIZE - ROOM_CONSTANTS.CHEST_SIZE;
+    chestPosition.y =
+      variables.canvasHeight / 2 -
+      ROOM_CONSTANTS.CHEST_SIZE -
+      ROOM_CONSTANTS.CHEST_SIZE;
     this.trySpawnChestAtPosition(chestPosition);
   }
 

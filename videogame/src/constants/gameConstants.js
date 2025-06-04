@@ -24,8 +24,8 @@ export const PLAYER_CONSTANTS = {
   INVULNERABILITY_DURATION: 1000, // ms
 
   // Attack constants
-  DAGGER_ATTACK_RANGE: 1000,
-  DAGGER_ATTACK_WIDTH: 1000,
+  DAGGER_ATTACK_RANGE: 50,
+  DAGGER_ATTACK_WIDTH: 50,
   DAGGER_ATTACK_DAMAGE: 100,
   DAGGER_STAMINA_COST: 8,
 
@@ -93,6 +93,16 @@ export const ENEMY_CONSTANTS = {
     speed: PLAYER_CONSTANTS.BASE_SPEED * 2,
     attackRange: 32,
     attackCooldown: 1000,
+  },
+
+  // Sword Goblin - Stronger melee enemy, slightly slower than dagger goblin
+  SWORD_GOBLIN: {
+    size: { width: 48, height: 48 }, // Same size as other goblins
+    health: 25, // Slightly more health than dagger goblin
+    damage: 45, // Higher damage as specified
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 1.8, // Slightly slower than dagger goblin (2.0 -> 1.8)
+    attackRange: 32, // Same melee range
+    attackCooldown: 1000, // 1 second cooldown as specified
   },
 
   // Goblin Archer

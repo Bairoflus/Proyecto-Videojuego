@@ -56,7 +56,7 @@ export class Game {
     }
     if (this.floorGenerator.isBossRoom()) {
       const room = this.floorGenerator.getCurrentRoom();
-      const boss = room.objects.enemies.find(e => e instanceof Boss);
+      const boss = room.objects.enemies.find((e) => e instanceof Boss);
       drawBossHealthBar(ctx, boss);
     }
   }
@@ -82,10 +82,18 @@ export class Game {
     // Draw text with outline for better visibility in bottom-right
     ctx.strokeStyle = "black";
     ctx.lineWidth = 3;
-    ctx.strokeText(runFloorRoomText, variables.canvasWidth - 10, variables.canvasHeight - 10);
+    ctx.strokeText(
+      runFloorRoomText,
+      variables.canvasWidth - 10,
+      variables.canvasHeight - 10
+    );
 
     ctx.fillStyle = "white";
-    ctx.fillText(runFloorRoomText, variables.canvasWidth - 10, variables.canvasHeight - 10);
+    ctx.fillText(
+      runFloorRoomText,
+      variables.canvasWidth - 10,
+      variables.canvasHeight - 10
+    );
 
     // Reset text alignment for other UI elements
     ctx.textAlign = "left";
@@ -300,7 +308,7 @@ export function drawBossHealthBar(ctx, boss) {
   const barWidth = 300;
   const barHeight = 12;
   const x = (variables.canvasWidth - barWidth) / 2;
-  const y = (variables.canvasHeight - barHeight) - 20;
+  const y = variables.canvasHeight - barHeight - 20;
 
   const pct = boss.health / boss.maxHealth;
 

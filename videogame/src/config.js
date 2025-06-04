@@ -59,7 +59,7 @@ const attackFrames = {
   },
   bow: {
     up: [0, 12], // shoot.png, row 0, 13 frames (0-12)
-    left: [13, 25], // shoot.png, row 1, 13 frames (13-25)  
+    left: [13, 25], // shoot.png, row 1, 13 frames (13-25)
     down: [26, 38], // shoot.png, row 2, 13 frames (26-38)
     right: [39, 51], // shoot.png, row 3, 13 frames (39-51)
   },
@@ -84,9 +84,7 @@ export function getAttackFrames(weaponType, direction) {
   const frames = attackFrames[weaponType]?.[attackDirection];
 
   if (!frames) {
-    console.log(
-      `Warning: No attack frames found for weapon ${weaponType} in direction ${attackDirection}, using fallback`
-    );
+    // Attack frame fallback debugging removed to reduce console spam
     return attackFrames.dagger.down;
   }
 

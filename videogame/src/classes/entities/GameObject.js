@@ -35,41 +35,44 @@ export class GameObject {
       // For immediate dimension calculation, use known sprite dimensions
       // This prevents rendering issues during sprite transitions
       let frameWidth, frameHeight;
-      
+
       // Calculate expected frame dimensions based on known sprite sheet layouts
-      if (imagePath.includes('katana')) {
-        if (imagePath.includes('slash.png')) {
+      if (imagePath.includes("katana")) {
+        if (imagePath.includes("slash.png")) {
           frameWidth = 128; // 768px / 6 cols = 128px
           frameHeight = 128; // 512px / 4 rows = 128px
         } else {
           frameWidth = 128; // 1152px / 9 cols = 128px
           frameHeight = 128; // 512px / 4 rows = 128px
         }
-      } else if (imagePath.includes('bow')) {
-        if (imagePath.includes('shoot.png')) {
+      } else if (imagePath.includes("bow")) {
+        if (imagePath.includes("shoot.png")) {
           frameWidth = 64; // 832px / 13 cols = 64px
           frameHeight = 64; // 256px / 4 rows = 64px
         } else {
           frameWidth = 128; // 1152px / 9 cols = 128px
           frameHeight = 128; // 512px / 4 rows = 128px
         }
-      } else if (imagePath.includes('crossbow')) {
-        if (imagePath.includes('shoot.png')) {
+      } else if (imagePath.includes("crossbow")) {
+        if (imagePath.includes("shoot.png")) {
           frameWidth = 64; // 512px / 8 cols = 64px
           frameHeight = 64; // 256px / 4 rows = 64px
         } else {
           frameWidth = 64; // 576px / 9 cols = 64px
           frameHeight = 64; // 256px / 4 rows = 64px
         }
-      } else if (imagePath.includes('slingshot')) {
-        if (imagePath.includes('shoot.png')) {
+      } else if (imagePath.includes("slingshot")) {
+        if (imagePath.includes("shoot.png")) {
           frameWidth = 64; // 832px / 13 cols = 64px
           frameHeight = 64; // 256px / 4 rows = 64px
         } else {
           frameWidth = 64; // 576px / 9 cols = 64px
           frameHeight = 64; // 256px / 4 rows = 64px
         }
-      } else if (imagePath.includes('dagger') || imagePath.includes('lightsaber')) {
+      } else if (
+        imagePath.includes("dagger") ||
+        imagePath.includes("lightsaber")
+      ) {
         frameWidth = 64; // All dagger/lightsaber sprites use 64x64 frames
         frameHeight = 64;
       } else {
@@ -81,9 +84,7 @@ export class GameObject {
       // Set immediate dimensions to prevent rendering glitches
       this.spriteRect = new Rect(0, 0, frameWidth, frameHeight);
 
-      console.log(
-        `[SPRITE DEBUG] Immediate sprite dimensions set: ${frameWidth}x${frameHeight} (sheetCols: ${this.sheetCols}) for ${imagePath}`
-      );
+      // Debug logging removed to reduce console spam
 
       // For AnimatedObjects, verify and correct dimensions when image loads
       this.spriteImage.onload = () => {
@@ -92,22 +93,24 @@ export class GameObject {
         const actualFrameHeight = this.spriteImage.height / 4; // Always 4 rows for player sprites
 
         // Update dimensions if they differ from our immediate calculations
-        if (Math.abs(actualFrameWidth - this.spriteRect.width) > 1 || Math.abs(actualFrameHeight - this.spriteRect.height) > 1) {
+        if (
+          Math.abs(actualFrameWidth - this.spriteRect.width) > 1 ||
+          Math.abs(actualFrameHeight - this.spriteRect.height) > 1
+        ) {
           this.spriteRect.width = actualFrameWidth;
           this.spriteRect.height = actualFrameHeight;
-          
-          console.log(
-            `[SPRITE DEBUG] Corrected sprite dimensions: ${actualFrameWidth}x${actualFrameHeight} (was ${frameWidth}x${frameHeight}) for ${imagePath}`
-          );
+
+          // Debug logging removed to reduce console spam
         } else {
-          console.log(
-            `[SPRITE DEBUG] Verified sprite dimensions: ${actualFrameWidth}x${actualFrameHeight} (cols: ${this.sheetCols}, rows: 4) for ${imagePath}`
-          );
+          // Debug logging removed to reduce console spam
         }
-        
+
         // For debugging: Check if this is an attack sprite change
-        if (imagePath.includes('slash.png') || imagePath.includes('shoot.png')) {
-          console.log(`[ATTACK SPRITE] Attack sprite loaded: ${actualFrameWidth}x${actualFrameHeight}, sheetCols: ${this.sheetCols}`);
+        if (
+          imagePath.includes("slash.png") ||
+          imagePath.includes("shoot.png")
+        ) {
+          // Debug logging removed to reduce console spam
         }
       };
     }
