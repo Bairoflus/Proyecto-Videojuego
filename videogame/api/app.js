@@ -54,6 +54,20 @@ app.post('/api/auth/register', async (req, res) => {
         // Execute insertion
         const [result] = await connection.execute(query, values);
         
+        // Create default player settings for new user
+        const defaultMusicVolume = 70;
+        const defaultSfxVolume = 80;
+        
+        try {
+            await connection.execute(
+                'INSERT INTO player_settings (user_id, music_volume, sfx_volume) VALUES (?, ?, ?)',
+                [result.insertId, defaultMusicVolume, defaultSfxVolume]
+            );
+        } catch (settingsErr) {
+            // Log error but don't fail registration if settings creation fails
+            console.error('Failed to create default player settings:', settingsErr);
+        }
+        
         // Success response - using user_id according to schema
         res.status(201).json({
             userId: result.insertId,
@@ -239,6 +253,216 @@ app.get('/api/users/:userId/stats', async (req, res) => {
         
         // Return stats data
         res.status(200).json(stats[0]);
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
+// GET /api/users/:userId/settings
+app.get('/api/users/:userId/settings', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get userId from URL parameters
+        const { userId } = req.params;
+        
+        // Basic validation
+        if (!userId) {
+            return res.status(400).send('Missing userId parameter');
+        }
+        
+        // Type validation - userId must be integer
+        if (!Number.isInteger(Number(userId))) {
+            return res.status(400).send('Invalid userId: must be an integer');
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Validate user exists
+        const [users] = await connection.execute(
+            'SELECT user_id FROM users WHERE user_id = ?',
+            [userId]
+        );
+        
+        if (users.length === 0) {
+            return res.status(404).send('User not found');
+        }
+        
+        // Query player settings
+        const [settings] = await connection.execute(
+            'SELECT user_id, music_volume, sfx_volume, last_updated FROM player_settings WHERE user_id = ?',
+            [userId]
+        );
+        
+        // If no settings exist, create default settings
+        if (settings.length === 0) {
+            const defaultMusicVolume = 70;
+            const defaultSfxVolume = 80;
+            
+            // Insert default settings
+            await connection.execute(
+                'INSERT INTO player_settings (user_id, music_volume, sfx_volume) VALUES (?, ?, ?)',
+                [userId, defaultMusicVolume, defaultSfxVolume]
+            );
+            
+            // Return default settings
+            return res.status(200).json({
+                user_id: parseInt(userId),
+                music_volume: defaultMusicVolume,
+                sfx_volume: defaultSfxVolume,
+                last_updated: new Date().toISOString()
+            });
+        }
+        
+        // Return existing settings data
+        res.status(200).json(settings[0]);
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
+// PUT /api/users/:userId/settings
+app.put('/api/users/:userId/settings', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get userId from URL parameters
+        const { userId } = req.params;
+        
+        // Get data from request body
+        const { musicVolume, sfxVolume } = req.body;
+        
+        // Basic validation - userId parameter
+        if (!userId) {
+            return res.status(400).send('Missing userId parameter');
+        }
+        
+        // Type validation - userId must be integer
+        if (!Number.isInteger(Number(userId))) {
+            return res.status(400).send('Invalid userId: must be an integer');
+        }
+        
+        // Input validation - at least one setting must be provided
+        if (musicVolume === undefined && sfxVolume === undefined) {
+            return res.status(400).send('At least one setting must be provided: musicVolume or sfxVolume');
+        }
+        
+        // Type and range validation for musicVolume
+        if (musicVolume !== undefined) {
+            if (!Number.isInteger(Number(musicVolume))) {
+                return res.status(400).send('Invalid musicVolume: must be an integer');
+            }
+            
+            const musicVol = parseInt(musicVolume);
+            if (musicVol < 0 || musicVol > 100) {
+                return res.status(400).send('Invalid musicVolume: must be between 0 and 100');
+            }
+        }
+        
+        // Type and range validation for sfxVolume
+        if (sfxVolume !== undefined) {
+            if (!Number.isInteger(Number(sfxVolume))) {
+                return res.status(400).send('Invalid sfxVolume: must be an integer');
+            }
+            
+            const sfxVol = parseInt(sfxVolume);
+            if (sfxVol < 0 || sfxVol > 100) {
+                return res.status(400).send('Invalid sfxVolume: must be between 0 and 100');
+            }
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Validate user exists
+        const [users] = await connection.execute(
+            'SELECT user_id FROM users WHERE user_id = ?',
+            [userId]
+        );
+        
+        if (users.length === 0) {
+            return res.status(404).send('User not found');
+        }
+        
+        // Check if settings exist for this user
+        const [existingSettings] = await connection.execute(
+            'SELECT user_id FROM player_settings WHERE user_id = ?',
+            [userId]
+        );
+        
+        let result;
+        
+        if (existingSettings.length === 0) {
+            // Create new settings with provided values or defaults
+            const finalMusicVolume = musicVolume !== undefined ? parseInt(musicVolume) : 70;
+            const finalSfxVolume = sfxVolume !== undefined ? parseInt(sfxVolume) : 80;
+            
+            [result] = await connection.execute(
+                'INSERT INTO player_settings (user_id, music_volume, sfx_volume) VALUES (?, ?, ?)',
+                [userId, finalMusicVolume, finalSfxVolume]
+            );
+        } else {
+            // Update existing settings - build dynamic query for partial updates
+            const updateFields = [];
+            const updateValues = [];
+            
+            if (musicVolume !== undefined) {
+                updateFields.push('music_volume = ?');
+                updateValues.push(parseInt(musicVolume));
+            }
+            
+            if (sfxVolume !== undefined) {
+                updateFields.push('sfx_volume = ?');
+                updateValues.push(parseInt(sfxVolume));
+            }
+            
+            // Always update last_updated timestamp
+            updateFields.push('last_updated = NOW()');
+            updateValues.push(userId);
+            
+            const updateQuery = `UPDATE player_settings SET ${updateFields.join(', ')} WHERE user_id = ?`;
+            
+            [result] = await connection.execute(updateQuery, updateValues);
+        }
+        
+        // Fetch updated settings to return
+        const [updatedSettings] = await connection.execute(
+            'SELECT user_id, music_volume, sfx_volume, last_updated FROM player_settings WHERE user_id = ?',
+            [userId]
+        );
+        
+        // Success response with updated settings
+        res.status(200).json({
+            message: 'Settings updated successfully',
+            settings: updatedSettings[0]
+        });
         
     } catch (err) {
         console.error(err);

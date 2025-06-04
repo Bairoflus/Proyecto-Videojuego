@@ -206,6 +206,264 @@ Stats not found
 Database error
 ```
 
+### GET /api/users/:userId/settings
+Retrieves player settings (audio and game preferences) for a specific user.
+
+**URL**: `/api/users/{userId}/settings`
+
+**Method**: `GET`
+
+**Parameters**:
+- `userId` (path parameter) - The ID of the user whose settings to retrieve
+
+**Example URL**:
+```
+/api/users/123/settings
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "user_id": 123,
+  "music_volume": 70,
+  "sfx_volume": 80,
+  "last_updated": "2024-01-15 14:30:00"
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing userId parameter:
+```
+Missing userId parameter
+```
+
+- **400 Bad Request** - Invalid userId type:
+```
+Invalid userId: must be an integer
+```
+
+- **404 Not Found** - User not found:
+```
+User not found
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Auto-Creation Behavior**:
+If no settings exist for the user, the endpoint automatically creates default settings:
+- **Music Volume**: 70 (out of 100)
+- **SFX Volume**: 80 (out of 100)
+- **Last Updated**: Current timestamp
+
+This ensures all users have settings available immediately after registration.
+
+**Usage Information**:
+This endpoint is designed for:
+1. **Settings page initialization** - Load current user preferences
+2. **Game audio setup** - Apply volume settings on game start
+3. **Settings validation** - Ensure settings exist before updates
+4. **Default settings provision** - Auto-create missing settings
+
+**Database Schema Requirements**:
+The endpoint queries the player_settings table:
+
+**player_settings table**:
+```sql
+CREATE TABLE player_settings (
+  user_id INT NOT NULL,
+  music_volume INT,
+  sfx_volume INT,
+  last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+```
+
+**Example Usage**:
+```bash
+curl -X GET http://localhost:3000/api/users/123/settings
+```
+
+**Integration Points**:
+- Settings page load and display
+- Game audio initialization
+- Volume control validation
+- User preference management
+
+### PUT /api/users/:userId/settings
+Updates player settings (audio and game preferences) for a specific user.
+
+**URL**: `/api/users/{userId}/settings`
+
+**Method**: `PUT`
+
+**Parameters**:
+- `userId` (path parameter) - The ID of the user whose settings to update
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body** (partial update supported):
+```json
+{
+  "musicVolume": 75,
+  "sfxVolume": 85
+}
+```
+
+**Body (single setting update)**:
+```json
+{
+  "musicVolume": 90
+}
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "message": "Settings updated successfully",
+  "settings": {
+    "user_id": 123,
+    "music_volume": 75,
+    "sfx_volume": 85,
+    "last_updated": "2024-01-15 15:45:00"
+  }
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing userId parameter:
+```
+Missing userId parameter
+```
+
+- **400 Bad Request** - Invalid userId type:
+```
+Invalid userId: must be an integer
+```
+
+- **400 Bad Request** - No settings provided:
+```
+At least one setting must be provided: musicVolume or sfxVolume
+```
+
+- **400 Bad Request** - Invalid musicVolume type:
+```
+Invalid musicVolume: must be an integer
+```
+
+- **400 Bad Request** - Invalid musicVolume range:
+```
+Invalid musicVolume: must be between 0 and 100
+```
+
+- **400 Bad Request** - Invalid sfxVolume type:
+```
+Invalid sfxVolume: must be an integer
+```
+
+- **400 Bad Request** - Invalid sfxVolume range:
+```
+Invalid sfxVolume: must be between 0 and 100
+```
+
+- **404 Not Found** - User not found:
+```
+User not found
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Partial Update Support**:
+This endpoint supports partial updates, meaning you can:
+- Update only `musicVolume`
+- Update only `sfxVolume`
+- Update both settings simultaneously
+- Omit unchanged settings from the request body
+
+**Auto-Creation Behavior**:
+If no settings exist for the user, the endpoint automatically creates them:
+- Provided settings use the specified values
+- Missing settings use defaults (musicVolume: 70, sfxVolume: 80)
+- Timestamp is set to current time
+
+**Validation Rules**:
+- **Volume Range**: Both musicVolume and sfxVolume must be between 0 and 100 (inclusive)
+- **Data Types**: Volume values must be integers
+- **Required Fields**: At least one setting (musicVolume or sfxVolume) must be provided
+- **User Validation**: User must exist in the users table
+
+**Database Operations**:
+The endpoint performs intelligent UPSERT operations:
+1. **If settings don't exist**: INSERT new record with provided/default values
+2. **If settings exist**: UPDATE only the provided fields + timestamp
+3. **Always updates**: last_updated timestamp to NOW()
+
+**Example Usage**:
+```bash
+# Update both settings
+curl -X PUT http://localhost:3000/api/users/123/settings \
+  -H "Content-Type: application/json" \
+  -d '{"musicVolume": 75, "sfxVolume": 85}'
+
+# Update only music volume
+curl -X PUT http://localhost:3000/api/users/123/settings \
+  -H "Content-Type: application/json" \
+  -d '{"musicVolume": 90}'
+
+# Update only SFX volume
+curl -X PUT http://localhost:3000/api/users/123/settings \
+  -H "Content-Type: application/json" \
+  -d '{"sfxVolume": 60}'
+```
+
+**Integration Points**:
+- Settings page save functionality
+- In-game volume controls
+- User preference persistence
+- Real-time audio adjustments
+
+**Data Flow**:
+1. User adjusts settings in UI (settings page or in-game controls)
+2. Frontend validates settings ranges (0-100)
+3. Frontend calls this endpoint with new settings
+4. API validates user existence and setting values
+5. Settings updated/created in database with timestamp
+6. Updated settings returned for UI confirmation
+7. Frontend applies new settings to audio system
+
+**Frontend Integration**:
+```javascript
+import { updatePlayerSettings } from '../../utils/api.js';
+
+// Update both settings
+const result = await updatePlayerSettings(userId, {
+    musicVolume: 75,
+    sfxVolume: 85
+});
+
+// Update single setting
+const result = await updatePlayerSettings(userId, {
+    musicVolume: 90
+});
+
+// Apply settings to game audio
+if (result.settings) {
+    audioManager.setMusicVolume(result.settings.music_volume);
+    audioManager.setSfxVolume(result.settings.sfx_volume);
+}
+```
+
 ### POST /api/runs
 Creates a new game run for a specific user.
 
