@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Integration Test - Shattered Timeline</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            text-align: center;
+            color: #ff4d4d;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            background: #2a2a2a;
+            color: #fff;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #e03d3d;
+        }
+        button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+        .message {
+            padding: 12px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+        .error {
+            background-color: #dc3545;
+            color: white;
+        }
+        .success {
+            background-color: #28a745;
+            color: white;
+        }
+        .info {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        code {
+            background: #444;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Registration Test</h1>
+        
+        <div class="info">
+            <strong>Prerequisites:</strong><br>
+            1. API server running on <code>http://localhost:3000</code><br>
+            2. MySQL database configured with the correct schema<br>
+            3. Open this file directly in your browser
+        </div>
+
+        <form id="register-form">
+            <input type="text" id="username" placeholder="Username" required minlength="3">
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required minlength="6">
+            <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+            <button type="submit">Create Account</button>
+        </form>
+
+        <div id="error-message" class="message error"></div>
+        <div id="success-message" class="message success"></div>
+    </div>
+
+    <script>
+        // API configuration
+        const API_BASE_URL = 'http://localhost:3000/api';
+
+        // Get form elements
+        const form = document.getElementById('register-form');
+        const errorMessage = document.getElementById('error-message');
+        const successMessage = document.getElementById('success-message');
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Clear messages
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+            
+            // Get form values
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                errorMessage.textContent = 'Passwords do not match';
+                errorMessage.style.display = 'block';
+                return;
+            }
+            
+            // Get submit button
+            const submitButton = form.querySelector('button[type="submit"]');
+            
+            try {
+                // Disable button
+                submitButton.disabled = true;
+                submitButton.textContent = 'Creating account...';
+                
+                // Make API request
+                const response = await fetch(`${API_BASE_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Success
+                    successMessage.textContent = `Account created successfully! User ID: ${data.userId}`;
+                    successMessage.style.display = 'block';
+                    form.reset();
+                } else {
+                    // Error
+                    throw new Error(data.message || 'Registration failed');
+                }
+                
+            } catch (error) {
+                errorMessage.textContent = error.message || 'Failed to connect to server';
+                errorMessage.style.display = 'block';
+            } finally {
+                // Re-enable button
+                submitButton.disabled = false;
+                submitButton.textContent = 'Create Account';
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -21,6 +21,7 @@ export class FloorGenerator {
         this.roomStates = []; // Store room instances with enemy states for persistence
         this.visitedRooms = new Set(); // Track which rooms have been visited
         this.generateFloor();
+        this.lastLoggedRoomIndex = null; // Track last logged room index to avoid duplicate logs
     }
 
     // Generates a new floor with random rooms
@@ -86,7 +87,11 @@ export class FloorGenerator {
         const roomType = this.roomTypes[roomIndex]; // Get the room type
         const isCombatRoom = roomType === 'combat';
 
-        log.info(`Getting room ${roomIndex} (${roomType})`);
+        // Print only when room index changes
+        if (roomIndex !== this.lastLoggedRoomIndex) {
+            log.info(`Getting room ${roomIndex} (${roomType})`);
+            this.lastLoggedRoomIndex = roomIndex;
+        }
 
         // Check if we already have a saved state for this room
         if (this.roomStates[roomIndex]) {
