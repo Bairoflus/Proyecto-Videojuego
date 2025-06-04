@@ -2643,3 +2643,314 @@ async function initializeShop() {
 - Basic field validation
 - **Passwords hashed with bcrypt** (10 salt rounds)
 - **CORS enabled** for frontend integration 
+
+### POST /api/runs/:runId/events
+Logs player events during an active game run for analytics and debugging purposes.
+
+**URL**: `/api/runs/{runId}/events`
+
+**Method**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body** (supports batch event logging):
+```json
+{
+  "userId": 123,
+  "events": [
+    {
+      "eventType": "weapon_fire",
+      "roomId": 2,
+      "value": 45,
+      "weaponType": "pistol",
+      "context": "enemy_combat"
+    },
+    {
+      "eventType": "item_pickup",
+      "roomId": 2,
+      "value": 1,
+      "context": "health_potion"
+    },
+    {
+      "eventType": "room_enter",
+      "roomId": 3
+    }
+  ]
+}
+```
+
+**Body** (single event example):
+```json
+{
+  "userId": 123,
+  "events": [
+    {
+      "eventType": "player_death",
+      "roomId": 5,
+      "weaponType": "sword",
+      "context": "boss_fight"
+    }
+  ]
+}
+```
+
+**Success Response** (201 Created):
+```json
+{
+  "message": "3 event(s) logged successfully",
+  "eventsLogged": 3,
+  "eventIds": [1001, 1002, 1003]
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Missing runId parameter:
+```
+Missing runId parameter
+```
+
+- **400 Bad Request** - Missing required fields:
+```
+Missing required fields: userId, events
+```
+
+- **400 Bad Request** - Invalid field types:
+```
+Invalid field types: userId, runId must be integers
+```
+
+- **400 Bad Request** - Invalid events format:
+```
+Invalid events: must be an array
+```
+
+- **400 Bad Request** - Empty events array:
+```
+Events array cannot be empty
+```
+
+- **400 Bad Request** - Too many events (rate limiting):
+```
+Too many events: maximum 100 events per request
+```
+
+- **400 Bad Request** - Event validation errors:
+```
+Event 0: Missing required fields: eventType, roomId
+Event 1: eventType must be string
+Event 2: roomId must be integer
+Event 3: value must be integer
+Event 4: eventType too long (max 50 characters)
+Event 5: weaponType too long (max 20 characters)
+Event 6: context too long (max 50 characters)
+```
+
+- **400 Bad Request** - User ID mismatch:
+```
+User ID does not match run owner
+```
+
+- **400 Bad Request** - Run already completed:
+```
+Run is already completed
+```
+
+- **400 Bad Request** - Invalid event types:
+```
+Invalid event types: invalid_event, another_invalid_event
+```
+
+- **400 Bad Request** - Invalid room IDs:
+```
+Invalid room IDs: 999, 888
+```
+
+- **404 Not Found** - Run not found:
+```
+Run not found
+```
+
+- **500 Internal Server Error** - Database error:
+```
+Database error
+```
+
+**Usage Restrictions**:
+This endpoint is **NOT** exposed in the landing page or main user interface. It should **ONLY** be called:
+
+1. **During active gameplay** - When tracking player actions and events
+2. **For active runs only** - Cannot log events for completed runs
+3. **With valid game data** - Must reference existing runs, event types, and rooms
+4. **By the run owner** - userId must match the run's user_id
+5. **Rate limited** - Maximum 100 events per request to prevent abuse
+6. **Non-blocking** - Should not affect gameplay performance
+
+**Database Schema Requirements**:
+The endpoint validates against the actual database schema:
+
+**player_events table**:
+```sql
+CREATE TABLE player_events (
+  event_id INT AUTO_INCREMENT PRIMARY KEY,
+  run_id INT NOT NULL,
+  user_id INT NOT NULL,
+  room_id INT NOT NULL,
+  event_type VARCHAR(50) NOT NULL,
+  value INT,
+  weapon_type VARCHAR(20),
+  context VARCHAR(50),
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (run_id) REFERENCES run_history(run_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (room_id) REFERENCES rooms(room_id),
+  FOREIGN KEY (event_type) REFERENCES event_types(event_type)
+);
+```
+
+**event_types table** (lookup):
+```sql
+CREATE TABLE event_types (
+  event_type VARCHAR(50) NOT NULL PRIMARY KEY
+);
+```
+
+**Event Structure Validation**:
+Each event in the events array must have:
+- **eventType** (required): String, max 50 characters, must exist in event_types table
+- **roomId** (required): Integer, must exist in rooms table
+- **value** (optional): Integer, for numeric event data
+- **weaponType** (optional): String, max 20 characters, weapon used during event
+- **context** (optional): String, max 50 characters, additional event context
+
+**Batch Processing Features**:
+- **Efficient validation**: Validates all unique event types and room IDs in batch queries
+- **Atomic operations**: All events inserted in parallel for performance
+- **Rate limiting**: Maximum 100 events per request prevents abuse
+- **Detailed error reporting**: Specific validation errors for each event with index
+
+**Common Event Types**:
+- `weapon_fire` - Player fires a weapon
+- `item_pickup` - Player collects an item
+- `room_enter` - Player enters a new room
+- `enemy_encounter` - Player encounters an enemy
+- `player_death` - Player dies
+- `ability_use` - Player uses a special ability
+- `chest_open` - Player opens a chest
+- `shop_visit` - Player visits a shop
+- `upgrade_purchase` - Player buys an upgrade
+- `boss_encounter` - Player encounters a boss
+
+**Example Usage**:
+```bash
+# Log multiple events
+curl -X POST http://localhost:3000/api/runs/123/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 123,
+    "events": [
+      {
+        "eventType": "weapon_fire",
+        "roomId": 2,
+        "value": 45,
+        "weaponType": "pistol",
+        "context": "enemy_combat"
+      },
+      {
+        "eventType": "item_pickup",
+        "roomId": 2,
+        "value": 1,
+        "context": "health_potion"
+      }
+    ]
+  }'
+
+# Log single event
+curl -X POST http://localhost:3000/api/runs/123/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 123,
+    "events": [
+      {
+        "eventType": "player_death",
+        "roomId": 5,
+        "context": "boss_fight"
+      }
+    ]
+  }'
+```
+
+**Integration Points**:
+- Game action tracking throughout gameplay
+- Analytics data collection for game balancing
+- Player behavior analysis for UX improvements
+- Debugging and troubleshooting player issues
+- A/B testing and feature usage tracking
+
+**Data Flow**:
+1. Player performs action during gameplay
+2. Game engine captures event details
+3. Frontend buffers events for batch processing (recommended)
+4. Frontend calls this endpoint with event batch
+5. API validates run ownership and entity existence
+6. Events validated against event_types and rooms tables
+7. All events inserted in parallel for performance
+8. Returns confirmation with event IDs for tracking
+
+**Performance Considerations**:
+- **Batch logging**: Use arrays of events to reduce API calls
+- **Async processing**: Events logged without blocking gameplay
+- **Rate limiting**: 100 events per request prevents system overload
+- **Buffer strategy**: Frontend should buffer events and send periodically
+- **Non-critical**: Event logging failures should not break gameplay
+
+**Frontend Integration Examples**:
+```javascript
+import { logPlayerEvents, logPlayerEvent } from '../../utils/api.js';
+
+// Log multiple events (recommended for performance)
+const events = [
+  {
+    eventType: 'weapon_fire',
+    roomId: currentRoomId,
+    value: damageDealt,
+    weaponType: weapon.type,
+    context: 'enemy_combat'
+  },
+  {
+    eventType: 'enemy_kill',
+    roomId: currentRoomId,
+    value: enemy.id,
+    weaponType: weapon.type
+  }
+];
+
+await logPlayerEvents(runId, { userId, events });
+
+// Log single event (convenience function)
+await logPlayerEvent(runId, userId, {
+  eventType: 'room_enter',
+  roomId: newRoomId
+});
+
+// Error handling
+try {
+  await logPlayerEvents(runId, { userId, events });
+} catch (error) {
+  console.warn('Event logging failed:', error);
+  // Continue gameplay - don't break on logging errors
+}
+```
+
+**Analytics Use Cases**:
+- **Player progression**: Track room transitions and completion rates
+- **Combat analysis**: Weapon usage, damage dealt, death causes
+- **Item economy**: Pickup patterns, shop purchases, upgrade choices
+- **Difficulty balancing**: Player death locations, common failure points
+- **Feature usage**: Which abilities/weapons are used most/least
+- **Session analysis**: Play patterns, session length, engagement metrics
+
+### POST /api/runs/:runId/upgrade-purchase

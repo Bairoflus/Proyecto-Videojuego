@@ -349,5 +349,44 @@ export async function getItemTypes() {
     });
 }
 
+/**
+ * Log player events during gameplay (supports batch logging)
+ * @param {string|number} runId - Run ID where the events occurred
+ * @param {Object} eventData - Event logging data
+ * @param {number} eventData.userId - User ID who performed the actions
+ * @param {Array<Object>} eventData.events - Array of events to log
+ * @param {string} eventData.events[].eventType - Type of event (must exist in event_types)
+ * @param {number} eventData.events[].roomId - Room ID where the event occurred
+ * @param {number} [eventData.events[].value] - Optional numeric value associated with the event
+ * @param {string} [eventData.events[].weaponType] - Optional weapon type used (max 20 chars)
+ * @param {string} [eventData.events[].context] - Optional event context (max 50 chars)
+ * @returns {Promise<Object>} Event logging confirmation with eventIds
+ */
+export async function logPlayerEvents(runId, eventData) {
+    return apiRequest(`/runs/${runId}/events`, {
+        method: 'POST',
+        body: JSON.stringify(eventData)
+    });
+}
+
+/**
+ * Log a single player event (convenience function)
+ * @param {string|number} runId - Run ID where the event occurred
+ * @param {number} userId - User ID who performed the action
+ * @param {Object} event - Single event to log
+ * @param {string} event.eventType - Type of event (must exist in event_types)
+ * @param {number} event.roomId - Room ID where the event occurred
+ * @param {number} [event.value] - Optional numeric value associated with the event
+ * @param {string} [event.weaponType] - Optional weapon type used (max 20 chars)
+ * @param {string} [event.context] - Optional event context (max 50 chars)
+ * @returns {Promise<Object>} Event logging confirmation with eventIds
+ */
+export async function logPlayerEvent(runId, userId, event) {
+    return logPlayerEvents(runId, {
+        userId: userId,
+        events: [event]
+    });
+}
+
 // Export the base request function for future use
 export { apiRequest }; 

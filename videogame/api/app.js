@@ -1188,6 +1188,194 @@ app.post('/api/runs/:runId/boss-kill', async (req, res) => {
     }
 });
 
+// POST /api/runs/:runId/events
+app.post('/api/runs/:runId/events', async (req, res) => {
+    let connection;
+    
+    try {
+        // Get runId from URL parameters
+        const { runId } = req.params;
+        
+        // Get data from request body - support both single event and batch events
+        const { userId, events } = req.body;
+        
+        // Basic validation - runId parameter
+        if (!runId) {
+            return res.status(400).send('Missing runId parameter');
+        }
+        
+        // Input validation - required fields
+        if (!userId || !events) {
+            return res.status(400).send('Missing required fields: userId, events');
+        }
+        
+        // Type validation - userId and runId must be integers
+        if (!Number.isInteger(Number(userId)) || !Number.isInteger(Number(runId))) {
+            return res.status(400).send('Invalid field types: userId, runId must be integers');
+        }
+        
+        // Events validation - must be array
+        if (!Array.isArray(events)) {
+            return res.status(400).send('Invalid events: must be an array');
+        }
+        
+        // Batch size validation - prevent abuse
+        if (events.length === 0) {
+            return res.status(400).send('Events array cannot be empty');
+        }
+        
+        if (events.length > 100) {
+            return res.status(400).send('Too many events: maximum 100 events per request');
+        }
+        
+        // Validate each event structure
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i];
+            
+            if (!event.eventType || !event.roomId) {
+                return res.status(400).send(`Event ${i}: Missing required fields: eventType, roomId`);
+            }
+            
+            if (typeof event.eventType !== 'string') {
+                return res.status(400).send(`Event ${i}: eventType must be string`);
+            }
+            
+            if (!Number.isInteger(Number(event.roomId))) {
+                return res.status(400).send(`Event ${i}: roomId must be integer`);
+            }
+            
+            // Optional field validations
+            if (event.value !== undefined && !Number.isInteger(Number(event.value))) {
+                return res.status(400).send(`Event ${i}: value must be integer`);
+            }
+            
+            if (event.weaponType !== undefined && typeof event.weaponType !== 'string') {
+                return res.status(400).send(`Event ${i}: weaponType must be string`);
+            }
+            
+            if (event.context !== undefined && typeof event.context !== 'string') {
+                return res.status(400).send(`Event ${i}: context must be string`);
+            }
+            
+            // String length validations
+            if (event.eventType.length > 50) {
+                return res.status(400).send(`Event ${i}: eventType too long (max 50 characters)`);
+            }
+            
+            if (event.weaponType && event.weaponType.length > 20) {
+                return res.status(400).send(`Event ${i}: weaponType too long (max 20 characters)`);
+            }
+            
+            if (event.context && event.context.length > 50) {
+                return res.status(400).send(`Event ${i}: context too long (max 50 characters)`);
+            }
+        }
+        
+        // Create database connection
+        connection = await mysql.createConnection({
+            host: 'localhost',
+            user: 'tc2005b',
+            password: 'qwer1234',
+            database: 'ProjectShatteredTimeline',
+            port: 3306
+        });
+        
+        // Validate runId exists and is active in run_history
+        const [runs] = await connection.execute(
+            'SELECT run_id, user_id, ended_at FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        if (runs.length === 0) {
+            return res.status(404).send('Run not found');
+        }
+        
+        // Validate userId matches the run owner
+        if (runs[0].user_id !== parseInt(userId)) {
+            return res.status(400).send('User ID does not match run owner');
+        }
+        
+        // Validate run is still active
+        if (runs[0].ended_at !== null) {
+            return res.status(400).send('Run is already completed');
+        }
+        
+        // Validate all event types exist and all rooms exist - batch validation
+        const eventTypes = [...new Set(events.map(e => e.eventType))]; // unique event types
+        const roomIds = [...new Set(events.map(e => e.roomId))]; // unique room ids
+        
+        // Check event types
+        if (eventTypes.length > 0) {
+            const placeholders = eventTypes.map(() => '?').join(',');
+            const [validEventTypes] = await connection.execute(
+                `SELECT event_type FROM event_types WHERE event_type IN (${placeholders})`,
+                eventTypes
+            );
+            
+            const validEventTypeSet = new Set(validEventTypes.map(et => et.event_type));
+            const invalidEventTypes = eventTypes.filter(et => !validEventTypeSet.has(et));
+            
+            if (invalidEventTypes.length > 0) {
+                return res.status(400).send(`Invalid event types: ${invalidEventTypes.join(', ')}`);
+            }
+        }
+        
+        // Check room IDs
+        if (roomIds.length > 0) {
+            const placeholders = roomIds.map(() => '?').join(',');
+            const [validRooms] = await connection.execute(
+                `SELECT room_id FROM rooms WHERE room_id IN (${placeholders})`,
+                roomIds
+            );
+            
+            const validRoomSet = new Set(validRooms.map(r => r.room_id));
+            const invalidRoomIds = roomIds.filter(rid => !validRoomSet.has(parseInt(rid)));
+            
+            if (invalidRoomIds.length > 0) {
+                return res.status(400).send(`Invalid room IDs: ${invalidRoomIds.join(', ')}`);
+            }
+        }
+        
+        // Insert all events in a batch operation
+        const insertPromises = events.map(event => {
+            return connection.execute(
+                'INSERT INTO player_events (run_id, user_id, room_id, event_type, value, weapon_type, context) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [
+                    runId,
+                    userId,
+                    event.roomId,
+                    event.eventType,
+                    event.value || null,
+                    event.weaponType || null,
+                    event.context || null
+                ]
+            );
+        });
+        
+        // Execute all inserts
+        const results = await Promise.all(insertPromises);
+        
+        // Collect all event IDs
+        const eventIds = results.map(([result]) => result.insertId);
+        
+        // Success response
+        res.status(201).json({
+            message: `${events.length} event(s) logged successfully`,
+            eventsLogged: events.length,
+            eventIds: eventIds
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Database error');
+    } finally {
+        // Always close the connection
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 // POST /api/runs/:runId/upgrade-purchase
 app.post('/api/runs/:runId/upgrade-purchase', async (req, res) => {
     let connection;
