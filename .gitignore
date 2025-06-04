@@ -1,27 +1,53 @@
-# Node modules
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Node.js
 node_modules/
-
-# Environment variables
-.env
-
-# Build files
-dist/
-build/
-
-# IDE files
-.vscode/
-.idea/
-
-# Logs
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# OS files
-.DS_Store
-Thumbs.db
+# Archivos de entorno y configuración sensible
+.env
+.env.*
 
-# Project specific
-BACKEND_FRONTEND_INTEGRATION_ANALISYS.md
-BACKEND_FRONTEND_INTEGRATION_ISSUES.md
+# IDEs y editores
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Archivos temporales y de editor
+*.log
+*.tmp
+*.swp
+*~
+
+# Compilación y distribución
+dist/
+build/
+out/
+coverage/
+
+# Bases de datos temporales y de prueba
+*.sqlite
+*.db
+
+# Archivos de test temporales SQL (específicos del proyecto)
+*test_data.sql
+*_test.sql
+videogame/database/*test*.sql
+
+# Archivos de análisis y reportes temporales
+videogame/BACKEND_FRONTEND_INTEGRATION_ANALYSIS.md
+videogame/BACKEND_FRONTEND_INTEGRATION_ISSUES.md
+*IMPLEMENTATION_REPORT.md
+*CLEANUP_REPORT.md
+*TEST_REPORT.md
+
+# Archivos de respaldo y temporales
+*.bak
+*.backup
+*.swp
+*.swo
