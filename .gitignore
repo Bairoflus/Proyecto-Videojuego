@@ -49,6 +49,9 @@ videogame/BACKEND_FRONTEND_INTEGRATION_ISSUES.md
 # Carpeta de reportes del proyecto
 videogame/reports/
 
+# Archivos de test temporales HTML
+videogame/src/pages/html/admin-test-*.html
+
 # Archivos de respaldo y temporales
 *.bak
 *.backup

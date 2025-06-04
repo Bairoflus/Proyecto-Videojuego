@@ -10,6 +10,7 @@ import { FLOOR_CONSTANTS } from '../../constants/gameConstants.js';
 import { DragonBoss } from '../enemies/floor1/DragonBoss.js';
 import { Vec } from '../../utils/Vec.js';
 import { createRun, completeRun } from '../../utils/api.js';
+import { roomMapping } from '../../utils/roomMapping.js';
 
 export class FloorGenerator {
     constructor() {
@@ -21,7 +22,61 @@ export class FloorGenerator {
         this.roomTypes = []; // Track room types: 'combat', 'shop', 'boss'
         this.roomStates = []; // Store room instances with enemy states for persistence
         this.visitedRooms = new Set(); // Track which rooms have been visited
+        this.roomMappingInitialized = false; // Track room mapping initialization status
         this.generateFloor();
+        this.initializeRoomMapping(); // Initialize room mapping service
+    }
+
+    // Initialize room mapping service for room ID resolution
+    async initializeRoomMapping() {
+        try {
+            log.info("Initializing room mapping service in FloorGenerator...");
+            const success = await roomMapping.initialize();
+            this.roomMappingInitialized = success;
+            
+            if (success) {
+                log.info("Room mapping service initialized successfully");
+                log.debug("Room mapping debug info:", roomMapping.getDebugInfo());
+            } else {
+                log.warn("Room mapping service failed to initialize, using fallback mappings");
+            }
+        } catch (error) {
+            log.error("Error initializing room mapping service:", error);
+            this.roomMappingInitialized = false;
+        }
+    }
+
+    // Gets current room ID for backend API calls
+    getCurrentRoomId() {
+        try {
+            const currentFloor = this.getCurrentFloor();
+            const frontendIndex = this.getCurrentRoomIndex();
+            const roomType = this.getCurrentRoomType();
+            
+            if (roomType) {
+                const roomId = roomMapping.getRoomId(frontendIndex, currentFloor, roomType);
+                log.debug(`FloorGenerator: getCurrentRoomId() -> ${roomId} (floor: ${currentFloor}, index: ${frontendIndex}, type: ${roomType})`);
+                return roomId;
+            } else {
+                log.warn("No room type available for current room, using fallback ID");
+                return 1; // Ultimate fallback
+            }
+        } catch (error) {
+            log.error("Error getting current room ID:", error);
+            return 1; // Ultimate fallback for error scenarios
+        }
+    }
+
+    // Gets room data for current room from mapping service
+    getCurrentRoomData() {
+        const roomId = this.getCurrentRoomId();
+        return roomMapping.getRoomData(roomId);
+    }
+
+    // Validates if current room ID is valid in backend
+    isCurrentRoomIdValid() {
+        const roomId = this.getCurrentRoomId();
+        return roomMapping.isValidRoomId(roomId);
     }
 
     // Generates a new floor with random rooms
