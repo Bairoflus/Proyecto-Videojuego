@@ -6,6 +6,7 @@ import { variables, keyDirections } from "../../config.js";
 import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
 import { Boss } from "../entities/Boss.js";
+import { saveRunState } from "../../utils/api.js";
 
 export class Game {
   constructor() {
@@ -17,6 +18,10 @@ export class Game {
     this.gameState = "loading"; // loading, playing, paused, gameover
     this.debug = false;
     this.lastTime = 0;
+    
+    // Auto-save timing
+    this.lastAutoSave = 0;
+    this.autoSaveInterval = 30000; // 30 seconds
     
     // Run statistics tracking
     this.runStats = {
@@ -157,6 +162,12 @@ export class Game {
     console.log("=== COMPLETE GAME RESET AFTER DEATH ===");
 
     try {
+      // Auto-save final state before death reset
+      console.log("💀 Auto-saving final state before death reset...");
+      this.saveCurrentState().catch(error => {
+        console.error("Failed to save final state before death:", error);
+      });
+
       // Reset run statistics for new run
       this.resetRunStats();
       
@@ -196,6 +207,10 @@ export class Game {
     }
 
     if (this.currentRoom.canTransition()) {
+      // Auto-save current state before room transition
+      console.log(`🔄 Auto-saving before ${direction} room transition...`);
+      await this.saveCurrentState();
+
       this.floorGenerator.updateRoomState(
         this.floorGenerator.getCurrentRoomIndex(),
         this.currentRoom
@@ -217,6 +232,11 @@ export class Game {
         this.player.keys = [];
         this.enemies = this.currentRoom.objects.enemies;
       }
+
+      // Auto-save after successful room transition
+      console.log(`💾 Auto-saving after successful ${direction} room transition...`);
+      await this.saveCurrentState();
+
     } else {
       console.log(
         direction === "right"
@@ -283,6 +303,15 @@ export class Game {
         this.currentRoom.shopCanBeOpened = false;
       });
     }
+
+    // Auto-save current state periodically
+    const currentTime = Date.now();
+    if (currentTime - this.lastAutoSave >= this.autoSaveInterval) {
+      this.saveCurrentState().catch(error => {
+        console.error("Failed to auto-save game state:", error);
+      });
+      this.lastAutoSave = currentTime;
+    }
   }
 
   // Event listeners
@@ -346,6 +375,56 @@ export class Game {
       totalKills: this.runStats.totalKills,
       goldCollected: this.player ? this.player.getGold() : 0
     };
+  }
+
+  // Save current game state to backend
+  async saveCurrentState() {
+    try {
+      // Get required data from localStorage
+      const userId = localStorage.getItem('currentUserId');
+      const sessionId = localStorage.getItem('currentSessionId');
+      const runId = localStorage.getItem('currentRunId');
+
+      // Validate required data exists
+      if (!userId || !sessionId || !runId) {
+        console.warn('Save state skipped: Missing required session data', {
+          userId: !!userId,
+          sessionId: !!sessionId,
+          runId: !!runId
+        });
+        return false;
+      }
+
+      // Get current room ID from floor generator
+      const roomId = this.floorGenerator.getCurrentRoomId();
+      if (!roomId) {
+        console.warn('Save state skipped: Could not determine current room ID');
+        return false;
+      }
+
+      // Collect current player state
+      const stateData = {
+        userId: parseInt(userId),
+        sessionId: parseInt(sessionId),
+        roomId: roomId,
+        currentHp: this.player.health,
+        currentStamina: this.player.stamina,
+        gold: this.player.gold
+      };
+
+      console.log('Saving game state:', stateData);
+
+      // Call save state API
+      const result = await saveRunState(runId, stateData);
+      
+      console.log('✅ Game state saved successfully:', result);
+      return true;
+
+    } catch (error) {
+      console.error('❌ Failed to save game state:', error);
+      // Don't throw error to prevent game disruption
+      return false;
+    }
   }
 
   // Game state management methods
