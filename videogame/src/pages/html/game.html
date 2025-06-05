@@ -143,38 +143,36 @@
     }
 
     // Validate session before initializing game
-    if (!validateSession()) {
-      return; // Stop execution if session invalid
-    }
+    if (validateSession()) {
+      // Handle logout functionality
+      logoutButton.addEventListener('click', async () => {
+        // Confirm logout action
+        const confirmLogout = confirm('Are you sure you want to logout? Any unsaved progress may be lost.');
+        if (!confirmLogout) {
+          return;
+        }
+        
+        await performLogout();
+      });
 
-    // Handle logout functionality
-    logoutButton.addEventListener('click', async () => {
-      // Confirm logout action
-      const confirmLogout = confirm('Are you sure you want to logout? Any unsaved progress may be lost.');
-      if (!confirmLogout) {
-        return;
+      // Initialize game
+      try {
+        status.textContent = 'Loading modules...';
+
+        // Import main game module
+        const { main } = await import('/main.js');
+
+        status.textContent = 'Starting game...';
+        main();
+        status.style.display = 'none'; // Hide status once game is running
+
+      } catch (error) {
+        status.textContent = 'Error loading game: ' + error.message;
+        console.error('Game initialization error:', error);
+        
+        // If game fails to load, provide option to logout
+        logoutButton.style.display = 'block';
       }
-      
-      await performLogout();
-    });
-
-    // Initialize game
-    try {
-      status.textContent = 'Loading modules...';
-
-      // Import main game module
-      const { main } = await import('../../main.js');
-
-      status.textContent = 'Starting game...';
-      main();
-      status.style.display = 'none'; // Hide status once game is running
-
-    } catch (error) {
-      status.textContent = 'Error loading game: ' + error.message;
-      console.error('Game initialization error:', error);
-      
-      // If game fails to load, provide option to logout
-      logoutButton.style.display = 'block';
     }
   </script>
 </body>

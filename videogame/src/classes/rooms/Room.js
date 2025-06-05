@@ -82,7 +82,7 @@ export class Room {
               8
             );
             coin.setSprite(
-              "/assets/sprites/coin_gold.png",
+              "/assets/sprites/hud/gold_coin.png",
               new Rect(0, 0, 32, 32)
             );
             coin.setAnimation(0, 7, true, variables.animationDelay);

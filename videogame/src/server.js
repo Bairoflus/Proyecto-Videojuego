@@ -1,9 +1,14 @@
 /**
  * Simple HTTP server for serving frontend files during development
  */
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get current directory in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PORT = 8080;
 
@@ -31,7 +36,15 @@ const server = http.createServer((req, res) => {
   }
 
   // Parse URL for other paths
-  let filePath = '.' + req.url;
+  let filePath;
+  if (req.url.startsWith('/pages/') || req.url.startsWith('/assets/') || req.url.startsWith('/utils/') || req.url.startsWith('/classes/') || req.url.startsWith('/constants/')) {
+    filePath = path.join(__dirname, req.url);
+  } else if (req.url.endsWith('.js') && !req.url.includes('/')) {
+    // Serve JS files directly from src directory (like main.js)
+    filePath = path.join(__dirname, req.url);
+  } else {
+    filePath = path.join(__dirname, '..', req.url);
+  }
   
   const extname = String(path.extname(filePath)).toLowerCase();
   const contentType = mimeTypes[extname] || 'application/octet-stream';
@@ -39,7 +52,8 @@ const server = http.createServer((req, res) => {
   fs.readFile(filePath, (error, content) => {
     if (error) {
       if (error.code === 'ENOENT') {
-        fs.readFile('./pages/404.html', (error, content) => {
+        const notFoundPath = path.join(__dirname, '..', 'pages', '404.html');
+        fs.readFile(notFoundPath, (error, content) => {
           res.writeHead(404, { 'Content-Type': 'text/html' });
           res.end(content || '404 Not Found', 'utf-8');
         });
