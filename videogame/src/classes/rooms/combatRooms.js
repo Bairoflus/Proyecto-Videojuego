@@ -7,8 +7,8 @@
 // '.' = Empty space
 
 export const COMBAT_ROOMS = [
-// 1. 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 1. 
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W..........WWW..........W
 W.......................W
 W.......................W
@@ -27,8 +27,8 @@ W.......................W
 W.......................W
 W..........WWW..........W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 2. 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 2. 
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
 W.......................W
@@ -47,8 +47,8 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 3. 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 3. 
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
 W.......................W
@@ -67,8 +67,8 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 4. 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 4. 
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W..........WWWW.........W
 W.......................W
 W.......................W
@@ -87,8 +87,8 @@ W.......................W
 W.......................W
 W..........WWWW.........W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 5.
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 5.
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
 W.......................W
@@ -107,8 +107,8 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 6. 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 6. 
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
 W.......................W
@@ -127,8 +127,8 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 7. 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 7. 
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
 W.......................W
@@ -147,8 +147,8 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 8. 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 8. 
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
 W.....WWWW..............W
@@ -167,8 +167,8 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 9. 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 9. 
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W......WWWWWWWW.........W
 W............WW.........W
 W.............W.........W
@@ -187,8 +187,8 @@ W.............W.........W
 W............WW.........W
 W......WWWWWWWW.........W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 10. 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 10. 
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
 W.......................W
@@ -207,8 +207,8 @@ W.......................W
 W.......................W
 W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 11.
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 11.
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W...............WWWWW...W
 W.................WWW...W
 W..................WW...W
@@ -227,8 +227,8 @@ W.......................W
 W.......................W
 W...WWWWW...............W
 WWWWWWWWWWWWWWWWWWWWWWWWW`,
-// 12. 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+    // 12. 
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
 W.......................W
@@ -250,8 +250,8 @@ WWWWWWWWWWWWWWWWWWWWWWWWW`
 ];
 
 // Shop room layout
-export const SHOP_ROOM_LAYOUT = 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+export const SHOP_ROOM_LAYOUT =
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
 W.......................W
@@ -272,8 +272,8 @@ W.......................W
 WWWWWWWWWWWWWWWWWWWWWWWWW`;
 
 // Boss room layout
-export const BOSS_ROOM_LAYOUT = 
-`WWWWWWWWWWWWWWWWWWWWWWWWW
+export const BOSS_ROOM_LAYOUT =
+    `WWWWWWWWWWWWWWWWWWWWWWWWW
 W.......................W
 W.......................W
 W.......................W
@@ -281,9 +281,9 @@ W.......................W
 W.......................W
 W.......................W
 W.......................W
-W...........WW..........W
-W...........WW..........W
-W...........WW..........W
+W.......................W
+W.......................W
+W.......................W
 W.......................W
 W.......................W
 W.......................W

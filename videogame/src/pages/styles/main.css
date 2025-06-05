@@ -10,7 +10,7 @@
 body {
   color: #fff;
   min-height: 100vh;
-  background-image: url('../../assets/pages_background.png');
+  background-image: url('../../assets/backgrounds/pages_background.png');
   background-size: cover;
   background-position: center;
 }

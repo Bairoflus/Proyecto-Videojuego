@@ -17,6 +17,9 @@ export class AnimatedObject extends GameObject {
     this.repeat = true;
     this.frameDuration = ANIMATION_CONSTANTS.DEFAULT_DELAY;
     this.totalTime = 0;
+
+    // spriteRect will be set automatically when sprite is loaded via setSprite
+    this.spriteRect = null;
   }
 
   setAnimation(minFrame, maxFrame, repeat, duration) {
@@ -31,10 +34,31 @@ export class AnimatedObject extends GameObject {
   updateFrame(deltaTime) {
     this.totalTime += deltaTime;
     if (this.totalTime > this.frameDuration) {
-      let restart = this.repeat ? this.minFrame : this.frame;
-      this.frame = this.frame < this.maxFrame ? this.frame + 1 : restart;
-      this.spriteRect.x = this.frame % this.sheetCols;
-      this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
+      // Allow non-repeating animations to exceed maxFrame for completion detection
+      if (this.frame < this.maxFrame) {
+        this.frame++;
+      } else if (this.repeat) {
+        this.frame = this.minFrame;
+      } else {
+        this.frame++; // Allow exceeding maxFrame for non-repeating animations
+      }
+
+      // Ensure spriteRect exists before updating
+      if (this.spriteRect) {
+        const oldX = this.spriteRect.x;
+        const oldY = this.spriteRect.y;
+        this.spriteRect.x = this.frame % this.sheetCols;
+        this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
+
+        // Debug logging for sprite frame changes during attacks (only for significant changes)
+        if (
+          this.type === "player" &&
+          this.isAttacking &&
+          (oldX !== this.spriteRect.x || oldY !== this.spriteRect.y)
+        ) {
+          // Debug logging removed to reduce console spam
+        }
+      }
       this.totalTime = 0;
     }
   }

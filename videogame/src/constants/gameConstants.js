@@ -6,7 +6,7 @@
 // Player constants
 export const PLAYER_CONSTANTS = {
   // Base stats
-  MAX_HEALTH: 1000,
+  MAX_HEALTH: 2000,
   BASE_SPEED: 0.3,
   BASE_SIZE: { width: 64, height: 64 },
 
@@ -24,8 +24,8 @@ export const PLAYER_CONSTANTS = {
   INVULNERABILITY_DURATION: 1000, // ms
 
   // Attack constants
-  DAGGER_ATTACK_RANGE: 100,
-  DAGGER_ATTACK_WIDTH: 100,
+  DAGGER_ATTACK_RANGE: 50,
+  DAGGER_ATTACK_WIDTH: 50,
   DAGGER_ATTACK_DAMAGE: 100,
   DAGGER_STAMINA_COST: 8,
 
@@ -37,28 +37,109 @@ export const PLAYER_CONSTANTS = {
   RAYCAST_STEP_SIZE: 5,
 };
 
+// Sprite scaling constants for maintaining consistent character size
+export const SPRITE_SCALING_CONSTANTS = {
+  // Base character size (dagger sprites as reference)
+  BASE_CHARACTER_SIZE: 64,
+
+  // Scale factors for different weapon animations to maintain consistent character size
+  // These compensate for sprites where the character appears smaller due to larger frame dimensions
+  WEAPON_SCALE_FACTORS: {
+    // Dagger - 64x64 frames for both walk and slash
+    dagger: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 1.0, // 384x256 sprite, 64x64 per frame
+    },
+
+    // Crossbow - 64x64 frames for both walk and shoot
+    crossbow: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 1.0, // 512x256 sprite, 64x64 per frame
+    },
+
+    // Slingshot - 64x64 frames for both walk and shoot
+    slingshot: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 1.0, // 832x256 sprite, 64x64 per frame
+    },
+
+    // Lightsaber - 64x64 for walk, 192x192 for slash
+    lightsaber: {
+      walk: 1.0, // 576x256 sprite, 64x64 per frame
+      attack: 3.0, // 1152x768 sprite, 192x192 per frame (192/64 = 3, so we scale 3x to compensate)
+    },
+
+    // Katana - 128x128 frames for both walk and slash
+    katana: {
+      walk: 2.0, // 1152x512 sprite, 128x128 per frame
+      attack: 2.0, // 768x512 sprite, 128x128 per frame
+    },
+
+    // Bow - 128x128 for walk, 64x64 for shoot
+    bow: {
+      walk: 2.0, // 1152x512 sprite, 128x128 per frame
+      attack: 1.0, // 832x256 sprite, 64x64 per frame
+    },
+  },
+};
+
 // Enemy constants
 export const ENEMY_CONSTANTS = {
   // Goblin Dagger
   GOBLIN_DAGGER: {
-    size: { width: 32, height: 32 },
+    size: { width: 48, height: 48 }, // Increased from 32x32 to make them slightly bigger
     health: 20,
     damage: 10,
-    speed: PLAYER_CONSTANTS.BASE_SPEED * 0.7,
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 2,
     attackRange: 32,
     attackCooldown: 1000,
   },
 
+  // Sword Goblin - Stronger melee enemy, slightly slower than dagger goblin
+  SWORD_GOBLIN: {
+    size: { width: 48, height: 48 }, // Same size as other goblins
+    health: 25, // Slightly more health than dagger goblin
+    damage: 45, // Higher damage as specified
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 1.8, // Slightly slower than dagger goblin (2.0 -> 1.8)
+    attackRange: 32, // Same melee range
+    attackCooldown: 1000, // 1 second cooldown as specified
+  },
+
   // Goblin Archer
   GOBLIN_ARCHER: {
-    size: { width: 32, height: 32 },
+    size: { width: 48, height: 48 }, // Increased from 32x32 to make them slightly bigger
     health: 30,
     damage: 15,
-    speed: 0, // Static enemy
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 1.5, // Mobile archer that chases and retreats
     attackRange: 200,
     attackCooldown: 2000,
     projectileSpeed: 300,
     retreatDistance: 80,
+  },
+
+  // Mage Goblin
+  MAGE_GOBLIN: {
+    size: { width: 48, height: 48 },
+    health: 25,
+    damage: 25,
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 1.2, // Slower than archer
+    attackRange: 180,
+    attackCooldown: 3000, // 3-second cooldown
+    projectileSpeed: 250,
+    retreatDistance: 100, // Keeps distance while casting
+  },
+
+  // Great Bow Goblin - Enhanced version of Goblin Archer
+  GREAT_BOW_GOBLIN: {
+    size: { width: 48, height: 48 }, // Same size as other goblins
+    health: 30, // Same health as archer
+    damage: 30, // Double the archer's damage (15 * 2)
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 3.0, // Double the archer's speed (1.5 * 2)
+    attackRange: 200, // Same range as archer
+    attackCooldown: 2000, // Same cooldown as archer
+    projectileSpeed: 300, // Same projectile speed as archer
+    retreatDistance: 80, // Same retreat distance as archer
+    projectileRange: 300, // Same projectile range as archer
   },
 };
 
@@ -80,7 +161,7 @@ export const ROOM_CONSTANTS = {
   // Chest spawn
   CHEST_SIZE: 64,
   CHEST_SAFE_MARGIN: 32,
-  CHEST_GOLD_REWARD: 50,
+  CHEST_GOLD_REWARD: 500,
 };
 
 // UI constants
@@ -122,6 +203,50 @@ export const PHYSICS_CONSTANTS = {
   PROJECTILE_LIFETIME: 5000, // ms
 };
 
+// Projectile type registry for different sprites and properties
+export const PROJECTILE_TYPES = {
+  arrow: {
+    sprite: "../assets/sprites/projectiles/arrow.png",
+    width: 48,
+    height: 12,
+    damageBoxColor: "yellow",
+    damageBoxWidth: 36,
+    damageBoxHeight: 9,
+    scale: 1.5,
+    radius: 6, // For collision detection
+  },
+  fireball: {
+    sprite: "../assets/sprites/projectiles/fireball.png",
+    width: 24,
+    height: 24,
+    damageBoxColor: "orange",
+    damageBoxWidth: 20,
+    damageBoxHeight: 20,
+    scale: 1.2,
+    radius: 6,
+  },
+  magic_bolt: {
+    sprite: "../assets/sprites/projectiles/magic_bolt.png",
+    width: 16,
+    height: 16,
+    damageBoxColor: "yellow",
+    damageBoxWidth: 14,
+    damageBoxHeight: 14,
+    scale: 1.0,
+    radius: 3,
+  },
+  crossbow_bolt: {
+    sprite: "../assets/sprites/projectiles/crossbow_bolt.png",
+    width: 28,
+    height: 6,
+    damageBoxColor: "gray",
+    damageBoxWidth: 22,
+    damageBoxHeight: 4,
+    scale: 1.0,
+    radius: 3,
+  },
+};
+
 // Animation constants
 export const ANIMATION_CONSTANTS = {
   DEFAULT_DELAY: 100, // ms between frames
@@ -139,58 +264,58 @@ export const FLOOR_CONSTANTS = {
     COMBAT: 4,
     SHOP: 1,
     BOSS: 1,
-    TOTAL: 6
+    TOTAL: 6,
   },
   MAX_FLOORS_PER_RUN: 3,
-  INITIAL_RUN_COUNT: 1
+  INITIAL_RUN_COUNT: 1,
 };
 
 // Shop constants
 export const SHOP_CONSTANTS = {
   UI: {
-    BACKGROUND_COLOR: 'rgba(20, 20, 30, 0.95)',
-    BORDER_COLOR: '#444',
-    TEXT_COLOR: '#fff',
-    SELECTED_COLOR: '#4CAF50',
-    DISABLED_COLOR: '#666',
-    GOLD_COLOR: '#FFD700',
-    ERROR_COLOR: '#FF6B6B',
+    BACKGROUND_COLOR: "rgba(20, 20, 30, 0.95)",
+    BORDER_COLOR: "#444",
+    TEXT_COLOR: "#fff",
+    SELECTED_COLOR: "#4CAF50",
+    DISABLED_COLOR: "#666",
+    GOLD_COLOR: "#FFD700",
+    ERROR_COLOR: "#FF6B6B",
     WIDTH: 600,
     HEIGHT: 400,
     OPTION_HEIGHT: 100,
     PADDING: 20,
-    BORDER_WIDTH: 3
+    BORDER_WIDTH: 3,
   },
   FONTS: {
-    TITLE: 'bold 32px Arial',
-    GOLD: '20px Arial',
-    OPTION_NAME: 'bold 20px Arial',
-    DESCRIPTION: '16px Arial',
-    INSTRUCTIONS: '16px Arial',
-    PURCHASE_COUNT: '14px Arial'
+    TITLE: "bold 32px Arial",
+    GOLD: "20px Arial",
+    OPTION_NAME: "bold 20px Arial",
+    DESCRIPTION: "16px Arial",
+    INSTRUCTIONS: "16px Arial",
+    PURCHASE_COUNT: "14px Arial",
   },
   UPGRADES: {
     MELEE: {
-      NAME: 'Primary Weapon Upgrade',
-      DESCRIPTION: 'Increases melee damage by +3',
+      NAME: "Primary Weapon Upgrade",
+      DESCRIPTION: "Increases melee damage by +3",
       COST: 35,
       MAX_PURCHASES: 15,
-      DAMAGE_INCREASE: 3
+      DAMAGE_INCREASE: 3,
     },
     RANGED: {
-      NAME: 'Secondary Weapon Upgrade',
-      DESCRIPTION: 'Increases ranged damage by +4',
+      NAME: "Secondary Weapon Upgrade",
+      DESCRIPTION: "Increases ranged damage by +4",
       COST: 40,
       MAX_PURCHASES: 15,
-      DAMAGE_INCREASE: 4
+      DAMAGE_INCREASE: 4,
     },
     HEALTH: {
-      NAME: 'Full Health Restoration',
-      DESCRIPTION: 'Restores HP to maximum',
+      NAME: "Full Health Restoration",
+      DESCRIPTION: "Restores HP to maximum",
       COST: 50,
-      MAX_PURCHASES: Infinity
-    }
-  }
+      MAX_PURCHASES: Infinity,
+    },
+  },
 };
 
 // Debug constants

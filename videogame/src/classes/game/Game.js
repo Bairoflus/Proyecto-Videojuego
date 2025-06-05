@@ -5,6 +5,7 @@ import { Player } from "../entities/Player.js";
 import { variables, keyDirections } from "../../config.js";
 import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
+import { Boss } from "../entities/Boss.js";
 
 export class Game {
   constructor() {
@@ -26,11 +27,8 @@ export class Game {
     const startPos = this.currentRoom.getPlayerStartPosition();
 
     this.player = new Player(startPos, 64, 64, "red", 13);
-    this.player.setSprite(
-      "../assets/sprites/dagger-sprite-sheet.png",
-      new Rect(0, 0, 64, 64)
-    );
-    this.player.setAnimation(130, 130, false, variables.animationDelay);
+    // Initialize player with default weapon (melee) and proper animation
+    this.player.setWeapon("melee");
     this.player.setCurrentRoom(this.currentRoom);
 
     this.enemies = this.currentRoom.objects.enemies;
@@ -55,6 +53,11 @@ export class Game {
         variables.canvasHeight,
         this.player
       );
+    }
+    if (this.floorGenerator.isBossRoom()) {
+      const room = this.floorGenerator.getCurrentRoom();
+      const boss = room.objects.enemies.find((e) => e instanceof Boss);
+      drawBossHealthBar(ctx, boss);
     }
   }
 
@@ -97,13 +100,13 @@ export class Game {
 
     // Draw weapon icons
     const icons = [
-      { type: "dagger", img: "Sword.png" },
-      { type: "slingshot", img: "Bow.png" },
+      { type: "melee", img: "Sword.png" },
+      { type: "ranged", img: "Bow.png" },
     ];
 
     icons.forEach((icon, i) => {
       const iconImg = new Image();
-      iconImg.src = `../assets/sprites/${icon.img}`;
+      iconImg.src = `../assets/sprites/hud/${icon.img}`;
       const x = startX + i * (iconSize + 10);
       const y = startY;
 
@@ -133,7 +136,7 @@ export class Game {
 
     // Draw gold counter
     const goldIcon = new Image();
-    goldIcon.src = "../assets/sprites/gold_coin.png";
+    goldIcon.src = "../assets/sprites/hud/gold_coin.png";
     ctx.drawImage(goldIcon, 40, 100, 20, 20);
     ctx.fillStyle = "white";
     ctx.font = "16px monospace";
@@ -276,7 +279,7 @@ export class Game {
 
       const action = keyDirections[key];
 
-      if (action === "dagger" || action === "slingshot") {
+      if (action === "melee" || action === "ranged") {
         this.player.setWeapon(action);
       } else if (action === "attack") {
         this.player.attack();
@@ -298,4 +301,34 @@ export class Game {
       }
     });
   }
+}
+export function drawBossHealthBar(ctx, boss) {
+  if (!boss || boss.health <= 0) return;
+
+  const barWidth = 300;
+  const barHeight = 12;
+  const x = (variables.canvasWidth - barWidth) / 2;
+  const y = variables.canvasHeight - barHeight - 20;
+
+  const pct = boss.health / boss.maxHealth;
+
+  // fondo rojo
+  ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+  ctx.fillRect(x, y, barWidth, barHeight);
+
+  // vida actual verde
+  ctx.fillStyle = "rgba(0, 255, 0, 0.8)";
+  ctx.fillRect(x, y, barWidth * pct, barHeight);
+
+  // borde blanco
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, barWidth, barHeight);
+
+  // nombre del boss
+  ctx.fillStyle = "white";
+  ctx.font = "16px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("DRAGON BOSS", x + barWidth / 2, y - 6);
 }
