@@ -7,6 +7,8 @@ import { AnimatedObject } from "./AnimatedObject.js";
 import { Vec } from "../../utils/Vec.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
+import { registerEnemyKill } from "../../utils/api.js";
+import { enemyMappingService } from "../../utils/enemyMapping.js";
 
 export class Enemy extends AnimatedObject {
   constructor(
@@ -18,7 +20,8 @@ export class Enemy extends AnimatedObject {
     type,
     movementSpeed,
     baseDamage,
-    maxHealth
+    maxHealth,
+    enemyTypeName = null // Add enemy type name for backend mapping
   ) {
     super(position, width, height, color, "enemy", sheetCols);
 
@@ -36,6 +39,7 @@ export class Enemy extends AnimatedObject {
     this.target = null;
     this.velocity = new Vec(0, 0);
     this.type = type;
+    this.enemyTypeName = enemyTypeName || type; // Backend mapping name
     this.currentDirection = "down";
     this.isAttacking = false;
 
@@ -95,17 +99,89 @@ export class Enemy extends AnimatedObject {
   die() {
     this.state = "dead";
     log.debug(`${this.type} died`);
-
-    // EVENT-DRIVEN UPDATE: Update room state when enemy dies
-    if (window.game && window.game.floorGenerator && this.currentRoom) {
-      window.game.floorGenerator.updateRoomState(
-        window.game.floorGenerator.getCurrentRoomIndex(),
-        this.currentRoom
-      );
-      log.verbose("Room state updated due to enemy death");
+    
+    // Track kill in global game statistics
+    if (window.game && typeof window.game.trackKill === 'function') {
+        window.game.trackKill();
     }
 
+    // Register enemy kill with backend (non-blocking)
+    this.registerKill().catch(error => {
+      console.error('Failed to register enemy kill:', error);
+    });
+
+    // EVENT-DRIVEN UPDATE: Update room state when enemy dies
+    if (this.currentRoom) {
+      log.verbose("Updating room after enemy death");
+      
+      // Update the room state in floor generator
+      if (window.game && window.game.floorGenerator) {
+        window.game.floorGenerator.updateRoomState(undefined, this.currentRoom);
+        log.verbose("Room state updated due to enemy death");
+      }
+    }
+    
     // TODO: Add death animation and effects
+  }
+
+  /**
+   * Register enemy kill with backend system
+   * @returns {Promise<boolean>} Success status
+   */
+  async registerKill() {
+    try {
+      // Get required data from localStorage and game state
+      const userId = localStorage.getItem('currentUserId');
+      const runId = localStorage.getItem('currentRunId');
+      
+      // Validate required data exists
+      if (!userId || !runId) {
+        console.warn('Kill registration skipped: Missing required session data', {
+          userId: !!userId,
+          runId: !!runId
+        });
+        return false;
+      }
+
+      // Get current room ID from floor generator
+      const roomId = window.game?.floorGenerator?.getCurrentRoomId();
+      if (!roomId) {
+        console.warn('Kill registration skipped: Could not determine current room ID');
+        return false;
+      }
+
+      // Get enemy ID from mapping service
+      const enemyId = enemyMappingService.getEnemyId(this.enemyTypeName);
+      if (!enemyId) {
+        console.warn(`Kill registration skipped: Could not map enemy type "${this.enemyTypeName}" to ID`);
+        return false;
+      }
+
+      // Prepare kill data
+      const killData = {
+        userId: parseInt(userId),
+        enemyId: enemyId,
+        roomId: roomId
+      };
+
+      console.log(`Registering enemy kill:`, {
+        enemyType: this.enemyTypeName,
+        enemyId: enemyId,
+        roomId: roomId,
+        userId: parseInt(userId)
+      });
+
+      // Call backend API to register kill
+      const result = await registerEnemyKill(runId, killData);
+      
+      console.log('Enemy kill registered successfully:', result);
+      return true;
+
+    } catch (error) {
+      console.error('Failed to register enemy kill:', error);
+      // Don't throw error to prevent game disruption
+      return false;
+    }
   }
 
   moveTo(targetPosition) {

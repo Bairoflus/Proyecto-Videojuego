@@ -6,6 +6,8 @@ import { variables, keyDirections } from "../../config.js";
 import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
 import { Boss } from "../entities/Boss.js";
+import { saveRunState } from "../../utils/api.js";
+import { serviceManager, SERVICE_STATUS, SERVICE_CRITICALITY } from "../../utils/serviceManager.js";
 
 export class Game {
   constructor() {
@@ -20,6 +22,179 @@ export class Game {
     if (variables.debug) {
       this.initializeDebugCommands();
     }
+
+    this.canvas = null;
+    this.ctx = null;
+    this.player = null;
+    this.floorGenerator = null;
+    this.currentRoom = null;
+    this.gameState = "loading"; // loading, playing, paused, gameover
+    this.debug = false;
+    this.lastTime = 0;
+    
+    // Auto-save timing
+    this.lastAutoSave = 0;
+    this.autoSaveInterval = 30000; // 30 seconds
+    
+    // Service initialization status
+    this.servicesInitialized = false;
+    this.serviceInitializationResult = null;
+    this.lastServiceHealthCheck = null;
+    this.serviceHealthCheckInterval = 60000; // Check every minute
+    
+    // Run statistics tracking
+    this.runStats = {
+      goldSpent: 0,
+      totalKills: 0
+    };
+
+    // Initialize backend integration services using ServiceManager
+    this.initializeServices();
+
+  }
+
+  /**
+   * Initialize all backend integration services using ServiceManager
+   * Enhanced with comprehensive orchestration and monitoring
+   * @returns {Promise<void>}
+   */
+  async initializeServices() {
+    try {
+      console.log('Initializing Backend Integration Services with Service Manager...');
+      
+      // Initialize services with configuration
+      this.serviceInitializationResult = await serviceManager.initializeServices({
+        blockOnCritical: true,   // Block game start if critical services fail
+        timeout: 30000          // 30 second timeout
+      });
+      
+      // Check if critical services failed
+      if (this.serviceInitializationResult.criticalServicesFailed) {
+        console.error('Critical services failed - game functionality may be limited');
+        this.gameState = "service_error";
+      } else {
+        this.servicesInitialized = true;
+        console.log('All critical services initialized successfully');
+      }
+      
+      // Schedule periodic health checks
+      this.scheduleServiceHealthChecks();
+      
+      // Enable debug commands for service management if debug mode is active
+      if (variables.debug) {
+        this.initializeServiceDebugCommands();
+      }
+      
+    } catch (error) {
+      console.error('Failed to initialize backend services:', error);
+      this.serviceInitializationResult = { 
+        success: false, 
+        error: error.message,
+        criticalServicesFailed: true
+      };
+      this.gameState = "service_error";
+    }
+  }
+
+  /**
+   * Schedule periodic service health checks
+   * @private
+   */
+  scheduleServiceHealthChecks() {
+    // Initial health check after 10 seconds
+    setTimeout(() => this.performServiceHealthCheck(), 10000);
+    
+    // Regular health checks
+    setInterval(() => this.performServiceHealthCheck(), this.serviceHealthCheckInterval);
+  }
+
+  /**
+   * Perform service health check and handle degraded services
+   * @private
+   */
+  async performServiceHealthCheck() {
+    try {
+      this.lastServiceHealthCheck = await serviceManager.performHealthCheck();
+      
+      const criticalServicesDown = Object.values(this.lastServiceHealthCheck.services)
+        .filter(service => service.criticality === SERVICE_CRITICALITY.CRITICAL && !service.healthy);
+      
+      if (criticalServicesDown.length > 0) {
+        console.warn('Critical services are unhealthy:', criticalServicesDown.map(s => s.name));
+        
+        // Attempt to restart failed services
+        const restartResult = await serviceManager.restartFailedServices();
+        if (restartResult.restarted > 0) {
+          console.log(`Successfully restarted ${restartResult.restarted} services`);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Service health check failed:', error);
+    }
+  }
+
+  /**
+   * Initialize debug commands for service management
+   * @private
+   */
+  initializeServiceDebugCommands() {
+    if (typeof window !== 'undefined') {
+      // Global debug commands for service management
+      window.gameServiceDebug = {
+        status: () => serviceManager.getOverallStatus(),
+        health: () => serviceManager.performHealthCheck(),
+        restart: () => serviceManager.restartFailedServices(),
+        serviceStatus: (serviceId) => serviceManager.getServiceStatus(serviceId),
+        reinitialize: () => this.initializeServices()
+      };
+      
+      console.log('Service debug commands available:');
+      console.log('  window.gameServiceDebug.status() - Get overall service status');
+      console.log('  window.gameServiceDebug.health() - Perform health check');
+      console.log('  window.gameServiceDebug.restart() - Restart failed services');
+      console.log('  window.gameServiceDebug.serviceStatus(id) - Get specific service status');
+      console.log('  window.gameServiceDebug.reinitialize() - Reinitialize all services');
+    }
+  }
+
+  /**
+   * Check if game is ready to start based on service status
+   * @returns {boolean} True if game can start
+   */
+  isGameReadyToStart() {
+    if (!this.serviceInitializationResult) {
+      return false;
+    }
+    
+    // Game can start if no critical services failed
+    return !this.serviceInitializationResult.criticalServicesFailed;
+  }
+
+  /**
+   * Get service status summary for UI display
+   * @returns {Object} Service status summary
+   */
+  getServiceStatusSummary() {
+    if (!this.serviceInitializationResult) {
+      return { status: 'initializing', ready: false };
+    }
+    
+    const criticalServices = Object.values(this.serviceInitializationResult.services)
+      .filter(service => service.criticality === SERVICE_CRITICALITY.CRITICAL);
+    
+    const criticalSuccessRate = criticalServices.length > 0 
+      ? (criticalServices.filter(s => s.success).length / criticalServices.length) * 100
+      : 100;
+    
+    return {
+      status: this.serviceInitializationResult.success ? 'ready' : 'degraded',
+      ready: this.isGameReadyToStart(),
+      criticalSuccessRate: Math.round(criticalSuccessRate),
+      totalServices: Object.keys(this.serviceInitializationResult.services).length,
+      initializationTime: this.serviceInitializationResult.totalTime,
+      lastHealthCheck: this.lastServiceHealthCheck?.timestamp
+    };
   }
 
   initObjects() {
@@ -139,6 +314,15 @@ export class Game {
     console.log("=== COMPLETE GAME RESET AFTER DEATH ===");
 
     try {
+      // Auto-save final state before death reset
+      console.log("💀 Auto-saving final state before death reset...");
+      this.saveCurrentState().catch(error => {
+        console.error("Failed to save final state before death:", error);
+      });
+
+      // Reset run statistics for new run
+      this.resetRunStats();
+      
       this.floorGenerator.resetToInitialState();
       this.globalShop.resetForNewRun();
 
@@ -160,7 +344,7 @@ export class Game {
   }
 
   // Extracted helper method to handle room transitions
-  handleRoomTransition(direction) {
+  async handleRoomTransition(direction) {
     const isBossRoom = this.floorGenerator.isBossRoom();
     const transitionMethod =
       direction === "right" ? "nextRoom" : "previousRoom";
@@ -175,6 +359,10 @@ export class Game {
     }
 
     if (this.currentRoom.canTransition()) {
+      // Auto-save current state before room transition
+      console.log(`Auto-saving before ${direction} room transition...`);
+      await this.saveCurrentState();
+
       this.floorGenerator.updateRoomState(
         this.floorGenerator.getCurrentRoomIndex(),
         this.currentRoom
@@ -182,7 +370,7 @@ export class Game {
 
       if (isBossRoom && direction === "right") {
         console.log("Transitioning to next floor");
-        this.floorGenerator.nextFloor();
+        await this.floorGenerator.nextFloor();
       } else if (!this.floorGenerator[transitionMethod]()) {
         console.log("Room transition failed");
         return;
@@ -196,6 +384,11 @@ export class Game {
         this.player.keys = [];
         this.enemies = this.currentRoom.objects.enemies;
       }
+
+      // Auto-save after successful room transition
+      console.log(`Auto-saving after successful ${direction} room transition...`);
+      await this.saveCurrentState();
+
     } else {
       console.log(
         direction === "right"
@@ -219,9 +412,15 @@ export class Game {
 
     // Check room transition
     if (this.currentRoom.isPlayerAtRightEdge(this.player)) {
-      this.handleRoomTransition("right");
+      // Don't block the game loop with async operations
+      this.handleRoomTransition("right").catch(error => {
+        console.error("Error in room transition:", error);
+      });
     } else if (this.currentRoom.isPlayerAtLeftEdge(this.player)) {
-      this.handleRoomTransition("left");
+      // Don't block the game loop with async operations
+      this.handleRoomTransition("left").catch(error => {
+        console.error("Error in room transition:", error);
+      });
     }
 
     // Update player
@@ -255,6 +454,15 @@ export class Game {
       this.currentRoom.objects.shop.setOnCloseCallback(() => {
         this.currentRoom.shopCanBeOpened = false;
       });
+    }
+
+    // Auto-save current state periodically
+    const currentTime = Date.now();
+    if (currentTime - this.lastAutoSave >= this.autoSaveInterval) {
+      this.saveCurrentState().catch(error => {
+        console.error("Failed to auto-save game state:", error);
+      });
+      this.lastAutoSave = currentTime;
     }
   }
 
@@ -292,6 +500,87 @@ export class Game {
         this.player.keys = this.player.keys.filter((k) => k !== action);
       }
     });
+  }
+
+  // Run statistics tracking methods
+  trackGoldSpent(amount) {
+    this.runStats.goldSpent += amount;
+    console.log(`Gold spent: +${amount}, Total spent this run: ${this.runStats.goldSpent}`);
+  }
+
+  trackKill() {
+    this.runStats.totalKills++;
+    console.log(`Enemy killed! Total kills this run: ${this.runStats.totalKills}`);
+  }
+
+  resetRunStats() {
+    console.log("Resetting run statistics...");
+    this.runStats = {
+      goldSpent: 0,
+      totalKills: 0
+    };
+  }
+
+  getRunStats() {
+    return {
+      goldSpent: this.runStats.goldSpent,
+      totalKills: this.runStats.totalKills,
+      goldCollected: this.player ? this.player.getGold() : 0
+    };
+  }
+
+  // Save current game state to backend
+  async saveCurrentState() {
+    try {
+      // Get required data from localStorage
+      const userId = localStorage.getItem('currentUserId');
+      const sessionId = localStorage.getItem('currentSessionId');
+      const runId = localStorage.getItem('currentRunId');
+
+      // Validate required data exists
+      if (!userId || !sessionId || !runId) {
+        console.warn('Save state skipped: Missing required session data', {
+          userId: !!userId,
+          sessionId: !!sessionId,
+          runId: !!runId
+        });
+        return false;
+      }
+
+      // Get current room ID from floor generator
+      const roomId = this.floorGenerator.getCurrentRoomId();
+      if (!roomId) {
+        console.warn('Save state skipped: Could not determine current room ID');
+        return false;
+      }
+
+      // Collect current player state
+      const stateData = {
+        userId: parseInt(userId),
+        sessionId: parseInt(sessionId),
+        roomId: roomId,
+        currentHp: this.player.health,
+        currentStamina: this.player.stamina,
+        gold: this.player.gold
+      };
+
+      console.log('Saving game state:', stateData);
+
+      // Call save state API
+      const result = await saveRunState(runId, stateData);
+      
+      console.log('Game state saved successfully:', result);
+      return true;
+
+    } catch (error) {
+      console.error('Failed to save game state:', error);
+      // Don't throw error to prevent game disruption
+      return false;
+    }
+  }
+
+  // Game state management methods
+  setupNewGame() {
   }
 }
 export function drawBossHealthBar(ctx, boss) {

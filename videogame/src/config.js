@@ -20,7 +20,7 @@ export const variables = {
   backgroundImage: new Image(),
   showHitboxes: true, // Enable hitbox visualization for debugging
 };
-variables.backgroundImage.src = "../assets/backgrounds/backgroundfloor1.jpg";
+variables.backgroundImage.src = "/assets/background/backgroundfloor1.jpg";
 
 // Base walking animations (shared between weapons)
 // All walk.png sprites have 9 columns, 4 rows

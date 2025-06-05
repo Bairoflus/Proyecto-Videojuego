@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Game - Shattered Timeline</title>
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+
+<body class="game-page">
+  <header class="game-header">
+    <span id="welcome-msg">Welcome, username</span>
+    <button id="logout-btn">Logout</button>
+  </header>
+  <main>
+    <div id="status">Loading game...</div>
+    <canvas id="gameCanvas"></canvas>
+  </main>
+
+  <script type="module">
+    import { logoutUser } from '../../utils/api.js';
+    
+    const status = document.getElementById('status');
+    const logoutButton = document.getElementById('logout-btn');
+
+    /**
+     * Clear all session data for complete logout
+     * Issue #7: Enhanced logout flow with comprehensive session cleanup
+     */
+    function clearAllSessionData() {
+      console.log('Clearing all session data...');
+      const sessionKeys = [
+        'sessionToken', 
+        'currentUserId', 
+        'currentSessionId', 
+        'currentRunId',
+        'runCreationFailed'
+      ];
+      
+      sessionKeys.forEach(key => {
+        const value = localStorage.getItem(key);
+        if (value) {
+          localStorage.removeItem(key);
+          console.log(`  Cleared ${key}: ${value}`);
+        }
+      });
+      
+      console.log('Session data cleanup complete');
+    }
+
+    /**
+     * Enhanced logout functionality with comprehensive session management
+     */
+    async function performLogout() {
+      console.log('Starting logout process...');
+      
+      try {
+        // Update UI to show logout in progress
+        logoutButton.disabled = true;
+        logoutButton.textContent = 'Logging out...';
+        
+        // Get session data before clearing
+        const sessionToken = localStorage.getItem('sessionToken');
+        const userId = localStorage.getItem('currentUserId');
+        const sessionId = localStorage.getItem('currentSessionId');
+        const runId = localStorage.getItem('currentRunId');
+        
+        console.log('Current session state:', {
+          hasSessionToken: !!sessionToken,
+          userId: userId,
+          sessionId: sessionId,
+          runId: runId || 'NONE'
+        });
+        
+        // Attempt to notify backend of logout
+        if (sessionToken) {
+          try {
+            console.log('Notifying server of logout...');
+            await logoutUser(sessionToken);
+            console.log('Server logout successful');
+          } catch (apiError) {
+            console.warn('Server logout failed, proceeding with local cleanup:', apiError.message);
+            // Continue with logout even if API fails
+          }
+        } else {
+          console.log('No session token found, skipping server logout');
+        }
+        
+        // Always clear local session data
+        clearAllSessionData();
+        
+        // Update UI to show logout success
+        logoutButton.textContent = 'Logged out';
+        
+        console.log('Logout process complete, redirecting...');
+        
+        // Brief delay before redirect for user feedback
+        setTimeout(() => {
+          window.location.href = 'landing.html';
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Logout process error:', error);
+        
+        // Even if logout fails, clear local data and redirect
+        clearAllSessionData();
+        
+        // Update UI to show there was an issue but we're proceeding
+        logoutButton.textContent = 'Logout (Error)';
+        
+        setTimeout(() => {
+          window.location.href = 'landing.html';
+        }, 1500);
+      }
+    }
+
+    /**
+     * Validate session data on page load
+     */
+    function validateSession() {
+      const sessionToken = localStorage.getItem('sessionToken');
+      const userId = localStorage.getItem('currentUserId');
+      const sessionId = localStorage.getItem('currentSessionId');
+      
+      if (!sessionToken || !userId || !sessionId) {
+        console.warn('Incomplete session data detected, redirecting to login');
+        console.log('Session validation failed:', {
+          hasSessionToken: !!sessionToken,
+          hasUserId: !!userId,
+          hasSessionId: !!sessionId
+        });
+        
+        // Clear any partial session data
+        clearAllSessionData();
+        
+        // Redirect to login
+        window.location.href = 'login.html';
+        return false;
+      }
+      
+      console.log('Session validation passed');
+      return true;
+    }
+
+    // Validate session before initializing game
+    if (!validateSession()) {
+      return; // Stop execution if session invalid
+    }
+
+    // Handle logout functionality
+    logoutButton.addEventListener('click', async () => {
+      // Confirm logout action
+      const confirmLogout = confirm('Are you sure you want to logout? Any unsaved progress may be lost.');
+      if (!confirmLogout) {
+        return;
+      }
+      
+      await performLogout();
+    });
+
+    // Initialize game
+    try {
+      status.textContent = 'Loading modules...';
+
+      // Import main game module
+      const { main } = await import('../../main.js');
+
+      status.textContent = 'Starting game...';
+      main();
+      status.style.display = 'none'; // Hide status once game is running
+
+    } catch (error) {
+      status.textContent = 'Error loading game: ' + error.message;
+      console.error('Game initialization error:', error);
+      
+      // If game fails to load, provide option to logout
+      logoutButton.style.display = 'block';
+    }
+  </script>
+</body>
+
+</html>

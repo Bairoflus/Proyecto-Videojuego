@@ -19,6 +19,7 @@ import {
   PHYSICS_CONSTANTS,
   SPRITE_SCALING_CONSTANTS,
 } from "../../constants/gameConstants.js";
+import { createRun, completeRun } from "../../utils/api.js";
 
 // Constants for Player class
 const DASH_STAMINA_COST = PLAYER_CONSTANTS.DAGGER_STAMINA_COST; // Reuse for dash
@@ -115,8 +116,39 @@ export class Player extends AnimatedObject {
     }
   }
 
-  die() {
-    console.log("Player died! Initiating game reset...");
+  async die() {
+    console.log("Player died! Completing current run...");
+
+    // Complete the current run with death data
+    try {
+      const currentRunId = localStorage.getItem('currentRunId');
+      
+      if (currentRunId && window.game) {
+        console.log("Completing run with death data...");
+        
+        // Get run statistics from game instance
+        const runStats = window.game.getRunStats();
+        
+        const completionData = {
+          goldCollected: runStats.goldCollected,
+          goldSpent: runStats.goldSpent, 
+          totalKills: runStats.totalKills,
+          deathCause: "player_death" // Generic death cause
+        };
+        
+        console.log("Run completion data:", completionData);
+        const result = await completeRun(currentRunId, completionData);
+        console.log("Run completed on death:", result);
+        
+        // Clear the current run ID since run is now complete
+        localStorage.removeItem('currentRunId');
+        
+      } else {
+        console.log("No current run ID found or game instance missing - playing in test mode");
+      }
+    } catch (error) {
+      console.error("Failed to complete run on death:", error);
+    }
 
     // Trigger complete game reset through the global game instance
     if (window.game && typeof window.game.resetGameAfterDeath === "function") {
