@@ -35,15 +35,20 @@ const server = http.createServer((req, res) => {
     return res.end();
   }
 
-  // Parse URL for other paths
+  // Parse URL for frontend files only - NO API ROUTES
   let filePath;
   if (req.url.startsWith('/pages/') || req.url.startsWith('/assets/') || req.url.startsWith('/utils/') || req.url.startsWith('/classes/') || req.url.startsWith('/constants/')) {
     filePath = path.join(__dirname, req.url);
-  } else if (req.url.endsWith('.js') && !req.url.includes('/')) {
+  } else if (req.url.endsWith('.js') && req.url.split('/').length === 2) {
     // Serve JS files directly from src directory (like main.js)
+    // Only matches /filename.js (one slash at beginning + filename)
     filePath = path.join(__dirname, req.url);
   } else {
-    filePath = path.join(__dirname, '..', req.url);
+    // For any other path (including /api/*), return 404
+    // API calls should go to backend on port 3000
+    res.writeHead(404, { 'Content-Type': 'text/html' });
+    res.end('404 Not Found - Frontend server only serves static files', 'utf-8');
+    return;
   }
   
   const extname = String(path.extname(filePath)).toLowerCase();
@@ -74,4 +79,5 @@ server.listen(PORT, () => {
   console.log(`Registration page: http://localhost:${PORT}/pages/html/register.html`);
   console.log(`Login page: http://localhost:${PORT}/pages/html/login.html`);
   console.log(`Game page: http://localhost:${PORT}/pages/html/game.html`);
+  console.log(`API requests go to backend on port 3000`);
 }); 

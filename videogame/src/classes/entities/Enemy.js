@@ -133,14 +133,17 @@ export class Enemy extends AnimatedObject {
       // Get required data from localStorage and game state
       const userId = localStorage.getItem('currentUserId');
       const runId = localStorage.getItem('currentRunId');
+      const testMode = localStorage.getItem('testMode') === 'true';
       
       // Validate required data exists
       if (!userId || !runId) {
-        console.warn('Kill registration skipped: Missing required session data', {
-          userId: !!userId,
-          runId: !!runId
-        });
-        return false;
+        if (testMode) {
+          // Don't log anything in test mode to reduce console spam
+          return false;
+        } else {
+          console.log('💀 Kill tracking: Requires active session (use gameSessionDebug.fix())');
+          return false;
+        }
       }
 
       // Get current room ID from floor generator

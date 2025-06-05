@@ -81,13 +81,18 @@ export class Boss extends Enemy {
             // Get required data from localStorage and game state
             const userId = localStorage.getItem('currentUserId');
             const runId = localStorage.getItem('currentRunId');
+            const testMode = localStorage.getItem('testMode') === 'true';
             
             // Validate required data exists
             if (!userId || !runId) {
-                console.warn('Boss kill registration skipped: Missing required session data', {
-                    userId: !!userId,
-                    runId: !!runId
-                });
+                if (testMode) {
+                    console.log('🧪 Boss kill registration skipped: Running in test mode');
+                } else {
+                    console.warn('⚠️ Boss kill registration skipped: Missing session data. Run gameSessionDebug.fix() to resolve.', {
+                        userId: !!userId,
+                        runId: !!runId
+                    });
+                }
                 return false;
             }
 

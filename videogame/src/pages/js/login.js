@@ -95,6 +95,14 @@ function updateLoginUI(state, message = '', data = {}) {
                 errorMessage.textContent = message || 'Login failed. Please try again.';
                 errorMessage.style.display = 'block';
             }
+            
+            // ✅ FIX: Auto-reset to IDLE after error to allow retries
+            setTimeout(() => {
+                if (currentLoginState === LOGIN_STATES.ERROR) {
+                    console.log('Auto-resetting login state to IDLE after error');
+                    currentLoginState = LOGIN_STATES.IDLE;
+                }
+            }, 2000); // Reset after 2 seconds
             break;
             
         case LOGIN_STATES.IDLE:

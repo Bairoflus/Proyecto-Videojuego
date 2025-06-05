@@ -18,7 +18,7 @@
   </main>
 
   <script type="module">
-    import { logoutUser } from '../../utils/api.js';
+    import { logoutUser, createRun } from '../../utils/api.js';
     
     const status = document.getElementById('status');
     const logoutButton = document.getElementById('logout-btn');
@@ -46,6 +46,36 @@
       });
       
       console.log('Session data cleanup complete');
+    }
+
+    /**
+     * NEW: Ensure run data exists for gameplay
+     */
+    async function ensureRunData() {
+      const userId = localStorage.getItem('currentUserId');
+      const runId = localStorage.getItem('currentRunId');
+      
+      if (runId) {
+        console.log('Run data exists:', runId);
+        return true;
+      }
+      
+      console.log('No run data found, creating new run...');
+      
+      try {
+        const runData = await createRun(parseInt(userId));
+        localStorage.setItem('currentRunId', runData.runId);
+        console.log('New run created successfully:', runData.runId);
+        return true;
+        
+      } catch (error) {
+        console.error('Failed to create run:', error);
+        
+        // Set test mode flag
+        localStorage.setItem('testMode', 'true');
+        console.warn('Running in test mode - some features may be limited');
+        return true; // Allow test mode
+      }
     }
 
     /**
@@ -155,25 +185,57 @@
         await performLogout();
       });
 
-      // Initialize game
-      try {
-        status.textContent = 'Loading modules...';
+      // NEW: Initialize game with run data validation
+      async function initializeGame() {
+        try {
+          status.textContent = 'Validating session...';
+          
+          // Ensure run data exists
+          const runDataReady = await ensureRunData();
+          if (!runDataReady) {
+            throw new Error('Failed to initialize run data');
+          }
+          
+          status.textContent = 'Loading modules...';
 
-        // Import main game module
-        const { main } = await import('/main.js');
+          // Import main game module
+          const { main } = await import('/main.js');
 
-        status.textContent = 'Starting game...';
-        main();
-        status.style.display = 'none'; // Hide status once game is running
+          status.textContent = 'Starting game...';
+          main();
+          status.style.display = 'none'; // Hide status once game is running
 
-      } catch (error) {
-        status.textContent = 'Error loading game: ' + error.message;
-        console.error('Game initialization error:', error);
-        
-        // If game fails to load, provide option to logout
-        logoutButton.style.display = 'block';
+        } catch (error) {
+          status.textContent = 'Error loading game: ' + error.message;
+          console.error('Game initialization error:', error);
+          
+          // If game fails to load, provide option to logout
+          logoutButton.style.display = 'block';
+        }
       }
+      
+      // Start game initialization
+      initializeGame();
     }
+  </script>
+
+  <!-- 🧪 Game Testing Suite - Load browser testing tools -->
+  <script type="module" src="../../browser_game_test.js"></script>
+  
+  <script>
+    // Display testing instructions after game loads
+    setTimeout(() => {
+      if (window.testGame) {
+        console.log('GAME TESTING SUITE READY');
+        console.log('━'.repeat(50));
+        console.log('Testing Commands Available:');
+        console.log('  testGame()    - Run complete game state tests');
+        console.log('  testMapping() - Test room mapping accuracy');
+        console.log('  dumpGame()    - Show detailed game state info');
+        console.log('━'.repeat(50));
+        console.log('Use these commands anytime during gameplay to detect issues!');
+      }
+    }, 3000);
   </script>
 </body>
 

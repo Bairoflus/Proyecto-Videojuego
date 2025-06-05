@@ -50,9 +50,26 @@ export class Room {
       log.info("Shop instance created in constructor for shop room");
     }
 
-    // Generate enemies procedurally if this is a combat room
-    if (this.isCombatRoom) {
+    // ✅ FIXED: Don't auto-generate enemies in constructor
+    // Enemy generation will be handled by initializeEnemies() for new rooms only
+  }
+
+  // ✅ NEW METHOD: Initialize enemies for NEW combat rooms only
+  initializeEnemies() {
+    console.log(`🎮 ROOM.initializeEnemies() called:`, {
+      isCombatRoom: this.isCombatRoom,
+      currentEnemyCount: this.objects.enemies.length,
+      roomType: this.roomType
+    });
+
+    if (this.isCombatRoom && this.objects.enemies.length === 0) {
+      console.log('✅ Generating NEW enemies for fresh combat room...');
       this.generateEnemies();
+      console.log(`✅ Enemy generation complete: ${this.objects.enemies.length} enemies created`);
+    } else if (this.isCombatRoom) {
+      console.log(`🔄 Skipping enemy generation: ${this.objects.enemies.length} enemies already exist (SAVED STATE)`);
+    } else {
+      console.log(`ℹ️ Non-combat room (${this.roomType}): No enemy generation needed`);
     }
   }
 

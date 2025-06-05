@@ -2,7 +2,7 @@
  * Enemy Mapping Service
  * Maps frontend enemy names to backend enemy IDs for kill tracking integration
  */
-import { apiRequest } from './api.js';
+import { getEnemies } from './api.js';
 
 class EnemyMappingService {
     constructor() {
@@ -39,27 +39,30 @@ class EnemyMappingService {
         try {
             console.log('Initializing Enemy Mapping Service...');
             
-            // Try to load enemy data from API
-            const response = await fetch('/api/enemies');
-            
-            if (!response.ok) {
-                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-            }
-            
-            const enemies = await response.json();
+            // ✅ FIX: Use getEnemies() from api.js instead of direct fetch
+            const enemies = await getEnemies();
             
             // Clear existing mappings and populate from API data
             this.enemyMappings.clear();
             enemies.forEach(enemy => {
                 if (enemy.name && enemy.enemy_id) {
-                    console.log(`Mapped enemy: ${enemy.name} → ID ${enemy.enemy_id}`);
-                    this.enemyMappings.set(enemy.name.toLowerCase(), enemy.enemy_id);
+                    // Map the original API name (lowercase)
+                    const apiName = enemy.name.toLowerCase();
+                    this.enemyMappings.set(apiName, enemy.enemy_id);
+                    
+                    // Create frontend-friendly aliases based on the API name
+                    const aliases = this.createFrontendAliases(enemy.name, enemy.enemy_id);
+                    aliases.forEach(alias => {
+                        this.enemyMappings.set(alias, enemy.enemy_id);
+                    });
+                    
+                    console.log(`Mapped enemy: ${enemy.name} → ID ${enemy.enemy_id} (with ${aliases.length} aliases)`);
                 }
             });
             
             this.initialized = true;
             this.hasApiData = true;
-            console.log(`Enemy Mapping Service initialized with ${this.enemyMappings.size} enemies from API`);
+            console.log(`Enemy Mapping Service initialized with ${this.enemyMappings.size} total mappings from API`);
             return true;
             
         } catch (error) {
@@ -78,6 +81,84 @@ class EnemyMappingService {
             console.log(`Enemy Mapping Service initialized with ${this.enemyMappings.size} fallback mappings`);
             return false; // Indicates fallback was used
         }
+    }
+
+    /**
+     * Create frontend-friendly aliases for enemy names
+     * @param {string} apiName - Original name from API (e.g., "Basic Goblin")
+     * @param {number} enemyId - Enemy ID
+     * @returns {string[]} Array of alias names
+     */
+    createFrontendAliases(apiName, enemyId) {
+        const aliases = [];
+        const name = apiName.toLowerCase();
+        
+        // Create simple aliases based on common patterns
+        if (name.includes('goblin')) {
+            aliases.push('goblin');
+            if (name.includes('archer') || name.includes('mage')) {
+                aliases.push('goblin_archer');
+            }
+            if (name.includes('warrior')) {
+                aliases.push('goblin_warrior');
+            }
+        }
+        
+        if (name.includes('orc')) {
+            aliases.push('orc');
+        }
+        
+        if (name.includes('skeleton')) {
+            aliases.push('skeleton');
+        }
+        
+        if (name.includes('mage')) {
+            aliases.push('dark_mage');
+            aliases.push('mage');
+        }
+        
+        if (name.includes('knight')) {
+            aliases.push('knight');
+            aliases.push('armored_knight');
+        }
+        
+        if (name.includes('assassin') || name.includes('shadow')) {
+            aliases.push('assassin');
+            aliases.push('shadow_assassin');
+        }
+        
+        if (name.includes('troll')) {
+            aliases.push('troll');
+        }
+        
+        if (name.includes('wraith')) {
+            aliases.push('wraith');
+            aliases.push('ice_wraith');
+        }
+        
+        if (name.includes('elemental') || name.includes('fire')) {
+            aliases.push('elemental');
+            aliases.push('fire_elemental');
+        }
+        
+        // Boss aliases
+        if (name.includes('dragon')) {
+            aliases.push('dragon');
+            aliases.push('fire_dragon');
+            aliases.push('boss'); // Generic boss alias
+        }
+        
+        if (name.includes('lord') || name.includes('shadow')) {
+            aliases.push('shadow_lord');
+            aliases.push('boss'); // Generic boss alias
+        }
+        
+        if (name.includes('queen') || name.includes('ice')) {
+            aliases.push('ice_queen');
+            aliases.push('boss'); // Generic boss alias
+        }
+        
+        return aliases;
     }
 
     /**
