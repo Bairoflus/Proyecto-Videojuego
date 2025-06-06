@@ -49,9 +49,9 @@ export class MageGoblin extends RangedEnemy {
 
     // Sprite paths
     this.walkSpritePath =
-      "../assets/sprites/enemies/floor1/mage_goblin/walk.png";
+      "/assets/sprites/enemies/floor1/mage_goblin/walk.png";
     this.spellcastSpritePath =
-      "../assets/sprites/enemies/floor1/mage_goblin/spellcast.png";
+      "/assets/sprites/enemies/floor1/mage_goblin/spellcast.png";
 
     // Initialize with walking sprite and proper animation
     this.setSprite(this.walkSpritePath);

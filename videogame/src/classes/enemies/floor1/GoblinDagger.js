@@ -42,9 +42,9 @@ export class GoblinDagger extends MeleeEnemy {
 
     // Sprite paths
     this.walkSpritePath =
-      "../assets/sprites/enemies/floor1/dagger_goblin/walk.png";
+      "/assets/sprites/enemies/floor1/dagger_goblin/walk.png";
     this.attackSpritePath =
-      "../assets/sprites/enemies/floor1/dagger_goblin/slash.png";
+      "/assets/sprites/enemies/floor1/dagger_goblin/slash.png";
 
     // Initialize with walking sprite and proper animation
     this.setSprite(this.walkSpritePath);

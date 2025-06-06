@@ -17,7 +17,8 @@ export class MeleeEnemy extends Enemy {
     movementSpeed,
     baseDamage,
     maxHealth,
-    range = 50
+    range = 50,
+    enemyTypeName // Optional name for the enemy type
   ) {
     super(
       position,
@@ -32,7 +33,7 @@ export class MeleeEnemy extends Enemy {
       range, // Pass range to parent
       0, // No projectile range for melee
       0, // No projectile damage for melee
-      enemyTypeName
+      (enemyTypeName = "null")
     );
 
     // Melee-specific properties can be set here if needed

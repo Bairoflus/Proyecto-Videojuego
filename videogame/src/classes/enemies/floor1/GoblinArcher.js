@@ -50,9 +50,9 @@ export class GoblinArcher extends RangedEnemy {
 
     // Sprite paths
     this.walkSpritePath =
-      "../assets/sprites/enemies/floor1/bow_goblin/walk.png";
+      "/assets/sprites/enemies/floor1/bow_goblin/walk.png";
     this.shootSpritePath =
-      "../assets/sprites/enemies/floor1/bow_goblin/shoot.png";
+      "/assets/sprites/enemies/floor1/bow_goblin/shoot.png";
 
     // Initialize with walking sprite and proper animation
     this.setSprite(this.walkSpritePath);

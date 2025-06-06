@@ -49,9 +49,9 @@ export class GreatBowGoblin extends RangedEnemy {
 
     // Sprite paths - using great_bow_goblin sprites
     this.walkSpritePath =
-      "../assets/sprites/enemies/floor1/great_bow_goblin/walk.png";
+      "/assets/sprites/enemies/floor1/great_bow_goblin/walk.png";
     this.shootSpritePath =
-      "../assets/sprites/enemies/floor1/great_bow_goblin/shoot.png";
+      "/assets/sprites/enemies/floor1/great_bow_goblin/shoot.png";
 
     // Initialize with walking sprite and proper animation
     this.setSprite(this.walkSpritePath);

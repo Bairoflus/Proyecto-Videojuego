@@ -40,11 +40,11 @@ export class SwordGoblin extends MeleeEnemy {
     this.drawW = SPRITE_SCALING_CONSTANTS.BASE_CHARACTER_SIZE;
     this.drawH = SPRITE_SCALING_CONSTANTS.BASE_CHARACTER_SIZE;
 
-    // Sprite paths for sword goblin (using relative paths)
+    // Sprite paths for sword goblin (using absolute paths)
     this.walkSpritePath =
-      "../assets/sprites/enemies/floor1/sword_goblin/walk.png";
+      "/assets/sprites/enemies/floor1/sword_goblin/walk.png";
     this.attackSpritePath =
-      "../assets/sprites/enemies/floor1/sword_goblin/slash.png";
+      "/assets/sprites/enemies/floor1/sword_goblin/slash.png";
 
     // Initialize with walking sprite and proper animation (like DaggerGoblin)
     this.setSprite(this.walkSpritePath);

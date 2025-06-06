@@ -206,17 +206,17 @@ export const PHYSICS_CONSTANTS = {
 // Projectile type registry for different sprites and properties
 export const PROJECTILE_TYPES = {
   arrow: {
-    sprite: "../assets/sprites/projectiles/arrow.png",
-    width: 48,
-    height: 12,
+    sprite: "/assets/sprites/projectiles/arrow.png",
+    width: 64, // Match actual sprite width
+    height: 64, // Match actual sprite height
     damageBoxColor: "yellow",
-    damageBoxWidth: 36,
-    damageBoxHeight: 9,
-    scale: 1.5,
-    radius: 6, // For collision detection
+    damageBoxWidth: 48, // Arrow shaft length in 64x64 sprite
+    damageBoxHeight: 8, // Arrow thickness (narrow shaft)
+    scale: 1.0, // Normal scale since sprite is already good size
+    radius: 6, // Collision radius for arrow tip
   },
   fireball: {
-    sprite: "../assets/sprites/projectiles/fireball.png",
+    sprite: "/assets/sprites/projectiles/fireball.png",
     width: 24,
     height: 24,
     damageBoxColor: "orange",
@@ -226,7 +226,7 @@ export const PROJECTILE_TYPES = {
     radius: 6,
   },
   magic_bolt: {
-    sprite: "../assets/sprites/projectiles/magic_bolt.png",
+    sprite: "/assets/sprites/projectiles/magic_bolt.png",
     width: 16,
     height: 16,
     damageBoxColor: "yellow",
@@ -236,7 +236,7 @@ export const PROJECTILE_TYPES = {
     radius: 3,
   },
   crossbow_bolt: {
-    sprite: "../assets/sprites/projectiles/crossbow_bolt.png",
+    sprite: "/assets/sprites/projectiles/crossbow_bolt.png",
     width: 28,
     height: 6,
     damageBoxColor: "gray",

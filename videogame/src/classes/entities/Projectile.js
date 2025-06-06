@@ -47,8 +47,15 @@ export class Projectile {
     this.spriteImage = new Image();
     this.spriteImage.src = this.config.sprite;
     this.spriteLoaded = false;
+    
     this.spriteImage.onload = () => {
       this.spriteLoaded = true;
+      console.log(`✓ Projectile sprite loaded: ${this.config.sprite} (${this.type})`);
+    };
+    
+    this.spriteImage.onerror = () => {
+      console.error(`✗ Failed to load projectile sprite: ${this.config.sprite} (${this.type})`);
+      this.spriteLoaded = false;
     };
   }
 
@@ -122,6 +129,12 @@ export class Projectile {
 
   draw(ctx) {
     if (!this.isActive) return;
+
+    // Debug logging (only once per projectile)
+    if (!this.debugLogged) {
+      console.log(`Drawing projectile: type=${this.type}, spriteLoaded=${this.spriteLoaded}, spriteSrc=${this.config.sprite}`);
+      this.debugLogged = true;
+    }
 
     // Draw sprite if loaded, otherwise fallback to circle
     if (this.spriteLoaded && this.spriteImage) {
