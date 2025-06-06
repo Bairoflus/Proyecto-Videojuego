@@ -9,19 +9,56 @@ import { log } from '../../utils/Logger.js';
 import { FLOOR_CONSTANTS } from '../../constants/gameConstants.js';
 import { DragonBoss } from '../enemies/floor1/DragonBoss.js';
 import { Vec } from '../../utils/Vec.js';
+import { createRun, completeRun } from '../../utils/api.js';
+import { roomMapping } from '../../utils/roomMapping.js';
 
 export class FloorGenerator {
     constructor() {
         this.currentFloor = [];
-        this.currentRoomIndex = 0;
+        this.currentRoomIndex = 0; // ✅ ALWAYS start at room 0
         this.floorCount = 1;
-        // Load persistent run count from localStorage or start at initial value
-        this.runCount = parseInt(localStorage.getItem('gameRunCount') || FLOOR_CONSTANTS.INITIAL_RUN_COUNT.toString(), 10);
+        // FIXED: Always start at run 1 for new users, don't persist between sessions
+        this.runCount = FLOOR_CONSTANTS.INITIAL_RUN_COUNT;
         this.roomTypes = []; // Track room types: 'combat', 'shop', 'boss'
         this.roomStates = []; // Store room instances with enemy states for persistence
         this.visitedRooms = new Set(); // Track which rooms have been visited
+        this.roomMappingInitialized = false; // Track room mapping initialization status
+        
+        // ✅ PREVENTIVE FIX: Force clean initialization for new runs
+        this.ensureCleanInitialization();
+        
         this.generateFloor();
-        this.lastLoggedRoomIndex = null; // Track last logged room index to avoid duplicate logs
+        this.initializeRoomMapping(); // Initialize room mapping service
+    }
+
+    /**
+     * ✅ PREVENTIVE FIX: Ensure clean initialization to prevent room index corruption
+     * This prevents the Room 1 → Room 5 jump issue caused by contaminated state
+     */
+    ensureCleanInitialization() {
+        // Force currentRoomIndex to 0 (Room 1) - prevent corruption
+        if (this.currentRoomIndex !== 0) {
+            console.warn(`🔧 CORRUPTION DETECTED: currentRoomIndex was ${this.currentRoomIndex}, forcing to 0`);
+            this.currentRoomIndex = 0;
+        }
+        
+        // Force floor and run to proper starting values
+        if (this.floorCount !== 1) {
+            console.warn(`🔧 CORRUPTION DETECTED: floorCount was ${this.floorCount}, forcing to 1`);
+            this.floorCount = 1;
+        }
+        
+        // Ensure clean room states for new initialization
+        this.roomStates = [];
+        this.visitedRooms = new Set();
+        this.currentFloor = [];
+        this.roomTypes = [];
+        
+        console.log('✅ FloorGenerator: Clean initialization enforced', {
+            currentRoomIndex: this.currentRoomIndex,
+            floorCount: this.floorCount,
+            runCount: this.runCount
+        });
     }
 
     // Generates a new floor with random rooms
@@ -47,11 +84,18 @@ export class FloorGenerator {
         this.roomStates = [];
         this.visitedRooms = new Set();
 
-        // Reset room index to start of new floor
+        // ✅ PREVENTIVE FIX: FORCE reset room index to start of new floor
         this.currentRoomIndex = 0;
+        
+        // ✅ ADDITIONAL VERIFICATION: Ensure we're actually at room 0
+        if (this.currentRoomIndex !== 0) {
+            console.error(`🚨 CRITICAL: currentRoomIndex should be 0 but is ${this.currentRoomIndex}`);
+            this.currentRoomIndex = 0; // Force it
+        }
 
         log.info("Generated new floor", this.floorCount, "with", this.currentFloor.length, "rooms");
         log.debug("Room states and visit history cleared for new floor");
+        console.log(`✅ Floor generated: Floor ${this.floorCount}, starting at Room ${this.currentRoomIndex + 1}/${this.currentFloor.length}`);
     }
 
     // Selects n unique random combat rooms
@@ -95,17 +139,27 @@ export class FloorGenerator {
 
         // Check if we already have a saved state for this room
         if (this.roomStates[roomIndex]) {
-            log.debug(`Loading saved state for room ${roomIndex}`);
+            // FIXED: Only log ONCE when loading saved state, not every call
+            if (!this.roomStates[roomIndex]._loggedLoad) {
+                console.log(`LOADING SAVED ROOM STATE: index ${roomIndex}, type ${roomType}`);
+                console.log(`Saved room has ${this.roomStates[roomIndex].objects.enemies.length} enemies`);
+                this.roomStates[roomIndex]._loggedLoad = true; // Mark as logged
+            }
             return this.roomStates[roomIndex];
         }
 
+        console.log(`CREATING NEW ROOM: index ${roomIndex}, type ${roomType}`);
 
         // Create new room instance with room type
         const room = new Room(layout, isCombatRoom, roomType);
 
+        // FIXED: Only initialize enemies for NEW rooms
+        room.initializeEnemies();
+
         if (roomType === 'boss') {
             const boss = new DragonBoss(new Vec(380, 75));
             room.objects.enemies.push(boss);
+            console.log(`Boss added to room ${roomIndex}, total enemies: ${room.objects.enemies.length}`);
         }
 
         // Save the room state
@@ -115,9 +169,9 @@ export class FloorGenerator {
         this.visitedRooms.add(roomIndex);
 
         if (isCombatRoom) {
-            log.info(`Created new combat room ${roomIndex} with ${room.objects.enemies.length} enemies`);
+            console.log(`NEW COMBAT ROOM ${roomIndex} created with ${room.objects.enemies.length} enemies`);
         } else {
-            log.info(`Created new ${roomType} room ${roomIndex}`);
+            console.log(`NEW ${roomType} ROOM ${roomIndex} created`);
         }
 
         return room;
@@ -131,26 +185,38 @@ export class FloorGenerator {
         return this.roomTypes[this.currentRoomIndex];
     }
 
-    // Advances to next room
+    // Advances to next room (ONLY FORWARD, no regression allowed)
     nextRoom() {
+        const beforeIndex = this.currentRoomIndex;
+        
         if (this.currentRoomIndex < this.currentFloor.length - 1) {
             this.currentRoomIndex++;
-            log.debug("Advanced to room", this.currentRoomIndex);
+            
+            // ✅ FIX: Validar que el mapeo sea correcto después de cambiar room
+            const roomId = this.getCurrentRoomId();
+            const expectedRoomId = this.getExpectedRoomId();
+            
+            if (roomId !== expectedRoomId) {
+                console.error(`🚨 ROOM MAPPING ERROR: Got ${roomId}, expected ${expectedRoomId}`);
+                console.error(`  Floor: ${this.floorCount}, Index: ${this.currentRoomIndex}, Type: ${this.getCurrentRoomType()}`);
+            } else {
+                console.log(`✅ ROOM MAPPING CORRECT: Floor ${this.floorCount}, Index ${this.currentRoomIndex} → Room ID ${roomId}`);
+            }
+            
+            console.log(`ROOM PROGRESSION: ${beforeIndex} → ${this.currentRoomIndex} (${this.currentRoomIndex + 1}/${this.currentFloor.length})`);
             return true;
         }
-        log.debug("Cannot advance: Already at last room");
+        
+        console.log(`Cannot advance: Already at last room (${this.currentRoomIndex + 1}/${this.currentFloor.length})`);
         return false;
     }
 
-    // Returns to previous room
-    previousRoom() {
-        if (this.currentRoomIndex > 0) {
-            this.currentRoomIndex--;
-            log.debug("Returned to room", this.currentRoomIndex);
-            return true;
-        }
-        log.debug("Cannot return: Already at first room");
-        return false;
+    // ✅ NUEVO: Método para calcular el Room ID esperado sin dependencias
+    getExpectedRoomId() {
+        // Cálculo directo basado en la estructura de la base de datos
+        // Floor 1: rooms 1-6, Floor 2: rooms 7-12, Floor 3: rooms 13-18
+        const baseId = (this.floorCount - 1) * 6;
+        return baseId + this.currentRoomIndex + 1;
     }
 
     // Checks if it's the first room
@@ -163,23 +229,6 @@ export class FloorGenerator {
         const isBoss = this.currentRoomIndex === this.currentFloor.length - 1;
         log.verbose("Is boss room:", isBoss, "Current index:", this.currentRoomIndex, "Total rooms:", this.currentFloor.length);
         return isBoss;
-    }
-
-    // Advances to next floor
-    nextFloor() {
-        if (this.floorCount >= FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN) {
-            // If we're at the max floor, increment run and reset floor
-            this.runCount++;
-            this.floorCount = 1;
-            log.info(`Completed floor ${FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN}, starting new run:`, this.runCount);
-        } else {
-            // Otherwise just increment floor
-            this.floorCount++;
-            log.info("Advanced to floor", this.floorCount);
-        }
-
-        // Generate new floor and reset room index
-        this.generateFloor();
     }
 
     // Gets current floor number
@@ -221,22 +270,15 @@ export class FloorGenerator {
         }
     }
 
-    // Increments run count on player death
-    incrementRunCount() {
-        this.runCount++;
-        // Save to localStorage for persistence
-        localStorage.setItem('gameRunCount', this.runCount.toString());
-        log.info(`Player died. Starting run ${this.runCount}`);
-    }
-
-    // DEATH RESET: Complete game state reset
+    // DEATH RESET: Complete game state reset (ONLY increments run on death)
     resetToInitialState() {
-        log.info("=== COMPLETE FLOOR GENERATOR RESET ===");
+        log.info("=== COMPLETE FLOOR GENERATOR RESET (DEATH) ===");
 
-        // Increment run count on death
-        this.incrementRunCount();
+        // ✅ FIXED: Only increment run on DEATH, not on victory
+        this.runCount++;
+        console.log(`💀 DEATH: Starting run ${this.runCount}`);
 
-        // Reset all counters to initial state EXCEPT runCount
+        // Reset all counters to initial state
         this.floorCount = 1;
         this.currentRoomIndex = 0;
 
@@ -252,7 +294,7 @@ export class FloorGenerator {
         // Generate fresh floor
         this.generateFloor();
 
-        log.info("Floor generator reset to initial state (run count preserved)");
+        log.info("Floor generator reset after death complete");
     }
 
     // Get initial game state info
@@ -264,5 +306,133 @@ export class FloorGenerator {
             totalRooms: this.currentFloor.length,
             isInitialState: this.runCount === 1 && this.floorCount === 1 && this.currentRoomIndex === 0
         };
+    }
+
+    // Initialize room mapping service for room ID resolution
+    async initializeRoomMapping() {
+        try {
+            log.info("Initializing room mapping service in FloorGenerator...");
+            const success = await roomMapping.initialize();
+            this.roomMappingInitialized = success;
+            
+            if (success) {
+                log.info("Room mapping service initialized successfully");
+                log.debug("Room mapping debug info:", roomMapping.getDebugInfo());
+            } else {
+                log.warn("Room mapping service failed to initialize, using fallback mappings");
+            }
+        } catch (error) {
+            log.error("Error initializing room mapping service:", error);
+            this.roomMappingInitialized = false;
+        }
+    }
+
+    // Gets current room ID for backend API calls
+    getCurrentRoomId() {
+        try {
+            const currentFloor = this.getCurrentFloor();
+            const frontendIndex = this.getCurrentRoomIndex();
+            const roomType = this.getCurrentRoomType();
+            
+            if (roomType) {
+                const roomId = roomMapping.getRoomId(frontendIndex, currentFloor, roomType);
+                log.debug(`FloorGenerator: getCurrentRoomId() -> ${roomId} (floor: ${currentFloor}, index: ${frontendIndex}, type: ${roomType})`);
+                return roomId;
+            } else {
+                log.warn("No room type available for current room, using fallback ID");
+                return 1; // Ultimate fallback
+            }
+        } catch (error) {
+            log.error("Error getting current room ID:", error);
+            return 1; // Ultimate fallback for error scenarios
+        }
+    }
+
+    // Gets room data for current room from mapping service
+    getCurrentRoomData() {
+        const roomId = this.getCurrentRoomId();
+        return roomMapping.getRoomData(roomId);
+    }
+
+    // Validates if current room ID is valid in backend
+    isCurrentRoomIdValid() {
+        const roomId = this.getCurrentRoomId();
+        return roomMapping.isValidRoomId(roomId);
+    }
+
+    // ✅ COMPLETELY REWRITTEN: Fixed floor transition logic
+    async nextFloor() {
+        const beforeFloor = this.floorCount;
+        const beforeRun = this.runCount;
+        
+        console.log(`🏰 FLOOR TRANSITION starting from Floor ${beforeFloor}, Run ${beforeRun}`);
+        
+        // ✅ FIXED: Correct condition - allow Floor 3 to complete before new run
+        if (this.floorCount < FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN) {
+            // Normal floor progression: 1→2, 2→3
+            this.floorCount++;
+            console.log(`⬆️ FLOOR ADVANCED: Floor ${beforeFloor} → Floor ${this.floorCount}`);
+        } else {
+            // Floor 3 completed - start new run
+            console.log(`🎉 ALL FLOORS COMPLETED! Max floors (${FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN}) reached`);
+            
+            // Complete current run in backend
+            try {
+                const currentRunId = localStorage.getItem('currentRunId');
+                
+                if (currentRunId && window.game) {
+                    console.log("Completing run for successful completion...");
+                    
+                    // Get run statistics from game instance
+                    const runStats = window.game.getRunStats();
+                    
+                    const completionData = {
+                        goldCollected: runStats.goldCollected,
+                        goldSpent: runStats.goldSpent,
+                        totalKills: runStats.totalKills,
+                        deathCause: null // null for successful completion
+                    };
+                    
+                    console.log("Victory completion data:", completionData);
+                    const result = await completeRun(currentRunId, completionData);
+                    console.log("Run completed for victory:", result);
+                    
+                    // Clear the current run ID since run is now complete  
+                    localStorage.removeItem('currentRunId');
+                    
+                    // Create new run for continuous gameplay
+                    try {
+                        const userId = localStorage.getItem('currentUserId');
+                        if (userId) {
+                            console.log("Auto-creating new run for continuous gameplay...");
+                            const newRunData = await createRun(parseInt(userId));
+                            localStorage.setItem('currentRunId', newRunData.runId);
+                            console.log("New run created for next game:", newRunData.runId);
+                        } else {
+                            console.log("No userId available, enabling test mode for next run");
+                            localStorage.setItem('testMode', 'true');
+                        }
+                    } catch (error) {
+                        console.error("Failed to create new run, enabling test mode:", error);
+                        localStorage.setItem('testMode', 'true');
+                    }
+                    
+                } else {
+                    console.log("No current run ID found or game instance missing - playing in test mode");
+                }
+            } catch (error) {
+                console.error("Failed to complete run on victory:", error);
+            }
+
+            // ✅ FIXED: Start new run - increment run, reset floor
+            this.runCount++;
+            this.floorCount = 1;
+            console.log(`🎮 VICTORY: New run started - Run ${this.runCount}, Floor 1`);
+        }
+
+        // Generate new floor and reset room index
+        console.log(`Generating new floor ${this.floorCount}...`);
+        this.generateFloor();
+        console.log(`FLOOR TRANSITION COMPLETE: Now at Floor ${this.floorCount}, Room ${this.currentRoomIndex + 1}`);
     }
 } 

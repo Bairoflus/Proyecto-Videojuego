@@ -20,20 +20,21 @@ export class MeleeEnemy extends Enemy {
     range = 50
   ) {
     super(
-      position, 
-      width, 
-      height, 
-      color, 
-      sheetCols, 
-      type, 
-      movementSpeed, 
-      baseDamage, 
+      position,
+      width,
+      height,
+      color,
+      sheetCols,
+      type,
+      movementSpeed,
+      baseDamage,
       maxHealth,
       range, // Pass range to parent
       0, // No projectile range for melee
-      0  // No projectile damage for melee
+      0, // No projectile damage for melee
+      enemyTypeName
     );
-    
+
     // Melee-specific properties can be set here if needed
     this.attackRange = range; // Ensure attackRange is set correctly for melee
   }
@@ -48,7 +49,7 @@ export class MeleeEnemy extends Enemy {
     if (distance > this.attackRange) {
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
-      
+
       // Use parent's safe movement method
       const newPosition = this.position.plus(this.velocity);
       this.moveToPosition(newPosition);

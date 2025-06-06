@@ -21,22 +21,24 @@ export class RangedEnemy extends Enemy {
     maxHealth,
     projectileType = "arrow", // Default projectile type, can be overridden
     range = 150,
-    projectileRange = 300
+    projectileRange = 300,
+    enemyTypeName = null // Optional name for the enemy type
   ) {
     super(
-      position, 
-      width, 
-      height, 
-      color, 
-      sheetCols, 
-      type, 
-      movementSpeed, 
-      baseDamage, 
+      position,
+      width,
+      height,
+      color,
+      sheetCols,
+      type,
+      movementSpeed,
+      baseDamage,
       maxHealth,
       range,
-      projectileRange
+      projectileRange,
+      enemyTypeName
     );
-    
+
     // Ranged enemy specific properties
     this.attackRange = range; // Use the configurable range
     this.retreatDistance = Math.max(range * 0.5, 80); // Distance to maintain from target (half of attack range)
@@ -59,14 +61,14 @@ export class RangedEnemy extends Enemy {
       this.state = "retreating";
       const retreatDirection = this.position.minus(targetPosition);
       this.velocity = retreatDirection.normalize().times(this.movementSpeed);
-      
+
       const newPosition = this.position.plus(this.velocity);
       this.moveToPosition(newPosition);
     } else if (distance > this.attackRange) {
       // Move closer if too far
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
-      
+
       const newPosition = this.position.plus(this.velocity);
       this.moveToPosition(newPosition);
     } else {
@@ -124,16 +126,18 @@ export class RangedEnemy extends Enemy {
       this.baseDamage, // Use enemy's base damage
       this.projectileType // Use the enemy's specific projectile type
     );
-    
+
     // Set projectile max travel distance
     projectile.maxTravelDistance = this.projectileRange;
     projectile.initialPosition = new Vec(this.position.x, this.position.y);
-    
+
     // Set room reference for wall collision detection
     projectile.setCurrentRoom(this.currentRoom);
-    
+
     this.projectiles.push(projectile);
-    
-    log.verbose(`${this.type} fired ${this.projectileType} projectile at player (damage: ${this.baseDamage}, range: ${this.projectileRange})`);
+
+    log.verbose(
+      `${this.type} fired ${this.projectileType} projectile at player (damage: ${this.baseDamage}, range: ${this.projectileRange})`
+    );
   }
 }

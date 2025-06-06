@@ -19,6 +19,7 @@ import {
   PHYSICS_CONSTANTS,
   SPRITE_SCALING_CONSTANTS,
 } from "../../constants/gameConstants.js";
+import { createRun, completeRun } from "../../utils/api.js";
 
 // Constants for Player class
 const DASH_STAMINA_COST = PLAYER_CONSTANTS.DAGGER_STAMINA_COST; // Reuse for dash
@@ -84,6 +85,41 @@ export class Player extends AnimatedObject {
       offsetX: width * PHYSICS_CONSTANTS.PLAYER_HITBOX_OFFSET_X,
       offsetY: height * PHYSICS_CONSTANTS.PLAYER_HITBOX_OFFSET_Y,
     };
+
+    // Define sprite paths for different weapons - CORRECTED PATHS
+    this.weaponSprites = {
+      melee: {
+        walk: "/assets/sprites/player/dagger/walk.png",
+        attack: "/assets/sprites/player/dagger/slash.png",
+      },
+      ranged: {
+        walk: "/assets/sprites/player/bow/walk.png",
+        attack: "/assets/sprites/player/bow/attack.png",
+      },
+      magic: {
+        walk: "/assets/sprites/player/lightsaber/walk.png",
+        attack: "/assets/sprites/player/lightsaber/attack.png",
+      },
+    };
+
+    // Default weapon sprite configuration - CORRECTED PATHS
+    this.defaultWeaponConfig = {
+      melee: {
+        spritePath: "/assets/sprites/player/dagger/walk.png",
+        columns: 9,
+        animationSpeed: 0.15,
+      },
+      ranged: {
+        spritePath: "/assets/sprites/player/bow/walk.png",
+        columns: 8,
+        animationSpeed: 0.12,
+      },
+      magic: {
+        spritePath: "/assets/sprites/player/lightsaber/walk.png",
+        columns: 6,
+        animationSpeed: 0.18,
+      },
+    };
   }
 
   setCurrentRoom(room) {
@@ -113,8 +149,62 @@ export class Player extends AnimatedObject {
     }
   }
 
-  die() {
-    console.log("Player died! Initiating game reset...");
+  async die() {
+    console.log("Player died! Completing current run...");
+
+    // Complete the current run with death data
+    try {
+      const currentRunId = localStorage.getItem("currentRunId");
+
+      if (currentRunId && window.game) {
+        console.log("Completing run with death data...");
+
+        // Get run statistics from game instance
+        const runStats = window.game.getRunStats();
+
+        const completionData = {
+          goldCollected: runStats.goldCollected,
+          goldSpent: runStats.goldSpent,
+          totalKills: runStats.totalKills,
+          deathCause: "player_death", // Generic death cause
+        };
+
+        console.log("Run completion data:", completionData);
+        const result = await completeRun(currentRunId, completionData);
+        console.log("Run completed on death:", result);
+
+        // Clear the current run ID since run is now complete
+        localStorage.removeItem("currentRunId");
+
+        // ✅ SIMPLIFIED: Immediately create new run to avoid missing runId issues
+        try {
+          const userId = localStorage.getItem("currentUserId");
+          if (userId) {
+            console.log("🔄 Auto-creating new run after death...");
+            const newRunData = await createRun(parseInt(userId));
+            localStorage.setItem("currentRunId", newRunData.runId);
+            console.log("✅ New run created for respawn:", newRunData.runId);
+          } else {
+            console.log(
+              "⚠️ No userId available, enabling test mode for respawn"
+            );
+            localStorage.setItem("testMode", "true");
+          }
+        } catch (error) {
+          console.error(
+            "❌ Failed to create new run, enabling test mode:",
+            error
+          );
+          localStorage.setItem("testMode", "true");
+        }
+      } else {
+        console.log(
+          "No current run ID found or game instance missing - playing in test mode"
+        );
+      }
+    } catch (error) {
+      console.error("Failed to complete run on death:", error);
+    }
 
     // Trigger complete game reset through the global game instance
     if (window.game && typeof window.game.resetGameAfterDeath === "function") {
@@ -263,12 +353,12 @@ export class Player extends AnimatedObject {
   getWeaponSpritePath() {
     const currentWeapon = this.getCurrentWeapon();
     const weaponSpritePaths = {
-      dagger: "../assets/sprites/player/dagger/walk.png",
-      katana: "../assets/sprites/player/katana/walk.png",
-      lightsaber: "../assets/sprites/player/lightsaber/walk.png",
-      slingshot: "../assets/sprites/player/slingshot/walk.png",
-      bow: "../assets/sprites/player/bow/walk.png",
-      crossbow: "../assets/sprites/player/crossbow/walk.png",
+      dagger: "/assets/sprites/player/dagger/walk.png",
+      katana: "/assets/sprites/player/katana/walk.png",
+      lightsaber: "/assets/sprites/player/lightsaber/walk.png",
+      slingshot: "/assets/sprites/player/slingshot/walk.png",
+      bow: "/assets/sprites/player/bow/walk.png",
+      crossbow: "/assets/sprites/player/crossbow/walk.png",
     };
 
     return weaponSpritePaths[currentWeapon] || weaponSpritePaths.dagger;
@@ -314,27 +404,29 @@ export class Player extends AnimatedObject {
     this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
   }
 
-  // LINE OF SIGHT: Raycast to detect walls between player and target
+  /**
+   * Raycast to find nearest wall in given direction with specified maximum distance
+   * @param {Vec} startPos - Starting position for the raycast
+   * @param {Vec} direction - Normalized direction vector
+   * @param {number} maxDistance - Maximum distance to check
+   * @returns {number} Distance to wall or maxDistance if no wall found
+   */
   raycastToWall(startPos, direction, maxDistance) {
-    if (!this.currentRoom) return maxDistance;
-
+    const RAYCAST_STEP_SIZE = 5; // Step size for the raycast
     let currentDistance = 0;
-    const normalizedDirection = direction.normalize();
 
-    // Step through the ray in small increments
+    // Step through the direction until we hit a wall or reach max distance
     while (currentDistance < maxDistance) {
-      const currentPos = startPos.plus(
-        normalizedDirection.times(currentDistance)
-      );
+      const rayPosition = startPos.plus(direction.times(currentDistance));
 
-      // Create a small test object for collision detection
+      // Create a small test object at the ray position
       const testObject = {
-        position: currentPos,
+        position: rayPosition,
         width: 4,
         height: 4,
         getHitboxBounds: () => ({
-          x: currentPos.x - 2,
-          y: currentPos.y - 2,
+          x: rayPosition.x,
+          y: rayPosition.y,
           width: 4,
           height: 4,
         }),
@@ -342,11 +434,14 @@ export class Player extends AnimatedObject {
 
       // Check if this position collides with a wall
       if (this.currentRoom.checkWallCollision(testObject)) {
-        console.log(
-          `Wall detected at distance ${Math.round(
-            currentDistance
-          )} (direction: ${this.currentDirection})`
-        );
+        // ✅ FIX: Only log wall detection occasionally to reduce spam
+        if (currentDistance % 100 === 0) {
+          console.log(
+            `Wall detected at distance ${Math.round(
+              currentDistance
+            )} (direction: ${this.currentDirection})`
+          );
+        }
         return currentDistance;
       }
 
@@ -391,9 +486,10 @@ export class Player extends AnimatedObject {
       this.preAttackMaxFrame = this.maxFrame;
 
       // Store current sprite path and sheetCols to restore later
-      this.preAttackSpritePath = this.spriteImage
-        ? this.spriteImage.src
-        : this.getWeaponSpritePath();
+      this.preAttackSpritePath =
+        this.spriteImage && this.spriteImage.src
+          ? this.spriteImage.src
+          : this.getWeaponSpritePath();
       this.preAttackSheetCols = this.sheetCols;
 
       // Switch to attack sprite sheet and update sheetCols for attack animations
@@ -776,8 +872,8 @@ export class Player extends AnimatedObject {
       dagger: {
         type: "dagger",
         category: "melee",
-        spritePath: "../assets/sprites/player/dagger/walk.png",
-        attackSpritePath: "../assets/sprites/player/dagger/slash.png",
+        spritePath: "/assets/sprites/player/dagger/walk.png",
+        attackSpritePath: "/assets/sprites/player/dagger/slash.png",
         range: PLAYER_CONSTANTS.DAGGER_ATTACK_RANGE,
         damage: PLAYER_CONSTANTS.DAGGER_ATTACK_DAMAGE,
         staminaCost: PLAYER_CONSTANTS.DAGGER_STAMINA_COST,
@@ -787,8 +883,8 @@ export class Player extends AnimatedObject {
       katana: {
         type: "katana",
         category: "melee",
-        spritePath: "../assets/sprites/player/katana/walk.png",
-        attackSpritePath: "../assets/sprites/player/katana/slash.png",
+        spritePath: "/assets/sprites/player/katana/walk.png",
+        attackSpritePath: "/assets/sprites/player/katana/slash.png",
         range: PLAYER_CONSTANTS.DAGGER_ATTACK_RANGE * 1.2, // Slightly longer range
         damage: PLAYER_CONSTANTS.DAGGER_ATTACK_DAMAGE * 1.5, // More damage
         staminaCost: PLAYER_CONSTANTS.DAGGER_STAMINA_COST,
@@ -798,8 +894,8 @@ export class Player extends AnimatedObject {
       lightsaber: {
         type: "lightsaber",
         category: "melee",
-        spritePath: "../assets/sprites/player/lightsaber/walk.png",
-        attackSpritePath: "../assets/sprites/player/lightsaber/slash.png",
+        spritePath: "/assets/sprites/player/lightsaber/walk.png",
+        attackSpritePath: "/assets/sprites/player/lightsaber/slash.png",
         range: PLAYER_CONSTANTS.DAGGER_ATTACK_RANGE * 1.4, // Longest melee range
         damage: PLAYER_CONSTANTS.DAGGER_ATTACK_DAMAGE * 2, // Double damage
         staminaCost: PLAYER_CONSTANTS.DAGGER_STAMINA_COST * 0.8, // Less stamina cost
@@ -810,8 +906,8 @@ export class Player extends AnimatedObject {
       slingshot: {
         type: "slingshot",
         category: "ranged",
-        spritePath: "../assets/sprites/player/slingshot/walk.png",
-        attackSpritePath: "../assets/sprites/player/slingshot/shoot.png",
+        spritePath: "/assets/sprites/player/slingshot/walk.png",
+        attackSpritePath: "/assets/sprites/player/slingshot/shoot.png",
         range: 200, // Projectile range
         damage: PLAYER_CONSTANTS.SLINGSHOT_DAMAGE,
         staminaCost: PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST,
@@ -822,8 +918,8 @@ export class Player extends AnimatedObject {
       bow: {
         type: "bow",
         category: "ranged",
-        spritePath: "../assets/sprites/player/bow/walk.png",
-        attackSpritePath: "../assets/sprites/player/bow/shoot.png",
+        spritePath: "/assets/sprites/player/bow/walk.png",
+        attackSpritePath: "/assets/sprites/player/bow/shoot.png",
         range: 250, // Longer projectile range
         damage: PLAYER_CONSTANTS.SLINGSHOT_DAMAGE * 1.5, // More damage
         staminaCost: PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST,
@@ -834,8 +930,8 @@ export class Player extends AnimatedObject {
       crossbow: {
         type: "crossbow",
         category: "ranged",
-        spritePath: "../assets/sprites/player/crossbow/walk.png",
-        attackSpritePath: "../assets/sprites/player/crossbow/shoot.png",
+        spritePath: "/assets/sprites/player/crossbow/walk.png",
+        attackSpritePath: "/assets/sprites/player/crossbow/shoot.png",
         range: 300, // Longest projectile range
         damage: PLAYER_CONSTANTS.SLINGSHOT_DAMAGE * 2, // Double damage
         staminaCost: PLAYER_CONSTANTS.SLINGSHOT_STAMINA_COST * 0.8, // Less stamina cost
