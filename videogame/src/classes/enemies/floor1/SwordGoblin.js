@@ -36,11 +36,9 @@ export class SwordGoblin extends MeleeEnemy {
     this.currentDirection = "down"; // Default direction
     this.attackTarget = null; // Store target for damage application
 
-    // Sprite scaling configuration - per animation type
-    this.spriteScaling = {
-      walk: 1.0, // Sword goblins look fine at normal size when walking
-      attack: 1.05, // Very slight scale up to compensate for padding without making goblin too big
-    };
+    // Constant draw dimensions for consistent on-screen size (64×64 like DaggerGoblin)
+    this.drawW = SPRITE_SCALING_CONSTANTS.BASE_CHARACTER_SIZE;
+    this.drawH = SPRITE_SCALING_CONSTANTS.BASE_CHARACTER_SIZE;
 
     // Sprite paths for sword goblin (using absolute paths)
     this.walkSpritePath =
@@ -238,36 +236,38 @@ export class SwordGoblin extends MeleeEnemy {
     }
   }
 
-  // Override draw method to handle sprite scaling for better visibility
+  // Override draw method with constant draw size to prevent shrinking during slash animation
   draw(ctx) {
     if (this.state === "dead") return;
 
-    // Custom sprite rendering with proper per-animation scaling
+    // Custom sprite rendering with consistent destination dimensions
     if (this.spriteImage && this.spriteRect) {
-      // Determine current animation type for scaling
-      const animationType = this.state === "attacking" ? "attack" : "walk";
-      const scaleFactor = this.spriteScaling[animationType] || 1.0;
-
-      // Calculate frame dimensions and scaled draw dimensions
-      const frameWidth = this.spriteRect.width;
-      const frameHeight = this.spriteRect.height;
-      const drawWidth = frameWidth * scaleFactor;
-      const drawHeight = frameHeight * scaleFactor;
+      // Use constant draw size regardless of source frame dimensions or padding
+      const destWidth = this.drawW;  // Always 64px
+      const destHeight = this.drawH; // Always 64px
 
       // Center the sprite on the goblin's position
-      const drawX = this.position.x + (this.width - drawWidth) / 2;
-      const drawY = this.position.y + (this.height - drawHeight) / 2;
+      const drawX = this.position.x + (this.width - destWidth) / 2;
+      const drawY = this.position.y + (this.height - destHeight) / 2;
+
+      // Calculate source dimensions based on current sprite sheet layout
+      const sourceWidth = this.frameW || (this.spriteImage.width / this.sheetCols);
+      const sourceHeight = this.frameH || (this.spriteImage.height / 4);
+
+      // Calculate source position for current frame
+      const sourceX = (this.frame % this.sheetCols) * sourceWidth;
+      const sourceY = Math.floor(this.frame / this.sheetCols) * sourceHeight;
 
       ctx.drawImage(
         this.spriteImage,
-        this.spriteRect.x * this.spriteRect.width, // sx - source x (no scaling)
-        this.spriteRect.y * this.spriteRect.height, // sy - source y (no scaling)  
-        this.spriteRect.width, // sw - source width (no scaling)
-        this.spriteRect.height, // sh - source height (no scaling)
+        sourceX, // sx - source x based on current frame
+        sourceY, // sy - source y based on current frame
+        sourceWidth, // sw - source width from current layout
+        sourceHeight, // sh - source height from current layout
         drawX, // dx - destination x (centered)
         drawY, // dy - destination y (centered)
-        drawWidth, // dw - destination width (scaled)
-        drawHeight // dh - destination height (scaled)
+        destWidth, // dw - constant destination width (64px)
+        destHeight // dh - constant destination height (64px)
       );
     } else if (this.spriteImage) {
       // Fallback for sprites without spriteRect
