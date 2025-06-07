@@ -26,7 +26,7 @@ export class GreatBowGoblin extends RangedEnemy {
       "arrow", // projectile type - goblins use arrows
       config.attackRange || 200, // range - distance to begin shooting
       config.projectileRange || 300, // projectileRange - how far arrows can travel
-      3.5 // projectileSpeed - configurable speed for this enemy type (faster than regular archer)
+      350 // projectileSpeed - configurable speed for this enemy type (faster than regular archer)
     );
 
     // Set specific properties
@@ -84,7 +84,7 @@ export class GreatBowGoblin extends RangedEnemy {
       this.state = "retreating";
       const retreatDirection = enemyCenter.minus(targetPosition);
       this.velocity = retreatDirection.normalize().times(this.movementSpeed);
-      
+
       // Update direction based on movement
       this.updateDirectionFromMovement();
 
@@ -94,7 +94,7 @@ export class GreatBowGoblin extends RangedEnemy {
       // Move closer if too far
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
-      
+
       // Update direction based on movement
       this.updateDirectionFromMovement();
 
@@ -137,7 +137,8 @@ export class GreatBowGoblin extends RangedEnemy {
   }
 
   attack(target) {
-    if (this.state === "dead" || this.isShooting || this.attackCooldown > 0) return;
+    if (this.state === "dead" || this.isShooting || this.attackCooldown > 0)
+      return;
 
     // Calculate target hitbox center position
     const targetHitbox = target.getHitboxBounds();
@@ -155,7 +156,7 @@ export class GreatBowGoblin extends RangedEnemy {
 
     const aimDirection = targetCenter.minus(archerCenter);
     const distance = aimDirection.magnitude();
-    
+
     if (distance <= this.attackRange) {
       // Set state to attacking
       this.state = "attacking";
@@ -215,14 +216,14 @@ export class GreatBowGoblin extends RangedEnemy {
       this.baseDamage, // Use enemy's base damage (which is doubled)
       this.projectileType // Use inherited projectile type
     );
-    
+
     // Set projectile max travel distance and initial position
     projectile.maxTravelDistance = this.projectileRange;
     projectile.initialPosition = new Vec(archerCenter.x, archerCenter.y);
-    
+
     // Set room reference for wall collision detection
     projectile.setCurrentRoom(this.currentRoom);
-    
+
     this.projectiles.push(projectile);
   }
 

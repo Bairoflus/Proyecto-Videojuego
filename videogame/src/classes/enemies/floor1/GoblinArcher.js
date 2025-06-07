@@ -26,7 +26,7 @@ export class GoblinArcher extends RangedEnemy {
       "arrow", // projectile type - goblins use arrows
       config.attackRange || 200, // range - distance to begin shooting
       config.projectileRange || 300, // projectileRange - how far arrows can travel
-      2.5, // projectileSpeed - configurable speed for this enemy type
+      250, // projectileSpeed - configurable speed for this enemy type
       "goblin_archer" // enemyTypeName for backend mapping
     );
 
@@ -49,8 +49,7 @@ export class GoblinArcher extends RangedEnemy {
     };
 
     // Sprite paths
-    this.walkSpritePath =
-      "/assets/sprites/enemies/floor1/bow_goblin/walk.png";
+    this.walkSpritePath = "/assets/sprites/enemies/floor1/bow_goblin/walk.png";
     this.shootSpritePath =
       "/assets/sprites/enemies/floor1/bow_goblin/shoot.png";
 

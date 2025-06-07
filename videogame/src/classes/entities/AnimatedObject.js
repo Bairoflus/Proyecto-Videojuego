@@ -45,10 +45,13 @@ export class AnimatedObject extends GameObject {
 
       // Ensure spriteRect exists before updating
       if (this.spriteRect) {
+        // Clamp frame to valid range for sprite display (prevent wrong direction frames)
+        const displayFrame = Math.min(this.frame, this.maxFrame);
+        
         const oldX = this.spriteRect.x;
         const oldY = this.spriteRect.y;
-        this.spriteRect.x = this.frame % this.sheetCols;
-        this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
+        this.spriteRect.x = displayFrame % this.sheetCols;
+        this.spriteRect.y = Math.floor(displayFrame / this.sheetCols);
 
         // Debug logging for sprite frame changes during attacks (only for significant changes)
         if (
