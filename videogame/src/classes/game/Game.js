@@ -36,6 +36,9 @@ export class Game {
     this.transitionCooldown = 0; // Cooldown timer between transitions
     this.transitionCooldownTime = 500; // 500ms cooldown between transitions
 
+    // FIX: Enemy synchronization management
+    this.needsEnemySync = false; // Flag to force enemy array synchronization when needed
+
     // NEW: Pause system
     this.isPaused = false;
     this.pauseOverlay = null;
@@ -787,14 +790,14 @@ export class Game {
   async handleRoomTransition(direction) {
     // ENHANCED: Check if we can advance with better validation
     if (!this.currentRoom.canTransition()) {
-      console.log("❌ Cannot advance: Room transition not allowed");
+      console.log("Cannot advance: Room transition not allowed");
       console.log(`  Room type: ${this.currentRoom.roomType}, Combat: ${this.currentRoom.isCombatRoom}`);
 
       // ENHANCED: Special logging for Floor 2, Room 4 issue diagnosis
       const currentFloor = this.floorGenerator.getCurrentFloor();
       const currentRoomIndex = this.floorGenerator.getCurrentRoomIndex();
       if (currentFloor === 2 && currentRoomIndex === 3) { // Room 4 (index 3)
-        console.log("🚨 FLOOR 2, ROOM 4 DETECTED - DIAGNOSTIC MODE:");
+        console.log("FLOOR 2, ROOM 4 DETECTED - DIAGNOSTIC MODE:");
         console.log(`  - Current enemies: ${this.enemies.length}`);
         console.log(`  - Enemy details:`, this.enemies.map(e => ({
           type: e.type,
@@ -828,7 +831,7 @@ export class Game {
     if (this.currentRoom.isCombatRoom) {
       const aliveEnemies = this.enemies.filter((enemy) => enemy.state !== "dead");
       if (aliveEnemies.length > 0) {
-        console.log("❌ Cannot advance: Enemies still alive in combat room");
+        console.log("Cannot advance: Enemies still alive in combat room");
         console.log(`  Alive enemies: ${aliveEnemies.map(e => e.type || 'unknown').join(', ')}`);
         return;
       }
@@ -837,26 +840,26 @@ export class Game {
     try {
       // FIX: Lock transitions immediately to prevent race conditions
       this.isTransitioning = true;
-      console.log("🔒 ROOM TRANSITION LOCKED");
+      console.log("ROOM TRANSITION LOCKED");
 
       // DETAILED LOGGING before transition
       const beforeIndex = this.floorGenerator.getCurrentRoomIndex();
       const beforeFloor = this.floorGenerator.getCurrentFloor();
       const wasInBossRoom = this.floorGenerator.isBossRoom();
 
-      console.log(`🚀 ROOM TRANSITION ATTEMPT from Floor ${beforeFloor}, Room ${beforeIndex + 1} (Boss: ${wasInBossRoom})`);
+      console.log(`ROOM TRANSITION ATTEMPT from Floor ${beforeFloor}, Room ${beforeIndex + 1} (Boss: ${wasInBossRoom})`);
 
       // BOSS ROOM TRANSITION LOGIC
       if (wasInBossRoom) {
-        console.log("👑 BOSS ROOM - Proceeding to next floor");
+        console.log("BOSS ROOM - Proceeding to next floor");
 
         // Auto-save after boss completion
-        console.log(`💾 Auto-saving after boss completion...`);
+        console.log(`Auto-saving after boss completion...`);
         await this.saveCurrentGameState();
 
         // ENHANCED: Reset boss flags before floor transition
         this.resetBossFlags();
-        console.log("🔄 Boss flags reset before floor transition");
+        console.log("Boss flags reset before floor transition");
 
         // Proceed to next floor
         await this.floorGenerator.nextFloor();
@@ -873,7 +876,7 @@ export class Game {
           this.player.keys = [];
           this.enemies = this.currentRoom.objects.enemies;
 
-          console.log(`🎉 FLOOR TRANSITION SUCCESS: Now on Floor ${this.floorGenerator.getCurrentFloor()}, Room ${this.floorGenerator.getCurrentRoomIndex() + 1}`);
+          console.log(`FLOOR TRANSITION SUCCESS: Now on Floor ${this.floorGenerator.getCurrentFloor()}, Room ${this.floorGenerator.getCurrentRoomIndex() + 1}`);
 
           // Update shop gameData with new room information
           this.configureShopGameData();
@@ -883,7 +886,7 @@ export class Game {
         console.log("🏃 NORMAL ROOM TRANSITION - Moving forward");
 
         if (!this.floorGenerator.nextRoom()) {
-          console.log("❌ Room transition FAILED - Could not advance to next room");
+          console.log("Room transition FAILED - Could not advance to next room");
           return;
         }
 
@@ -891,7 +894,7 @@ export class Game {
         const afterIndex = this.floorGenerator.getCurrentRoomIndex();
         const afterFloor = this.floorGenerator.getCurrentFloor();
 
-        console.log(`✅ ROOM TRANSITION SUCCESS:`, {
+        console.log(`ROOM TRANSITION SUCCESS:`, {
           to: `Floor ${afterFloor}, Room ${afterIndex + 1}`,
           indexChanged: beforeIndex !== afterIndex,
           floorChanged: beforeFloor !== afterFloor
@@ -900,7 +903,7 @@ export class Game {
         // ENHANCED: Reset boss upgrade flag when transitioning to new floor or leaving boss room
         if (beforeFloor !== afterFloor || wasInBossRoom) {
           this.resetBossFlags();
-          console.log("🔄 Boss flags reset for new floor/room transition");
+          console.log("Boss flags reset for new floor/room transition");
         }
 
         this.currentRoom = this.floorGenerator.getCurrentRoom();
@@ -908,7 +911,7 @@ export class Game {
           // ENHANCED: Reset boss state if entering a new boss room
           if (this.currentRoom.roomType === 'boss') {
             this.currentRoom.resetBossState();
-            console.log("👑 Entering boss room - state reset");
+            console.log("Entering boss room - state reset");
           }
 
           this.player.setCurrentRoom(this.currentRoom);
@@ -918,7 +921,7 @@ export class Game {
           this.enemies = this.currentRoom.objects.enemies;
 
           // ENEMY STATE LOGGING
-          console.log(`🎯 NEW ROOM STATE: ${this.enemies.length} enemies, room can transition: ${this.currentRoom.canTransition()}`);
+          console.log(`NEW ROOM STATE: ${this.enemies.length} enemies, room can transition: ${this.currentRoom.canTransition()}`);
 
           // Update shop gameData with new room information
           this.configureShopGameData();
@@ -926,11 +929,11 @@ export class Game {
           // ENHANCED: Register room enter event with validation
           const newRoomId = this.floorGenerator.validateRoomMapping(); // Use enhanced validation
           const roomType = this.floorGenerator.getCurrentRoomType();
-          console.log(`🚪 Entered ${roomType} room (ID: ${newRoomId})`);
+          console.log(`Entered ${roomType} room (ID: ${newRoomId})`);
 
           // Log boss encounter if entering a boss room for the first time
           if (roomType === 'boss') {
-            console.log(`👑 Boss encounter detected in room ${newRoomId}`);
+            console.log(`Boss encounter detected in room ${newRoomId}`);
             try {
               const userId = parseInt(localStorage.getItem('currentUserId'));
               const runId = parseInt(localStorage.getItem('currentRunId'));
@@ -944,25 +947,25 @@ export class Game {
                   fightDuration: 0, // Fight hasn't started yet
                   playerHpRemaining: this.player.health
                 });
-                console.log(`📝 Boss encounter logged for room ${newRoomId}`);
+                console.log(`Boss encounter logged for room ${newRoomId}`);
               }
             } catch (error) {
-              console.error('❌ Failed to log boss encounter:', error);
+              console.error('Failed to log boss encounter:', error);
             }
           }
         }
 
         // AUTO-SAVE: Using saveStateManager after successful room transition
-        console.log(`💾 Auto-saving after successful room transition...`);
+        console.log(`Auto-saving after successful room transition...`);
         await this.saveCurrentGameState();
       }
 
       // FIX: Set cooldown timer to prevent immediate re-transition
       this.transitionCooldown = this.transitionCooldownTime;
-      console.log(`⏱️ ROOM TRANSITION COMPLETE - Setting ${this.transitionCooldownTime}ms cooldown`);
+      console.log(`ROOM TRANSITION COMPLETE - Setting ${this.transitionCooldownTime}ms cooldown`);
 
     } catch (error) {
-      console.error("❌ Error during room transition:", error);
+      console.error("Error during room transition:", error);
 
       // ENHANCED: Additional error recovery
       try {
@@ -971,15 +974,15 @@ export class Game {
         if (this.currentRoom && this.player) {
           this.player.setCurrentRoom(this.currentRoom);
           this.enemies = this.currentRoom.objects.enemies;
-          console.log("🔧 State recovery attempted after transition error");
+          console.log("State recovery attempted after transition error");
         }
       } catch (recoveryError) {
-        console.error("❌ Failed to recover state after transition error:", recoveryError);
+        console.error("Failed to recover state after transition error:", recoveryError);
       }
     } finally {
       // FIX: Always clear the transition flag, even if there was an error
       this.isTransitioning = false;
-      console.log("🔓 ROOM TRANSITION UNLOCKED");
+      console.log("ROOM TRANSITION UNLOCKED");
     }
   }
 
@@ -997,7 +1000,7 @@ export class Game {
     // FIX: Allow essential updates even during upgrade selection
     if (this.gameState === "upgradeSelection") {
       // CRITICAL: Keep essential systems running during upgrade selection
-      console.log("🎮 UPGRADE SELECTION MODE: Allowing essential updates");
+      console.log("UPGRADE SELECTION MODE: Allowing essential updates");
 
       // Update player movement
       this.player.update(deltaTime);
@@ -1036,7 +1039,7 @@ export class Game {
         !this.isTransitioning &&
         this.transitionCooldown <= 0
       ) {
-        console.log("🎮 ROOM TRANSITION TRIGGERED DURING UPGRADE SELECTION - Player at right edge");
+        console.log("ROOM TRANSITION TRIGGERED DURING UPGRADE SELECTION - Player at right edge");
         // Allow transitions even during upgrade selection
         this.handleRoomTransition("right").catch(error => {
           console.error("Error in room transition during upgrade selection:", error);
@@ -1064,25 +1067,38 @@ export class Game {
     // Update current room
     this.currentRoom.update(deltaTime);
 
-    // ENHANCED: Sync enemies array and detect inconsistencies
+    // ENHANCED: Smart enemies array synchronization
     const roomEnemies = this.currentRoom.objects.enemies;
+    const currentEnemiesLength = this.enemies ? this.enemies.length : 0;
+    const roomEnemiesLength = roomEnemies ? roomEnemies.length : 0;
+
+    // Check if arrays need synchronization
     if (this.enemies !== roomEnemies) {
-      console.warn("⚠️ ENEMIES ARRAY DESYNC DETECTED - Auto-correcting");
-      console.warn(`  this.enemies.length: ${this.enemies.length}`);
-      console.warn(`  this.currentRoom.objects.enemies.length: ${roomEnemies.length}`);
+      const lengthDifference = currentEnemiesLength - roomEnemiesLength;
+      const isNormalEnemyCleanup = lengthDifference > 0 && roomEnemiesLength >= 0;
 
-      // Force sync
+      // Only show warning for unexpected desyncs (not normal enemy death cleanup)
+      if (!isNormalEnemyCleanup && (currentEnemiesLength !== roomEnemiesLength || this.needsEnemySync)) {
+        console.warn("UNEXPECTED ENEMIES ARRAY DESYNC - Auto-correcting");
+        console.warn(`  this.enemies.length: ${currentEnemiesLength}`);
+        console.warn(`  this.currentRoom.objects.enemies.length: ${roomEnemiesLength}`);
+        console.warn(`  Length difference: ${lengthDifference} (unexpected pattern)`);
+        this.needsEnemySync = false; // Reset sync flag
+      }
+
+      // Always sync arrays (but only log for unexpected cases)
       this.enemies = roomEnemies;
-      console.log("✅ Enemies array synchronized");
-    }
 
-    // Update global enemies array
-    this.enemies = this.currentRoom.objects.enemies;
+      // Debug log for normal enemy cleanup (only when length actually changed)
+      if (isNormalEnemyCleanup && lengthDifference > 0) {
+        console.log(`Synchronized after enemy cleanup: ${currentEnemiesLength} → ${roomEnemiesLength} enemies`);
+      }
+    }
 
     // FIX: Check if boss was just defeated to show immediate transition feedback
     if (this.bossJustDefeated && this.floorGenerator.isBossRoom()) {
       console.log('Showing transition zone activation message to player');
-      this.transitionZoneActivatedMessage = "🏆 BOSS DEFEATED! 🏆\nMove to the right edge to advance to next floor!";
+      this.transitionZoneActivatedMessage = "BOSS DEFEATED! \nMove to the right edge to advance to next floor!";
       this.transitionZoneMessageTimer = 3000; // Show for 3 seconds
       this.bossJustDefeated = false; // Reset flag
     }
