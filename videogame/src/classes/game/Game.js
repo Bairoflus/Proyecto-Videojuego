@@ -31,17 +31,17 @@ export class Game {
     this.gameState = "loading"; // loading, playing, paused, gameover
     this.debug = false;
     this.lastTime = 0;
-    
+
     // Auto-save timing
     this.lastAutoSave = 0;
     this.autoSaveInterval = 30000; // 30 seconds
-    
+
     // Service initialization status
     this.servicesInitialized = false;
     this.serviceInitializationResult = null;
     this.lastServiceHealthCheck = null;
     this.serviceHealthCheckInterval = 60000; // Check every minute
-    
+
     // Run statistics tracking
     this.runStats = {
       goldSpent: 0,
@@ -61,13 +61,13 @@ export class Game {
   async initializeServices() {
     try {
       console.log('Initializing Backend Integration Services with Service Manager...');
-      
+
       // Initialize services with configuration
       this.serviceInitializationResult = await serviceManager.initializeServices({
         blockOnCritical: true,   // Block game start if critical services fail
         timeout: 30000          // 30 second timeout
       });
-      
+
       // Check if critical services failed
       if (this.serviceInitializationResult.criticalServicesFailed) {
         console.error('Critical services failed - game functionality may be limited');
@@ -76,19 +76,19 @@ export class Game {
         this.servicesInitialized = true;
         console.log('All critical services initialized successfully');
       }
-      
+
       // Schedule periodic health checks
       this.scheduleServiceHealthChecks();
-      
+
       // Enable debug commands for service management if debug mode is active
       if (variables.debug) {
         this.initializeServiceDebugCommands();
       }
-      
+
     } catch (error) {
       console.error('Failed to initialize backend services:', error);
-      this.serviceInitializationResult = { 
-        success: false, 
+      this.serviceInitializationResult = {
+        success: false,
         error: error.message,
         criticalServicesFailed: true
       };
@@ -103,7 +103,7 @@ export class Game {
   scheduleServiceHealthChecks() {
     // Initial health check after 10 seconds
     setTimeout(() => this.performServiceHealthCheck(), 10000);
-    
+
     // Regular health checks
     setInterval(() => this.performServiceHealthCheck(), this.serviceHealthCheckInterval);
   }
@@ -115,20 +115,20 @@ export class Game {
   async performServiceHealthCheck() {
     try {
       this.lastServiceHealthCheck = await serviceManager.performHealthCheck();
-      
+
       const criticalServicesDown = Object.values(this.lastServiceHealthCheck.services)
         .filter(service => service.criticality === SERVICE_CRITICALITY.CRITICAL && !service.healthy);
-      
+
       if (criticalServicesDown.length > 0) {
         console.warn('Critical services are unhealthy:', criticalServicesDown.map(s => s.name));
-        
+
         // Attempt to restart failed services
         const restartResult = await serviceManager.restartFailedServices();
         if (restartResult.restarted > 0) {
           console.log(`Successfully restarted ${restartResult.restarted} services`);
         }
       }
-      
+
     } catch (error) {
       console.error('Service health check failed:', error);
     }
@@ -148,7 +148,7 @@ export class Game {
         serviceStatus: (serviceId) => serviceManager.getServiceStatus(serviceId),
         reinitialize: () => this.initializeServices()
       };
-      
+
       console.log('Service debug commands available:');
       console.log('  window.gameServiceDebug.status() - Get overall service status');
       console.log('  window.gameServiceDebug.health() - Perform health check');
@@ -166,7 +166,7 @@ export class Game {
     if (!this.serviceInitializationResult) {
       return false;
     }
-    
+
     // Game can start if no critical services failed
     return !this.serviceInitializationResult.criticalServicesFailed;
   }
@@ -179,14 +179,14 @@ export class Game {
     if (!this.serviceInitializationResult) {
       return { status: 'initializing', ready: false };
     }
-    
+
     const criticalServices = Object.values(this.serviceInitializationResult.services)
       .filter(service => service.criticality === SERVICE_CRITICALITY.CRITICAL);
-    
-    const criticalSuccessRate = criticalServices.length > 0 
+
+    const criticalSuccessRate = criticalServices.length > 0
       ? (criticalServices.filter(s => s.success).length / criticalServices.length) * 100
       : 100;
-    
+
     return {
       status: this.serviceInitializationResult.success ? 'ready' : 'degraded',
       ready: this.isGameReadyToStart(),
@@ -232,7 +232,9 @@ export class Game {
     if (this.floorGenerator.isBossRoom()) {
       const room = this.floorGenerator.getCurrentRoom();
       const boss = room.objects.enemies.find(e => e instanceof Boss);
-      drawBossHealthBar(ctx, boss);
+      if (boss && typeof boss.drawUI === "function") {
+        boss.drawUI(ctx);
+      }
     }
   }
 
@@ -322,7 +324,7 @@ export class Game {
 
       // Reset run statistics for new run
       this.resetRunStats();
-      
+
       this.floorGenerator.resetToInitialState();
       this.globalShop.resetForNewRun();
 
@@ -568,7 +570,7 @@ export class Game {
 
       // Call save state API
       const result = await saveRunState(runId, stateData);
-      
+
       console.log('Game state saved successfully:', result);
       return true;
 
@@ -582,34 +584,4 @@ export class Game {
   // Game state management methods
   setupNewGame() {
   }
-}
-export function drawBossHealthBar(ctx, boss) {
-  if (!boss || boss.health <= 0) return;
-
-  const barWidth = 300;
-  const barHeight = 12;
-  const x = (variables.canvasWidth - barWidth) / 2;
-  const y = (variables.canvasHeight - barHeight) - 20;
-
-  const pct = boss.health / boss.maxHealth;
-
-  // fondo rojo
-  ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
-  ctx.fillRect(x, y, barWidth, barHeight);
-
-  // vida actual verde
-  ctx.fillStyle = "rgba(0, 255, 0, 0.8)";
-  ctx.fillRect(x, y, barWidth * pct, barHeight);
-
-  // borde blanco
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, barWidth, barHeight);
-
-  // nombre del boss
-  ctx.fillStyle = "white";
-  ctx.font = "16px Arial";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
-  ctx.fillText("DRAGON BOSS", x + barWidth / 2, y - 6);
 }
