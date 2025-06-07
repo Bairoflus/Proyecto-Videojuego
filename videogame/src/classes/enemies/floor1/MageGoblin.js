@@ -25,13 +25,13 @@ export class MageGoblin extends RangedEnemy {
       config.health,
       "magic_bolt", // projectile type - mages use magic bolts
       config.attackRange || 150, // range parameter
-      config.projectileRange || 250 // projectileRange parameter
+      config.projectileRange || 250, // projectileRange parameter
+      config.projectileSpeed || 250 // projectileSpeed - configurable speed for this enemy type
     );
 
     // Set specific properties
     this.attackRange = config.attackRange;
     this.attackDuration = config.attackCooldown;
-    this.projectileSpeed = config.projectileSpeed;
     this.retreatDistance = config.retreatDistance;
 
     // Animation properties

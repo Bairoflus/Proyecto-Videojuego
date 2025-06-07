@@ -22,6 +22,7 @@ export class RangedEnemy extends Enemy {
     projectileType = "arrow", // Default projectile type, can be overridden
     range = 150,
     projectileRange = 300,
+    projectileSpeed = 200, // Configurable projectile speed
     enemyTypeName = null // Optional name for the enemy type
   ) {
     super(
@@ -42,7 +43,7 @@ export class RangedEnemy extends Enemy {
     // Ranged enemy specific properties
     this.attackRange = range; // Use the configurable range
     this.retreatDistance = Math.max(range * 0.5, 80); // Distance to maintain from target (half of attack range)
-    this.projectileSpeed = 200; // Default projectile speed
+    this.projectileSpeed = projectileSpeed; // Use configurable projectile speed
     this.projectileType = projectileType; // Projectile type for this enemy
 
     // Projectiles

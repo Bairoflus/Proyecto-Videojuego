@@ -25,13 +25,14 @@ export class GreatBowGoblin extends RangedEnemy {
       config.health,
       "arrow", // projectile type - goblins use arrows
       config.attackRange || 200, // range - distance to begin shooting
-      config.projectileRange || 300 // projectileRange - how far arrows can travel
+      config.projectileRange || 300, // projectileRange - how far arrows can travel
+      3.5 // projectileSpeed - configurable speed for this enemy type (faster than regular archer)
     );
 
     // Set specific properties
     this.attackRange = config.attackRange;
     this.attackDuration = config.attackCooldown;
-    this.projectileSpeed = config.projectileSpeed;
+    this.retreatDistance = config.retreatDistance;
     this.retreatDistance = config.retreatDistance;
 
     // Animation properties
