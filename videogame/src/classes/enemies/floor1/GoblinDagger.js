@@ -22,16 +22,16 @@ export class GoblinDagger extends MeleeEnemy {
       config.speed,
       config.damage,
       config.health,
+      config.attackRange, // detection range
+      { width: config.attackRange, height: config.attackRange }, // attack area dimensions
       "goblin" // enemyTypeName for backend mapping
     );
 
     // Set specific properties
-    this.attackRange = config.attackRange;
     this.attackDuration = config.attackCooldown;
 
     // Animation properties
     this.isAttacking = false;
-    this.attackCooldown = 0;
     this.currentDirection = "down"; // Default direction
 
     // Sprite scaling configuration - per animation type
@@ -125,24 +125,23 @@ export class GoblinDagger extends MeleeEnemy {
     }
   }
 
-  // Attack method
+  // Attack method - now uses shared parent attack system
   attack(target) {
     if (this.state === "dead" || this.isAttacking) return;
 
     // Set state to attacking
     this.state = "attacking";
     this.isAttacking = true;
-    this.attackCooldown = this.attackDuration;
     this.velocity = new Vec(0, 0); // Stop moving during attack
 
-    // Deal damage to the target
-    target.takeDamage(this.baseDamage);
+    // Use shared attack system from parent class
+    const damageApplied = this.applyAttackDamage(target);
 
     // Update animation to attack sprite
     this.updateAnimation();
 
     // console.log(
-    //   `Goblin dagger attacking in direction: ${this.currentDirection}, dealing ${this.baseDamage} damage`
+    //   `Goblin dagger attacking in direction: ${this.currentDirection}, damage applied: ${damageApplied}`
     // );
   }
 
@@ -220,11 +219,6 @@ export class GoblinDagger extends MeleeEnemy {
   update(deltaTime) {
     super.update(deltaTime);
 
-    // Handle attack cooldown
-    if (this.attackCooldown > 0) {
-      this.attackCooldown -= deltaTime;
-    }
-
     // Check if attack animation is complete
     if (this.isAttacking && this.frame >= this.maxFrame) {
       this.isAttacking = false;
@@ -287,6 +281,9 @@ export class GoblinDagger extends MeleeEnemy {
       ctx.lineWidth = 2;
       ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
     }
+
+    // Draw attack area for debugging
+    this.drawAttackArea(ctx);
 
     // Draw health bar
     const healthBarWidth = this.width;

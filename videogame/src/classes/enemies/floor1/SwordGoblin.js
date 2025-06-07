@@ -23,18 +23,18 @@ export class SwordGoblin extends MeleeEnemy {
       "sword_goblin", // type
       config.speed,
       config.damage,
-      config.health
+      config.health,
+      config.attackRange, // detection range
+      { width: config.attackRange, height: config.attackRange } // attack area dimensions
     );
 
     // Set specific properties
-    this.attackRange = config.attackRange;
     this.attackDuration = config.attackCooldown;
 
     // Animation properties
     this.isAttacking = false;
-    this.attackCooldown = 0;
     this.currentDirection = "down"; // Default direction
-    this.hasAppliedDamage = false; // Track if damage has been applied during current attack
+    this.attackTarget = null; // Store target for damage application
 
     // Constant draw dimensions for consistent on-screen size (64×64 like DaggerGoblin)
     this.drawW = SPRITE_SCALING_CONSTANTS.BASE_CHARACTER_SIZE;
@@ -121,16 +121,14 @@ export class SwordGoblin extends MeleeEnemy {
     }
   }
 
-  // Attack method - starts attack animation and handles damage timing
+  // Attack method - now uses shared parent attack system
   attack(target) {
     if (this.state === "dead" || this.isAttacking) return;
 
     // Set state to attacking
     this.state = "attacking";
     this.isAttacking = true;
-    this.attackCooldown = this.attackDuration;
     this.velocity = new Vec(0, 0); // Stop moving during attack
-    this.hasAppliedDamage = false; // Reset damage flag for new attack
     this.attackTarget = target; // Store target for damage application
 
     // Update animation to attack sprite
@@ -217,25 +215,19 @@ export class SwordGoblin extends MeleeEnemy {
   update(deltaTime, player) {
     super.update(deltaTime, player);
 
-    // Handle attack cooldown
-    if (this.attackCooldown > 0) {
-      this.attackCooldown -= deltaTime;
-    }
-
-    // Handle damage application during attack animation
-    if (this.isAttacking && !this.hasAppliedDamage && this.attackTarget) {
+    // Handle damage application during attack animation using shared system
+    if (this.isAttacking && this.attackTarget && !this.hasAppliedDamage) {
       // Apply damage at the middle of the attack animation (around frame 3 for 6-frame attack)
       const middleFrame = Math.floor(this.maxFrame / 2);
       if (this.frame >= middleFrame) {
-        this.attackTarget.takeDamage(this.baseDamage);
-        this.hasAppliedDamage = true;
+        // Use shared attack system from parent class
+        this.applyAttackDamage(this.attackTarget);
       }
     }
 
     // Check if attack animation is complete
     if (this.isAttacking && this.frame >= this.maxFrame) {
       this.isAttacking = false;
-      this.hasAppliedDamage = false;
       this.attackTarget = null;
 
       // Transition back to chasing state (will be updated by moveTo next frame)
@@ -299,6 +291,9 @@ export class SwordGoblin extends MeleeEnemy {
       ctx.lineWidth = 2;
       ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
     }
+
+    // Draw attack area for debugging
+    this.drawAttackArea(ctx);
 
     // Draw health bar
     const healthBarWidth = this.width;
