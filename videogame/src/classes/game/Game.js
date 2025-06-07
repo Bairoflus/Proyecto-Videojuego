@@ -1837,34 +1837,3 @@ export class Game {
     }
   }
 }
-
-export function drawBossHealthBar(ctx, boss) {
-  if (!boss || boss.health <= 0) return;
-
-  const barWidth = 300;
-  const barHeight = 12;
-  const x = (variables.canvasWidth - barWidth) / 2;
-  const y = (variables.canvasHeight - barHeight) - 20;
-
-  const pct = boss.health / boss.maxHealth;
-
-  // fondo rojo
-  ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
-  ctx.fillRect(x, y, barWidth, barHeight);
-
-  // vida actual verde
-  ctx.fillStyle = "rgba(0, 255, 0, 0.8)";
-  ctx.fillRect(x, y, barWidth * pct, barHeight);
-
-  // borde blanco
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, barWidth, barHeight);
-
-  // nombre del boss
-  ctx.fillStyle = "white";
-  ctx.font = "16px Arial";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
-  ctx.fillText("DRAGON BOSS", x + barWidth / 2, y - 6);
-}
