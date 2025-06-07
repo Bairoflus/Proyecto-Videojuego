@@ -5,12 +5,12 @@
 const API_BASE_URL = 'http://localhost:3000/api';
 
 /**
- * Generic function to make API requests
+ * Generic function to make API requests with new response format handling
  * @param {string} endpoint - The API endpoint
  * @param {Object} options - Fetch options
  * @returns {Promise<Object>} Response data
  */
-async function apiRequest(endpoint, options = {}) {
+export async function apiRequest(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
     
     try {
@@ -24,7 +24,7 @@ async function apiRequest(endpoint, options = {}) {
 
         // Handle 204 No Content responses
         if (response.status === 204) {
-            return {};
+            return { success: true };
         }
 
         const data = await response.json();
@@ -48,35 +48,38 @@ async function apiRequest(endpoint, options = {}) {
  * @returns {Promise<Object>} User data with userId
  */
 export async function registerUser(username, email, password) {
-    return apiRequest('/auth/register', {
+    const response = await apiRequest('/auth/register', {
         method: 'POST',
         body: JSON.stringify({ username, email, password })
     });
+    return response; // {success: true, userId: X, message: "..."}
 }
 
 /**
  * Login an existing user
- * @param {string} email - Email address
+ * @param {string} username - Username
  * @param {string} password - Password
  * @returns {Promise<Object>} Session data with sessionToken
  */
-export async function loginUser(email, password) {
-    return apiRequest('/auth/login', {
+export async function loginUser(username, password) {
+    const response = await apiRequest('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ username, password })
     });
+    return response; // {success: true, userId: X, sessionToken: "...", sessionId: Y, expiresAt: "..."}
 }
 
 /**
  * Logout the current user
  * @param {string} sessionToken - Session token to invalidate
- * @returns {Promise<Object>} Empty object on success
+ * @returns {Promise<Object>} Success confirmation
  */
 export async function logoutUser(sessionToken) {
-    return apiRequest('/auth/logout', {
+    const response = await apiRequest('/auth/logout', {
         method: 'POST',
         body: JSON.stringify({ sessionToken })
     });
+    return response; // {success: true, message: "Logged out successfully"}
 }
 
 /**
@@ -85,20 +88,38 @@ export async function logoutUser(sessionToken) {
  * @returns {Promise<Object>} User stats data
  */
 export async function getUserStats(userId) {
-    return apiRequest(`/users/${userId}/stats`, {
-        method: 'GET'
-    });
+    const response = await apiRequest(`/users/${userId}/stats`);
+    return response.data; // Extract data from {success: true, data: {...}}
+}
+
+/**
+ * Get complete player statistics (historical data)
+ * @param {string|number} userId - User ID to get complete stats for
+ * @returns {Promise<Object>} Complete player stats data
+ */
+export async function getCompletePlayerStats(userId) {
+    const response = await apiRequest(`/users/${userId}/complete-stats`);
+    return response.data; // Extract data from {success: true, data: {...}}
+}
+
+/**
+ * Get current run statistics for a user
+ * @param {string|number} userId - User ID to get current run stats for
+ * @returns {Promise<Object>} Current run stats data
+ */
+export async function getCurrentRunStats(userId) {
+    const response = await apiRequest(`/users/${userId}/current-run`);
+    return response.data; // Extract data from {success: true, data: {...}}
 }
 
 /**
  * Get player settings (audio and game preferences)
  * @param {string|number} userId - User ID to get settings for
- * @returns {Promise<Object>} Player settings data with music_volume, sfx_volume, and last_updated
+ * @returns {Promise<Object>} Player settings data
  */
 export async function getPlayerSettings(userId) {
-    return apiRequest(`/users/${userId}/settings`, {
-        method: 'GET'
-    });
+    const response = await apiRequest(`/users/${userId}/settings`);
+    return response.data; // Extract data from {success: true, data: {...}}
 }
 
 /**
@@ -107,61 +128,49 @@ export async function getPlayerSettings(userId) {
  * @param {Object} settingsData - Settings data to update
  * @param {number} [settingsData.musicVolume] - Music volume level (0-100)
  * @param {number} [settingsData.sfxVolume] - SFX volume level (0-100)
- * @returns {Promise<Object>} Update confirmation with updated settings
+ * @param {boolean} [settingsData.showFps] - Show FPS counter
+ * @param {boolean} [settingsData.autoSaveEnabled] - Auto-save enabled
+ * @returns {Promise<Object>} Update confirmation
  */
 export async function updatePlayerSettings(userId, settingsData) {
-    return apiRequest(`/users/${userId}/settings`, {
+    const response = await apiRequest(`/users/${userId}/settings`, {
         method: 'PUT',
         body: JSON.stringify(settingsData)
     });
+    return response; // {success: true, message: "Settings updated successfully"}
 }
 
 /**
  * Create a new game run
  * @param {string|number} userId - User ID to create run for
- * @returns {Promise<Object>} Run data with runId and startedAt
+ * @returns {Promise<Object>} Run data with runId
  */
 export async function createRun(userId) {
-    return apiRequest('/runs', {
+    const response = await apiRequest('/runs', {
         method: 'POST',
         body: JSON.stringify({ userId })
     });
-}
-
-/**
- * Save run state
- * @param {string|number} runId - Run ID to save state for
- * @param {Object} stateData - State data to save
- * @param {number} stateData.userId - User ID
- * @param {number} stateData.sessionId - Session ID 
- * @param {number} stateData.roomId - Room ID
- * @param {number} stateData.currentHp - Current HP
- * @param {number} stateData.currentStamina - Current stamina
- * @param {number} stateData.gold - Gold amount
- * @returns {Promise<Object>} Save data with saveId
- */
-export async function saveRunState(runId, stateData) {
-    return apiRequest(`/runs/${runId}/save-state`, {
-        method: 'POST',
-        body: JSON.stringify(stateData)
-    });
+    return response; // {success: true, runId: X, message: "Run created successfully"}
 }
 
 /**
  * Complete a game run
  * @param {string|number} runId - Run ID to complete
  * @param {Object} completionData - Completion data
- * @param {number} completionData.goldCollected - Gold collected during run
- * @param {number} completionData.goldSpent - Gold spent during run
+ * @param {number} completionData.finalFloor - Final floor reached
+ * @param {number} completionData.finalGold - Gold at end of run
+ * @param {string} completionData.causeOfDeath - Cause of death ('active', 'enemy_kill', 'boss_kill', etc.)
  * @param {number} completionData.totalKills - Total kills during run
- * @param {string|null} completionData.deathCause - Death cause (null for successful completion)
+ * @param {number} completionData.bossesKilled - Bosses killed during run
+ * @param {number} completionData.durationSeconds - Run duration in seconds
  * @returns {Promise<Object>} Completion confirmation
  */
 export async function completeRun(runId, completionData) {
-    return apiRequest(`/runs/${runId}/complete`, {
+    const response = await apiRequest(`/runs/${runId}/complete`, {
         method: 'PUT',
         body: JSON.stringify(completionData)
     });
+    return response; // {success: true, message: "Run completed successfully"}
 }
 
 /**
@@ -169,224 +178,203 @@ export async function completeRun(runId, completionData) {
  * @param {string|number} runId - Run ID where the kill occurred
  * @param {Object} killData - Kill event data
  * @param {number} killData.userId - User ID who made the kill
- * @param {number} killData.enemyId - Enemy type ID that was killed
+ * @param {string} killData.enemyType - Enemy type ('common', 'rare')
  * @param {number} killData.roomId - Room ID where the kill occurred
- * @returns {Promise<Object>} Kill registration confirmation with killId
+ * @param {number} killData.floor - Floor where the kill occurred
+ * @returns {Promise<Object>} Kill registration confirmation
  */
 export async function registerEnemyKill(runId, killData) {
-    return apiRequest(`/runs/${runId}/enemy-kill`, {
+    const response = await apiRequest(`/runs/${runId}/enemy-kill`, {
         method: 'POST',
         body: JSON.stringify(killData)
     });
+    return response; // {success: true, message: "Enemy kill registered"}
 }
 
 /**
- * Register a chest event during gameplay
- * @param {string|number} runId - Run ID where the chest was opened
- * @param {Object} chestData - Chest event data
- * @param {number} chestData.userId - User ID who opened the chest
- * @param {number} chestData.roomId - Room ID where the chest was opened
- * @param {number} chestData.goldReceived - Gold amount received from chest
- * @returns {Promise<Object>} Chest event registration confirmation with eventId
- */
-export async function registerChestEvent(runId, chestData) {
-    return apiRequest(`/runs/${runId}/chest-event`, {
-        method: 'POST',
-        body: JSON.stringify(chestData)
-    });
-}
-
-/**
- * Register a shop purchase during gameplay
- * @param {string|number} runId - Run ID where the purchase was made
- * @param {Object} purchaseData - Purchase event data
- * @param {number} purchaseData.userId - User ID who made the purchase
- * @param {number} purchaseData.roomId - Room ID where the purchase was made
- * @param {string} purchaseData.itemType - Type of item purchased (must exist in item_types)
- * @param {string} purchaseData.itemName - Name of the item purchased
- * @param {number} purchaseData.goldSpent - Gold amount spent on the purchase
- * @returns {Promise<Object>} Shop purchase registration confirmation with purchaseId
- */
-export async function registerShopPurchase(runId, purchaseData) {
-    return apiRequest(`/runs/${runId}/shop-purchase`, {
-        method: 'POST',
-        body: JSON.stringify(purchaseData)
-    });
-}
-
-/**
- * Register a boss encounter during gameplay
- * @param {string|number} runId - Run ID where the boss encounter occurred
- * @param {Object} encounterData - Boss encounter event data
- * @param {number} encounterData.userId - User ID who encountered the boss
- * @param {number} encounterData.enemyId - Boss enemy ID (must exist in boss_details)
- * @param {number} encounterData.damageDealt - Damage dealt to the boss
- * @param {number} encounterData.damageTaken - Damage taken from the boss
- * @param {string} encounterData.resultCode - Result of the encounter (must exist in boss_results)
- * @returns {Promise<Object>} Boss encounter registration confirmation with encounterId
- */
-export async function registerBossEncounter(runId, encounterData) {
-    return apiRequest(`/runs/${runId}/boss-encounter`, {
-        method: 'POST',
-        body: JSON.stringify(encounterData)
-    });
-}
-
-/**
- * Register a successful boss kill during gameplay
+ * Register a boss kill during gameplay
  * @param {string|number} runId - Run ID where the boss was killed
  * @param {Object} killData - Boss kill event data
  * @param {number} killData.userId - User ID who killed the boss
- * @param {number} killData.enemyId - Boss enemy ID (must exist in boss_details)
- * @param {number} killData.roomId - Room ID where the boss was killed
- * @returns {Promise<Object>} Boss kill registration confirmation with killId
+ * @param {string} killData.bossType - Boss type ('dragon')
+ * @param {number} killData.floor - Floor where boss was killed
+ * @param {number} killData.fightDuration - Fight duration in seconds
+ * @param {number} killData.playerHpRemaining - Player HP remaining
+ * @returns {Promise<Object>} Boss kill registration confirmation
  */
 export async function registerBossKill(runId, killData) {
-    return apiRequest(`/runs/${runId}/boss-kill`, {
+    const response = await apiRequest(`/runs/${runId}/boss-kill`, {
         method: 'POST',
         body: JSON.stringify(killData)
     });
+    return response; // {success: true, message: "Boss kill registered"}
 }
 
 /**
- * Register a permanent upgrade purchase during gameplay
- * @param {string|number} runId - Run ID where the upgrade was purchased
- * @param {Object} upgradeData - Upgrade purchase event data
- * @param {number} upgradeData.userId - User ID who purchased the upgrade
- * @param {string} upgradeData.upgradeType - Type of upgrade purchased (must exist in upgrade_types)
- * @param {number} upgradeData.levelBefore - Upgrade level before purchase
- * @param {number} upgradeData.levelAfter - Upgrade level after purchase
- * @param {number} upgradeData.goldSpent - Gold amount spent on the upgrade
- * @returns {Promise<Object>} Upgrade purchase registration confirmation with purchaseId
+ * Register a weapon purchase during gameplay
+ * @param {string|number} runId - Run ID where the purchase was made
+ * @param {Object} purchaseData - Purchase event data
+ * @param {number} purchaseData.userId - User ID who made the purchase
+ * @param {string} purchaseData.weaponType - Weapon type ('melee', 'ranged')
+ * @param {number} purchaseData.upgradeLevel - Level after upgrade
+ * @param {number} purchaseData.cost - Cost of the upgrade
+ * @returns {Promise<Object>} Purchase registration confirmation
  */
-export async function registerUpgradePurchase(runId, upgradeData) {
-    return apiRequest(`/runs/${runId}/upgrade-purchase`, {
+export async function registerWeaponPurchase(runId, purchaseData) {
+    const response = await apiRequest(`/runs/${runId}/weapon-purchase`, {
         method: 'POST',
-        body: JSON.stringify(upgradeData)
+        body: JSON.stringify(purchaseData)
     });
+    return response; // {success: true, message: "Weapon purchase registered"}
 }
 
 /**
- * Equip a weapon in a specific slot during gameplay
- * @param {string|number} runId - Run ID where the weapon is being equipped
- * @param {Object} equipmentData - Weapon equipment event data
- * @param {number} equipmentData.userId - User ID who is equipping the weapon
- * @param {string} equipmentData.slotType - Type of weapon slot (must exist in weapon_slots)
- * @returns {Promise<Object>} Weapon equipment confirmation
+ * Get permanent upgrades for a user
+ * @param {string|number} userId - User ID
+ * @returns {Promise<Array>} Array of permanent upgrades
  */
-export async function equipWeapon(runId, equipmentData) {
-    return apiRequest(`/runs/${runId}/equip-weapon`, {
+export async function getPermanentUpgrades(userId) {
+    const response = await apiRequest(`/users/${userId}/permanent-upgrades`);
+    return response.data; // Extract data from {success: true, data: [...]}
+}
+
+/**
+ * Apply a permanent upgrade (after boss kill)
+ * @param {string|number} userId - User ID
+ * @param {string} upgradeType - Type of upgrade ('health_max', 'stamina_max', 'movement_speed')
+ * @returns {Promise<Object>} Application confirmation
+ */
+export async function applyPermanentUpgrade(userId, upgradeType) {
+    const response = await apiRequest(`/users/${userId}/permanent-upgrade`, {
         method: 'POST',
-        body: JSON.stringify(equipmentData)
+        body: JSON.stringify({ upgradeType })
     });
+    return response; // {success: true, message: "Permanent upgrade applied successfully"}
 }
 
 /**
- * Save weapon upgrade progress during gameplay
- * @param {string|number} runId - Run ID where the weapon upgrade is being saved
- * @param {Object} upgradeData - Weapon upgrade data
- * @param {number} upgradeData.userId - User ID who is upgrading the weapon
- * @param {string} upgradeData.slotType - Type of weapon slot (must exist in weapon_slots)
- * @param {number} upgradeData.level - Current upgrade level
- * @param {number} upgradeData.damagePerUpgrade - Damage per upgrade level
- * @param {number} upgradeData.goldCostPerUpgrade - Gold cost per upgrade level
- * @returns {Promise<Object>} Weapon upgrade save confirmation
+ * Get weapon upgrades for a specific run
+ * @param {string|number} userId - User ID
+ * @param {string|number} runId - Run ID
+ * @returns {Promise<Object>} Weapon upgrade levels
  */
-export async function upgradeWeapon(runId, upgradeData) {
-    return apiRequest(`/runs/${runId}/weapon-upgrade`, {
+export async function getWeaponUpgrades(userId, runId) {
+    const response = await apiRequest(`/users/${userId}/weapon-upgrades/${runId}`);
+    return response.data; // Extract data from {success: true, data: {close_combat: X, distance_combat: Y}}
+}
+
+/**
+ * Update weapon upgrades for a run
+ * @param {string|number} userId - User ID
+ * @param {string|number} runId - Run ID
+ * @param {number} meleeLevel - Melee weapon level
+ * @param {number} rangedLevel - Ranged weapon level
+ * @returns {Promise<Object>} Update confirmation
+ */
+export async function updateWeaponUpgrades(userId, runId, meleeLevel, rangedLevel) {
+    const response = await apiRequest(`/users/${userId}/weapon-upgrades/${runId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ meleeLevel, rangedLevel })
+    });
+    return response; // {success: true, message: "Weapon upgrades updated successfully"}
+}
+
+/**
+ * Reset weapon upgrades (on player death)
+ * @param {string|number} userId - User ID
+ * @param {string|number} runId - Run ID
+ * @returns {Promise<Object>} Reset confirmation
+ */
+export async function resetWeaponUpgrades(userId, runId) {
+    const response = await apiRequest(`/users/${userId}/weapon-upgrades/${runId}`, {
+        method: 'DELETE'
+    });
+    return response; // {success: true, message: "Weapon upgrades reset successfully"}
+}
+
+/**
+ * Get save state for a user
+ * @param {string|number} userId - User ID
+ * @returns {Promise<Object|null>} Save state data or null
+ */
+export async function getSaveState(userId) {
+    const response = await apiRequest(`/users/${userId}/save-state`);
+    return response.data; // Extract data from {success: true, data: {...}} or null
+}
+
+/**
+ * Save player game state
+ * @param {number} userId - User ID
+ * @param {Object} saveData - Save state data
+ * @param {number} saveData.sessionId - Session ID
+ * @param {number} saveData.runId - Run ID
+ * @param {number} saveData.floorId - Floor ID
+ * @param {number} saveData.roomId - Room ID
+ * @param {number} saveData.currentHp - Current health
+ * @param {number} saveData.gold - Current gold
+ * @returns {Promise<Object>} Save operation result
+ */
+export async function saveGameState(userId, saveData) {
+    return apiRequest(`/users/${userId}/save-state`, {
         method: 'POST',
-        body: JSON.stringify(upgradeData)
+        body: JSON.stringify(saveData)
     });
 }
 
 /**
- * Get all rooms ordered by floor and sequence
- * @returns {Promise<Array>} Array of room objects with room details
+ * Clear save state (on player death)
+ * @param {string|number} userId - User ID
+ * @returns {Promise<Object>} Clear confirmation
  */
-export async function getRooms() {
-    return apiRequest('/rooms', {
-        method: 'GET'
+export async function clearSaveState(userId) {
+    const response = await apiRequest(`/users/${userId}/save-state`, {
+        method: 'DELETE'
     });
+    return response; // {success: true, message: "Save state cleared successfully"}
 }
 
 /**
- * Get all enemy types
- * @returns {Promise<Array>} Array of enemy objects with enemy details and stats
+ * Get leaderboard by type
+ * @param {string} type - Leaderboard type ('floors', 'bosses', 'playtime')
+ * @returns {Promise<Array>} Leaderboard data
  */
-export async function getEnemies() {
-    return apiRequest('/enemies', {
-        method: 'GET'
-    });
+export async function getLeaderboard(type) {
+    const response = await apiRequest(`/leaderboards/${type}`);
+    return response.data; // Extract data from {success: true, data: [...]}
 }
 
 /**
- * Get all boss types with their moves and information
- * @returns {Promise<Array>} Array of boss objects with moves, stats, and information
+ * Get economy analytics
+ * @returns {Promise<Array>} Economy statistics
  */
-export async function getBosses() {
-    return apiRequest('/bosses', {
-        method: 'GET'
-    });
+export async function getEconomyAnalytics() {
+    const response = await apiRequest('/analytics/economy');
+    return response.data; // Extract data from {success: true, data: [...]}
 }
 
 /**
- * Get all lookup data for dropdowns and form options
- * @returns {Promise<Object>} Object containing all lookup arrays (eventTypes, weaponSlots, upgradeTypes, bossResults, roomTypes, itemTypes)
+ * Get player progression analytics
+ * @returns {Promise<Array>} Player progression data
  */
-export async function getLookups() {
-    return apiRequest('/lookups', {
-        method: 'GET'
-    });
+export async function getPlayerProgression() {
+    const response = await apiRequest('/analytics/player-progression');
+    return response.data; // Extract data from {success: true, data: [...]}
 }
 
 /**
- * Get all item types for shop menus and item categorization
- * @returns {Promise<Array>} Array of item type objects with name property
+ * Get active players status
+ * @returns {Promise<Array>} Active players data
  */
-export async function getItemTypes() {
-    return apiRequest('/item-types', {
-        method: 'GET'
-    });
+export async function getActivePlayers() {
+    const response = await apiRequest('/status/active-players');
+    return response.data; // Extract data from {success: true, data: [...]}
 }
 
 /**
- * Log player events during gameplay (supports batch logging)
- * @param {string|number} runId - Run ID where the events occurred
- * @param {Object} eventData - Event logging data
- * @param {number} eventData.userId - User ID who performed the actions
- * @param {Array<Object>} eventData.events - Array of events to log
- * @param {string} eventData.events[].eventType - Type of event (must exist in event_types)
- * @param {number} eventData.events[].roomId - Room ID where the event occurred
- * @param {number} [eventData.events[].value] - Optional numeric value associated with the event
- * @param {string} [eventData.events[].weaponType] - Optional weapon type used (max 20 chars)
- * @param {string} [eventData.events[].context] - Optional event context (max 50 chars)
- * @returns {Promise<Object>} Event logging confirmation with eventIds
+ * Get current games status
+ * @returns {Promise<Array>} Current games data
  */
-export async function logPlayerEvents(runId, eventData) {
-    return apiRequest(`/runs/${runId}/events`, {
-        method: 'POST',
-        body: JSON.stringify(eventData)
-    });
-}
-
-/**
- * Log a single player event (convenience function)
- * @param {string|number} runId - Run ID where the event occurred
- * @param {number} userId - User ID who performed the action
- * @param {Object} event - Single event to log
- * @param {string} event.eventType - Type of event (must exist in event_types)
- * @param {number} event.roomId - Room ID where the event occurred
- * @param {number} [event.value] - Optional numeric value associated with the event
- * @param {string} [event.weaponType] - Optional weapon type used (max 20 chars)
- * @param {string} [event.context] - Optional event context (max 50 chars)
- * @returns {Promise<Object>} Event logging confirmation with eventIds
- */
-export async function logPlayerEvent(runId, userId, event) {
-    return logPlayerEvents(runId, {
-        userId: userId,
-        events: [event]
-    });
-}
-
-// Export the base request function for future use
-export { apiRequest }; 
+export async function getCurrentGames() {
+    const response = await apiRequest('/status/current-games');
+    return response.data; // Extract data from {success: true, data: [...]}
+} 

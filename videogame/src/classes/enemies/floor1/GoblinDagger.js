@@ -3,11 +3,11 @@
  * Melee enemy type that attacks at close range
  * Found commonly on floor 1
  */
-import { MeleeEnemy } from "../../entities/MeleeEnemy.js";
+import { Enemy } from "../../entities/Enemy.js";
 import { Vec } from "../../../utils/Vec.js";
 import { ENEMY_CONSTANTS } from "../../../constants/gameConstants.js";
 
-export class GoblinDagger extends MeleeEnemy {
+export class GoblinDagger extends Enemy {
   constructor(position) {
     const config = ENEMY_CONSTANTS.GOBLIN_DAGGER;
     

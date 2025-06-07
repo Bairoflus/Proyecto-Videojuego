@@ -36,6 +36,10 @@ export class Room {
     this.shopActivationArea = null; // Shop activation area
     this.playerInShopArea = false; // Track if player is in shop activation area
     this.shopCanBeOpened = true; // Prevent reopening until player leaves area
+    
+    // FIX: Add boss defeated flag for immediate transition activation
+    this.bossDefeated = false; // Track if boss has been defeated for immediate transition
+    
     this.parseLayout();
 
     // Create shop instance for shop rooms
@@ -50,26 +54,26 @@ export class Room {
       log.info("Shop instance created in constructor for shop room");
     }
 
-    // ✅ FIXED: Don't auto-generate enemies in constructor
+    // FIXED: Don't auto-generate enemies in constructor
     // Enemy generation will be handled by initializeEnemies() for new rooms only
   }
 
-  // ✅ NEW METHOD: Initialize enemies for NEW combat rooms only
+  // NEW METHOD: Initialize enemies for NEW combat rooms only
   initializeEnemies() {
-    console.log(`🎮 ROOM.initializeEnemies() called:`, {
+    console.log(`ROOM.initializeEnemies() called:`, {
       isCombatRoom: this.isCombatRoom,
       currentEnemyCount: this.objects.enemies.length,
       roomType: this.roomType
     });
 
     if (this.isCombatRoom && this.objects.enemies.length === 0) {
-      console.log('✅ Generating NEW enemies for fresh combat room...');
+      console.log('Generating NEW enemies for fresh combat room...');
       this.generateEnemies();
-      console.log(`✅ Enemy generation complete: ${this.objects.enemies.length} enemies created`);
+      console.log(`Enemy generation complete: ${this.objects.enemies.length} enemies created`);
     } else if (this.isCombatRoom) {
-      console.log(`🔄 Skipping enemy generation: ${this.objects.enemies.length} enemies already exist (SAVED STATE)`);
+      console.log(`Skipping enemy generation: ${this.objects.enemies.length} enemies already exist (SAVED STATE)`);
     } else {
-      console.log(`ℹ️ Non-combat room (${this.roomType}): No enemy generation needed`);
+      console.log(`Non-combat room (${this.roomType}): No enemy generation needed`);
     }
   }
 
@@ -259,10 +263,25 @@ export class Room {
 
     // Remove dead enemies from the array
     const previousEnemyCount = this.objects.enemies.length;
+    
+    // ENHANCED: Better logging for enemy removal
+    const deadEnemies = this.objects.enemies.filter((enemy) => enemy.state === "dead");
+    const aliveEnemiesBefore = this.objects.enemies.filter((enemy) => enemy.state !== "dead");
+    
     this.objects.enemies = this.objects.enemies.filter(
       (enemy) => enemy.state !== "dead"
     );
     const currentEnemyCount = this.objects.enemies.length;
+
+    // ENHANCED: Diagnostic logging for enemy state changes
+    if (deadEnemies.length > 0) {
+      console.log(`🗑️ Removing ${deadEnemies.length} dead enemies from room`);
+      console.log(`  Dead enemies:`, deadEnemies.map(e => ({
+        type: e.type,
+        position: `(${Math.round(e.position.x)}, ${Math.round(e.position.y)})`
+      })));
+      console.log(`  Enemy count: ${previousEnemyCount} → ${currentEnemyCount}`);
+    }
 
     // Check if all enemies were just defeated in a combat room
     if (
@@ -271,6 +290,7 @@ export class Room {
       previousEnemyCount > 0 &&
       currentEnemyCount === 0
     ) {
+      console.log("🎉 ALL ENEMIES DEFEATED - Spawning chest");
       this.spawnChest();
     }
 
@@ -293,7 +313,17 @@ export class Room {
         // Player just entered the area
         this.playerInShopArea = true;
         if (this.shopCanBeOpened && !this.objects.shop.isOpen) {
-          this.objects.shop.open();
+          // NEW: Prepare shop data for opening
+          const shopData = {
+            userId: parseInt(localStorage.getItem('currentUserId')),
+            runId: parseInt(localStorage.getItem('currentRunId')),
+            roomId: window.game?.floorGenerator?.getCurrentRoomId() || 1
+          };
+          
+          // Open shop with proper data
+          this.objects.shop.open(shopData, () => {
+            this.shopCanBeOpened = false;
+          });
         }
       } else if (this.playerInShopArea && !isInArea) {
         // Player just left the area
@@ -546,24 +576,33 @@ export class Room {
     return !this.checkWallCollision(tempEnemy);
   }
 
-  // Checks if the room can transition (no enemies alive)
+  // ENHANCED: Checks if the room can transition with better logging and boss room handling
   canTransition() {
     // Boss room: locked until boss (and any adds) are dead
     if (this.roomType === 'boss') {
       const totalEnemies = this.objects.enemies.length;
       const aliveEnemies = this.objects.enemies.filter(e => e.state !== 'dead');
       const deadEnemies = totalEnemies - aliveEnemies.length;
-      const canTransition = aliveEnemies.length === 0;
+      
+      // ENHANCED: More robust boss room transition logic
+      const allEnemiesDead = aliveEnemies.length === 0;
+      const bossDefeatedFlag = this.bossDefeated === true;
+      const canTransition = allEnemiesDead || bossDefeatedFlag;
 
       if (canTransition) {
-        log.info(
-          `Boss defeated! (${deadEnemies}/${totalEnemies} dead) — boss room unlocked.`
-        );
+        if (bossDefeatedFlag && !allEnemiesDead) {
+          log.info(`⚡ Boss room transition activated via bossDefeated flag! (${deadEnemies}/${totalEnemies} dead)`);
+        } else if (allEnemiesDead) {
+          log.info(`🏆 Boss defeated! All enemies eliminated (${deadEnemies}/${totalEnemies} dead) — boss room unlocked.`);
+          // Ensure bossDefeated flag is set for consistency
+          this.bossDefeated = true;
+        }
+        
+        console.log(`✅ BOSS ROOM TRANSITION ALLOWED - Player can advance to next floor`);
       } else {
-        const aliveTypes = aliveEnemies.map(e => e.type).join(', ');
-        log.debug(
-          `Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`
-        );
+        const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');
+        log.debug(`🔒 Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`);
+        console.log(`❌ BOSS ROOM TRANSITION BLOCKED - Must defeat all enemies first`);
       }
 
       return canTransition;
@@ -571,7 +610,7 @@ export class Room {
 
     // Non-combat rooms always allow transition
     if (!this.isCombatRoom) {
-      log.debug("Transition allowed: Non-combat room");
+      log.debug("✅ Transition allowed: Non-combat room");
       return true;
     }
 
@@ -583,16 +622,36 @@ export class Room {
 
     if (canTransition) {
       log.info(
-        `Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
+        `✅ Combat room cleared: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
       );
+      console.log(`✅ COMBAT ROOM TRANSITION ALLOWED - Player can advance`);
     } else {
-      const aliveTypes = aliveEnemies.map(e => e.type).join(', ');
+      const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');
       log.debug(
-        `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
+        `🔒 Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
       );
+      console.log(`❌ COMBAT ROOM TRANSITION BLOCKED - ${aliveEnemies.length} enemies remain`);
     }
 
     return canTransition;
+  }
+
+  // NEW: Reset boss room state when entering a new boss room
+  resetBossState() {
+    if (this.roomType === 'boss') {
+      this.bossDefeated = false;
+      console.log(`🔄 Boss room state reset - ready for new boss encounter`);
+    }
+  }
+
+  // NEW: Force boss room transition (for debugging/testing)
+  forceBossTransition() {
+    if (this.roomType === 'boss') {
+      this.bossDefeated = true;
+      console.log(`🔓 Boss room transition manually enabled`);
+      return true;
+    }
+    return false;
   }
 
   /**

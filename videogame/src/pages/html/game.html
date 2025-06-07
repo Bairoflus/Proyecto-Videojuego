@@ -10,7 +10,9 @@
 <body class="game-page">
   <header class="game-header">
     <span id="welcome-msg">Welcome, username</span>
-    <button id="logout-btn">Logout</button>
+    <div class="pause-indicator">
+      Press <kbd>P</kbd> to pause
+    </div>
   </header>
   <main>
     <div id="status">Loading game...</div>
@@ -18,10 +20,9 @@
   </main>
 
   <script type="module">
-    import { logoutUser, createRun } from '../../utils/api.js';
+    import { createRun } from '../../utils/api.js';
     
     const status = document.getElementById('status');
-    const logoutButton = document.getElementById('logout-btn');
 
     /**
      * Clear all session data for complete logout
@@ -79,72 +80,6 @@
     }
 
     /**
-     * Enhanced logout functionality with comprehensive session management
-     */
-    async function performLogout() {
-      console.log('Starting logout process...');
-      
-      try {
-        // Update UI to show logout in progress
-        logoutButton.disabled = true;
-        logoutButton.textContent = 'Logging out...';
-        
-        // Get session data before clearing
-        const sessionToken = localStorage.getItem('sessionToken');
-        const userId = localStorage.getItem('currentUserId');
-        const sessionId = localStorage.getItem('currentSessionId');
-        const runId = localStorage.getItem('currentRunId');
-        
-        console.log('Current session state:', {
-          hasSessionToken: !!sessionToken,
-          userId: userId,
-          sessionId: sessionId,
-          runId: runId || 'NONE'
-        });
-        
-        // Attempt to notify backend of logout
-        if (sessionToken) {
-          try {
-            console.log('Notifying server of logout...');
-            await logoutUser(sessionToken);
-            console.log('Server logout successful');
-          } catch (apiError) {
-            console.warn('Server logout failed, proceeding with local cleanup:', apiError.message);
-            // Continue with logout even if API fails
-          }
-        } else {
-          console.log('No session token found, skipping server logout');
-        }
-        
-        // Always clear local session data
-        clearAllSessionData();
-        
-        // Update UI to show logout success
-        logoutButton.textContent = 'Logged out';
-        
-        console.log('Logout process complete, redirecting...');
-        
-        // Brief delay before redirect for user feedback
-        setTimeout(() => {
-          window.location.href = 'landing.html';
-        }, 1000);
-        
-      } catch (error) {
-        console.error('Logout process error:', error);
-        
-        // Even if logout fails, clear local data and redirect
-        clearAllSessionData();
-        
-        // Update UI to show there was an issue but we're proceeding
-        logoutButton.textContent = 'Logout (Error)';
-        
-        setTimeout(() => {
-          window.location.href = 'landing.html';
-        }, 1500);
-      }
-    }
-
-    /**
      * Validate session data on page load
      */
     function validateSession() {
@@ -174,17 +109,6 @@
 
     // Validate session before initializing game
     if (validateSession()) {
-      // Handle logout functionality
-      logoutButton.addEventListener('click', async () => {
-        // Confirm logout action
-        const confirmLogout = confirm('Are you sure you want to logout? Any unsaved progress may be lost.');
-        if (!confirmLogout) {
-          return;
-        }
-        
-        await performLogout();
-      });
-
       // NEW: Initialize game with run data validation
       async function initializeGame() {
         try {
@@ -208,9 +132,6 @@
         } catch (error) {
           status.textContent = 'Error loading game: ' + error.message;
           console.error('Game initialization error:', error);
-          
-          // If game fails to load, provide option to logout
-          logoutButton.style.display = 'block';
         }
       }
       
@@ -219,24 +140,6 @@
     }
   </script>
 
-  <!-- 🧪 Game Testing Suite - Load browser testing tools -->
-  <script type="module" src="../../browser_game_test.js"></script>
-  
-  <script>
-    // Display testing instructions after game loads
-    setTimeout(() => {
-      if (window.testGame) {
-        console.log('GAME TESTING SUITE READY');
-        console.log('━'.repeat(50));
-        console.log('Testing Commands Available:');
-        console.log('  testGame()    - Run complete game state tests');
-        console.log('  testMapping() - Test room mapping accuracy');
-        console.log('  dumpGame()    - Show detailed game state info');
-        console.log('━'.repeat(50));
-        console.log('Use these commands anytime during gameplay to detect issues!');
-      }
-    }, 3000);
-  </script>
 </body>
 
 </html>
