@@ -44,7 +44,7 @@ export class Boss extends Enemy {
     die() {
         this.state = "dead";
         console.log(`Boss ${this.type} died`);
-        
+
         // Track kill in global game statistics
         if (window.game && typeof window.game.trackKill === 'function') {
             window.game.trackKill();
@@ -63,7 +63,7 @@ export class Boss extends Enemy {
         // EVENT-DRIVEN UPDATE: Update room state when boss dies
         if (this.currentRoom) {
             console.log("Updating room after boss death");
-            
+
             // Update the room state in floor generator
             if (window.game && window.game.floorGenerator) {
                 window.game.floorGenerator.updateRoomState(undefined, this.currentRoom);
@@ -81,7 +81,7 @@ export class Boss extends Enemy {
             // Get required data from localStorage and game state
             const userId = localStorage.getItem('currentUserId');
             const runId = localStorage.getItem('currentRunId');
-            
+
             // Validate required data exists
             if (!userId || !runId) {
                 console.warn('Boss kill registration skipped: Missing required session data', {
@@ -121,7 +121,7 @@ export class Boss extends Enemy {
 
             // Call backend API to register boss kill
             const result = await registerBossKill(runId, killData);
-            
+
             console.log('Boss kill registered successfully:', result);
             return true;
 
@@ -134,5 +134,36 @@ export class Boss extends Enemy {
 
     draw(ctx) {
         AnimatedObject.prototype.draw.call(this, ctx);
+    }
+
+    drawUI(ctx) {
+        if (!this.currentRoom || this.health <= 0) return;
+
+        const barWidth = 300;
+        const barHeight = 12;
+        const x = (variables.canvasWidth - barWidth) / 2;
+        const y = variables.canvasHeight - barHeight - 20; // 20px de margen inferior
+
+        const pct = this.health / this.maxHealth;
+
+        // Fondo semitransparente (rojo oscuro)
+        ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+        ctx.fillRect(x, y, barWidth, barHeight);
+
+        // Vida actual (verde)
+        ctx.fillStyle = "rgba(0, 255, 0, 0.8)";
+        ctx.fillRect(x, y, barWidth * pct, barHeight);
+
+        // Borde blanco
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, barWidth, barHeight);
+
+        // Texto: nombre del boss (dinámico, en mayúsculas)
+        ctx.fillStyle = "white";
+        ctx.font = "16px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(this.displayName, x + barWidth / 2, y - 6);
     }
 }
