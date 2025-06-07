@@ -10,7 +10,7 @@ window.testGame = function() {
     
     if (typeof window.game !== 'undefined') {
         const game = window.game;
-        console.log('✅ Game instance found');
+        console.log('Game instance found');
         console.log('Game state:', game.gameState);
         console.log('Player state:', {
             health: game.player?.health,
@@ -24,7 +24,7 @@ window.testGame = function() {
             room: game.floorGenerator?.getCurrentRoomIndex()
         });
     } else {
-        console.log('❌ Game instance not found');
+        console.log('Game instance not found');
     }
     
     console.log('=== Testing complete ===');
@@ -42,7 +42,7 @@ window.testMapping = function() {
             totalRooms: floorGen.getTotalRooms()
         });
     } else {
-        console.log('❌ Floor generator not available');
+        console.log('Floor generator not available');
     }
     
     console.log('=== Mapping test complete ===');
@@ -91,7 +91,7 @@ window.dumpGame = function() {
         
         console.log('Game State:', JSON.stringify(gameState, null, 2));
     } else {
-        console.log('❌ Game instance not found');
+        console.log('Game instance not found');
     }
     
     console.log('=== Game dump complete ===');

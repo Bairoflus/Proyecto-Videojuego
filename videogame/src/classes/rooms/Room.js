@@ -275,7 +275,7 @@ export class Room {
 
     // ENHANCED: Diagnostic logging for enemy state changes
     if (deadEnemies.length > 0) {
-      console.log(`🗑️ Removing ${deadEnemies.length} dead enemies from room`);
+      console.log(`Removing ${deadEnemies.length} dead enemies from room`);
       console.log(`  Dead enemies:`, deadEnemies.map(e => ({
         type: e.type,
         position: `(${Math.round(e.position.x)}, ${Math.round(e.position.y)})`
@@ -290,7 +290,7 @@ export class Room {
       previousEnemyCount > 0 &&
       currentEnemyCount === 0
     ) {
-      console.log("🎉 ALL ENEMIES DEFEATED - Spawning chest");
+      console.log("ALL ENEMIES DEFEATED - Spawning chest");
       this.spawnChest();
     }
 
@@ -598,11 +598,11 @@ export class Room {
           this.bossDefeated = true;
         }
         
-        console.log(`✅ BOSS ROOM TRANSITION ALLOWED - Player can advance to next floor`);
+        console.log(`BOSS ROOM TRANSITION ALLOWED - Player can advance to next floor`);
       } else {
         const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');
-        log.debug(`🔒 Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`);
-        console.log(`❌ BOSS ROOM TRANSITION BLOCKED - Must defeat all enemies first`);
+        log.debug(`Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`);
+        console.log(`BOSS ROOM TRANSITION BLOCKED - Must defeat all enemies first`);
       }
 
       return canTransition;
@@ -610,7 +610,7 @@ export class Room {
 
     // Non-combat rooms always allow transition
     if (!this.isCombatRoom) {
-      log.debug("✅ Transition allowed: Non-combat room");
+      log.debug("Transition allowed: Non-combat room");
       return true;
     }
 
@@ -622,15 +622,15 @@ export class Room {
 
     if (canTransition) {
       log.info(
-        `✅ Combat room cleared: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
+        `Combat room cleared: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
       );
-      console.log(`✅ COMBAT ROOM TRANSITION ALLOWED - Player can advance`);
+      console.log(`COMBAT ROOM TRANSITION ALLOWED - Player can advance`);
     } else {
       const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');
       log.debug(
-        `🔒 Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
+        `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
       );
-      console.log(`❌ COMBAT ROOM TRANSITION BLOCKED - ${aliveEnemies.length} enemies remain`);
+      console.log(`COMBAT ROOM TRANSITION BLOCKED - ${aliveEnemies.length} enemies remain`);
     }
 
     return canTransition;
@@ -640,7 +640,7 @@ export class Room {
   resetBossState() {
     if (this.roomType === 'boss') {
       this.bossDefeated = false;
-      console.log(`🔄 Boss room state reset - ready for new boss encounter`);
+      console.log(`Boss room state reset - ready for new boss encounter`);
     }
   }
 
@@ -648,7 +648,7 @@ export class Room {
   forceBossTransition() {
     if (this.roomType === 'boss') {
       this.bossDefeated = true;
-      console.log(`🔓 Boss room transition manually enabled`);
+      console.log(`Boss room transition manually enabled`);
       return true;
     }
     return false;
