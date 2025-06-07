@@ -34,6 +34,25 @@ function clearSessionData() {
 }
 
 /**
+ * Create status indicator element if it doesn't exist
+ * @returns {HTMLElement} Status indicator element
+ */
+function createStatusIndicator() {
+    let statusIndicator = document.getElementById('login-status');
+    if (!statusIndicator) {
+        statusIndicator = document.createElement('div');
+        statusIndicator.id = 'login-status';
+        statusIndicator.className = 'status-indicator';
+        
+        const form = document.querySelector('form');
+        if (form) {
+            form.appendChild(statusIndicator);
+        }
+    }
+    return statusIndicator;
+}
+
+/**
  * Update UI based on current login state
  * @param {string} state - Current login state
  * @param {string} message - Optional message to display
@@ -95,6 +114,14 @@ function updateLoginUI(state, message = '', data = {}) {
                 errorMessage.textContent = message || 'Login failed. Please try again.';
                 errorMessage.style.display = 'block';
             }
+            
+            // Auto-reset to IDLE after error to allow retries
+            setTimeout(() => {
+                if (currentLoginState === LOGIN_STATES.ERROR) {
+                    console.log('Auto-resetting login state to IDLE after error');
+                    currentLoginState = LOGIN_STATES.IDLE;
+                }
+            }, 2000); // Reset after 2 seconds
             break;
             
         case LOGIN_STATES.IDLE:
@@ -108,35 +135,18 @@ function updateLoginUI(state, message = '', data = {}) {
 }
 
 /**
- * Create status indicator element if it doesn't exist
- */
-function createStatusIndicator() {
-    const existingIndicator = document.getElementById('login-status');
-    if (existingIndicator) return existingIndicator;
-    
-    const indicator = document.createElement('div');
-    indicator.id = 'login-status';
-    indicator.className = 'status-indicator';
-    
-    const form = document.querySelector('form');
-    form.appendChild(indicator);
-    
-    return indicator;
-}
-
-/**
  * Validate form input data
- * @param {string} email - Email input
+ * @param {string} username - Username input
  * @param {string} password - Password input
  * @returns {Object} Validation result
  */
-function validateLoginForm(email, password) {
+function validateLoginForm(username, password) {
     const errors = [];
     
-    if (!email.trim()) {
-        errors.push('Email is required');
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-        errors.push('Please enter a valid email address');
+    if (!username.trim()) {
+        errors.push('Username is required');
+    } else if (username.trim().length < 3) {
+        errors.push('Username must be at least 3 characters long');
     }
     
     if (!password) {
@@ -153,11 +163,11 @@ function validateLoginForm(email, password) {
 
 /**
  * Enhanced login process with comprehensive error handling and user feedback
- * @param {string} email - User email
+ * @param {string} username - Username
  * @param {string} password - User password
  * @returns {Promise<boolean>} Success status
  */
-async function performLogin(email, password) {
+async function performLogin(username, password) {
     try {
         // Phase 1: Clear previous session data
         updateLoginUI(LOGIN_STATES.CLEARING_SESSION);
@@ -166,9 +176,15 @@ async function performLogin(email, password) {
         
         // Phase 2: Authenticate with backend
         updateLoginUI(LOGIN_STATES.AUTHENTICATING);
-        console.log('Authenticating user:', email);
+        console.log('Authenticating user:', username);
         
-        const loginResult = await loginUser(email, password);
+        const loginResult = await loginUser(username, password);
+        
+        // Handle new API response format {success, userId, sessionToken, etc.}
+        if (!loginResult.success) {
+            throw new Error(loginResult.message || 'Login failed');
+        }
+        
         console.log('Login successful:', {
             userId: loginResult.userId,
             sessionId: loginResult.sessionId,
@@ -185,11 +201,17 @@ async function performLogin(email, password) {
         console.log('Creating new game run for user:', loginResult.userId);
         
         try {
-            const runData = await createRun(loginResult.userId);
-            console.log('Game run created successfully:', runData);
+            const runResult = await createRun(loginResult.userId);
+            
+            // Handle new API response format {success, runId, message}
+            if (!runResult.success) {
+                throw new Error(runResult.message || 'Failed to create run');
+            }
+            
+            console.log('Game run created successfully:', runResult);
             
             // Store run data for gameplay
-            localStorage.setItem('currentRunId', runData.runId);
+            localStorage.setItem('currentRunId', runResult.runId);
             
         } catch (runError) {
             console.error('Failed to create game run:', runError);
@@ -224,7 +246,7 @@ async function performLogin(email, password) {
         let errorMessage = 'Login failed. Please try again.';
         if (error.message) {
             if (error.message.includes('Invalid credentials') || error.message.includes('401')) {
-                errorMessage = 'Invalid email or password. Please check your credentials.';
+                errorMessage = 'Invalid username or password. Please check your credentials.';
             } else if (error.message.includes('Network') || error.message.includes('fetch')) {
                 errorMessage = 'Network error. Please check your connection and try again.';
             } else {
@@ -262,27 +284,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Get form data
-        const emailInput = form.querySelector('input[type="email"]');
+        const usernameInput = form.querySelector('input[type="text"]');
         const passwordInput = form.querySelector('input[type="password"]');
         
-        if (!emailInput || !passwordInput) {
-            console.error('Email or password input not found');
+        if (!usernameInput || !passwordInput) {
+            console.error('Username or password input not found');
             updateLoginUI(LOGIN_STATES.ERROR, 'Form configuration error. Please refresh the page.');
             return;
         }
         
-        const email = emailInput.value.trim();
+        const username = usernameInput.value.trim();
         const password = passwordInput.value;
         
         // Validate form input
-        const validation = validateLoginForm(email, password);
+        const validation = validateLoginForm(username, password);
         if (!validation.isValid) {
             updateLoginUI(LOGIN_STATES.ERROR, validation.errors.join('. '));
             return;
         }
         
         // Perform login process
-        const loginSuccess = await performLogin(email, password);
+        const loginSuccess = await performLogin(username, password);
         
         if (loginSuccess) {
             // Redirect to game after brief delay

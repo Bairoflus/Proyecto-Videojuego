@@ -5,6 +5,8 @@
  */
 import { log } from "../../utils/Logger.js";
 import { SHOP_CONSTANTS } from "../../constants/gameConstants.js";
+import { registerWeaponPurchase } from "../../utils/api.js";
+import { weaponUpgradeManager } from "../../utils/weaponUpgradeManager.js";
 
 export class Shop {
   constructor() {
@@ -20,6 +22,13 @@ export class Shop {
     this.runUpgrades = {
       melee: 0,
       ranged: 0,
+    };
+
+    // Backend registration data (set externally)
+    this.gameData = {
+      runId: null,
+      userId: null,
+      roomId: null
     };
   }
 
@@ -66,10 +75,21 @@ export class Shop {
   /**
    * Opens the shop UI
    */
-  open() {
-    if (this.isOpen) return; // Prevent redundant opens
+  open(shopData, onCloseCallback) {
     this.isOpen = true;
     this.selectedIndex = 0;
+    this.onCloseCallback = onCloseCallback || null;
+
+    // Set game data for backend registration
+    this.gameData = {
+      userId: shopData.userId,
+      runId: shopData.runId,
+      roomId: shopData.roomId,
+    };
+
+    // NEW: Sync with weaponUpgradeManager when opening shop
+    this.syncWithWeaponUpgradeManager();
+
     log.info("Shop opened");
   }
 
@@ -125,10 +145,64 @@ export class Shop {
   }
 
   /**
-   * Attempts to purchase the selected option
+   * Sets game data needed for backend registration
+   * @param {Object} gameData - Game session data
+   * @param {number} gameData.runId - Current run ID
+   * @param {number} gameData.userId - Current user ID  
+   * @param {number} gameData.roomId - Current room ID
+   */
+  setGameData(gameData) {
+    this.gameData = { ...gameData };
+    log.debug('Shop game data updated:', this.gameData);
+  }
+
+  /**
+   * NEW: Registers weapon upgrade purchase in backend using new API
+   * @param {Object} option - Purchase option details
+   * @param {number} upgradeLevelBefore - Level before purchase
+   * @param {number} upgradeLevelAfter - Level after purchase
+   * @param {number|null} damageIncrease - Damage increase (null for health)
+   */
+  async registerPurchaseInBackend(option, upgradeLevelBefore, upgradeLevelAfter, cost) {
+    try {
+      // Skip backend registration in test/developer mode
+      const testMode = localStorage.getItem('testMode') === 'true';
+
+      if (testMode) {
+        log.debug('🧪 Test mode: Skipping backend registration for weapon upgrade');
+        return;
+      }
+
+      // Validate we have the required game data
+      if (!this.gameData.runId || !this.gameData.userId || !this.gameData.roomId) {
+        log.warn('⚠️ Missing game data for backend registration:', this.gameData);
+        return;
+      }
+
+      const purchaseData = {
+        userId: this.gameData.userId,
+        weaponType: option.type,
+        upgradeLevel: upgradeLevelAfter,
+        cost: cost
+      };
+
+      log.debug('📡 Registering weapon purchase in backend:', purchaseData);
+      
+      const response = await registerWeaponPurchase(this.gameData.runId, purchaseData);
+      
+      log.info('Weapon purchase registered successfully:', response);
+
+    } catch (error) {
+      log.error('Failed to register weapon purchase in backend:', error);
+      // Don't interrupt the game if backend fails
+    }
+  }
+
+  /**
+   * NEW: Attempts to purchase the selected option using weaponUpgradeManager
    * @param {Player} player - The player making the purchase
    */
-  purchaseSelected(player) {
+  async purchaseSelected(player) {
     const option = this.options[this.selectedIndex];
 
     // Check if player has enough gold
@@ -156,6 +230,10 @@ export class Shop {
       return;
     }
 
+    // Store levels before purchase for backend registration
+    const upgradeLevelBefore = this.runUpgrades[option.type] || 0;
+    let upgradeLevelAfter = upgradeLevelBefore;
+
     // Process purchase
     player.gold -= option.cost;
     option.purchased++;
@@ -168,46 +246,66 @@ export class Shop {
     // Apply upgrade effects
     switch (option.type) {
       case "melee":
+        try {
+          // NEW: Use weaponUpgradeManager to upgrade weapon
+          const upgradeResult = await weaponUpgradeManager.upgradeWeapon('melee');
+          
+          if (upgradeResult.success) {
         this.runUpgrades.melee++;
-        // Use new weapon progression system
-        const meleeUpgraded = player.upgradeMeleeWeapon();
-        if (meleeUpgraded) {
+            upgradeLevelAfter = upgradeResult.newLevel;
+
+            // Sync player levels
+            player.syncWeaponLevels();
+            
           log.info(
-            `Melee weapon upgraded to level ${
-              player.meleeLevel
-            }! Current weapon: ${player.getCurrentMeleeWeapon()}`
+              `Melee weapon upgraded to level ${upgradeResult.newLevel}! Current weapon: ${player.getCurrentMeleeWeapon()}`
           );
         } else {
           // Fallback to damage bonus if at max level
-          player.meleeDamageBonus =
-            (player.meleeDamageBonus || 0) + option.damageIncrease;
+            player.meleeDamageBonus = (player.meleeDamageBonus || 0) + option.damageIncrease;
           log.info(
             `Melee weapon at max level. Damage bonus increased by +${option.damageIncrease}. Total bonus: +${player.meleeDamageBonus}`
           );
+          }
+        } catch (error) {
+          log.error('Failed to upgrade melee weapon via manager:', error);
+          // Fallback to old logic
+          player.meleeDamageBonus = (player.meleeDamageBonus || 0) + option.damageIncrease;
         }
         break;
 
       case "ranged":
+        try {
+          // NEW: Use weaponUpgradeManager to upgrade weapon
+          const upgradeResult = await weaponUpgradeManager.upgradeWeapon('ranged');
+          
+          if (upgradeResult.success) {
         this.runUpgrades.ranged++;
-        // Use new weapon progression system
-        const rangedUpgraded = player.upgradeRangedWeapon();
-        if (rangedUpgraded) {
+            upgradeLevelAfter = upgradeResult.newLevel;
+
+            // Sync player levels
+            player.syncWeaponLevels();
+            
           log.info(
-            `Ranged weapon upgraded to level ${
-              player.rangedLevel
-            }! Current weapon: ${player.getCurrentRangedWeapon()}`
+              `Ranged weapon upgraded to level ${upgradeResult.newLevel}! Current weapon: ${player.getCurrentRangedWeapon()}`
           );
         } else {
           // Fallback to damage bonus if at max level
-          player.rangedDamageBonus =
-            (player.rangedDamageBonus || 0) + option.damageIncrease;
+            player.rangedDamageBonus = (player.rangedDamageBonus || 0) + option.damageIncrease;
           log.info(
             `Ranged weapon at max level. Damage bonus increased by +${option.damageIncrease}. Total bonus: +${player.rangedDamageBonus}`
           );
+          }
+        } catch (error) {
+          log.error('Failed to upgrade ranged weapon via manager:', error);
+          // Fallback to old logic
+          player.rangedDamageBonus = (player.rangedDamageBonus || 0) + option.damageIncrease;
         }
         break;
 
       case "health":
+        upgradeLevelAfter = upgradeLevelBefore; // Health doesn't have levels
+        
         player.health = player.maxHealth;
         log.info(`Health restored to maximum (${player.maxHealth})`);
         break;
@@ -216,6 +314,11 @@ export class Shop {
     log.info(
       `Purchased: ${option.name} for ${option.cost} gold. Remaining gold: ${player.gold}`
     );
+
+    // Register purchase in backend (async, don't wait)
+    if (option.type !== "health") {
+      this.registerPurchaseInBackend(option, upgradeLevelBefore, upgradeLevelAfter, option.cost);
+    }
   }
 
   /**
@@ -414,5 +517,61 @@ export class Shop {
    */
   setOnCloseCallback(callback) {
     this.onCloseCallback = callback;
+  }
+
+  /**
+   * NEW: Set upgrade level for save state restoration
+   * @param {string} weaponType - Type of weapon ('melee' or 'ranged')
+   * @param {number} level - Upgrade level to set
+   */
+  setUpgradeLevel(weaponType, level) {
+    if (weaponType === 'melee' || weaponType === 'ranged') {
+      this.runUpgrades[weaponType] = level;
+      
+      // Update the corresponding option's purchased count
+      const option = this.options.find(opt => opt.type === weaponType);
+      if (option) {
+        option.purchased = level;
+      }
+      
+      log.debug(`Restored ${weaponType} upgrade level to ${level}`);
+    } else {
+      log.warn(`Invalid weapon type for upgrade level: ${weaponType}`);
+    }
+  }
+
+  /**
+   * NEW: Sync local upgrade counts with weaponUpgradeManager
+   * This ensures the UI shows the correct weapon levels
+   */
+  syncWithWeaponUpgradeManager() {
+    try {
+      if (typeof window !== 'undefined' && 
+          window.weaponUpgradeManager && 
+          typeof window.weaponUpgradeManager.getWeaponLevels === 'function') {
+        
+        const currentLevels = window.weaponUpgradeManager.getWeaponLevels();
+        
+        // FIXED: Display actual weapon level, not purchases made
+        // The UI should show the current weapon level (1-15), not number of purchases (0-14)
+        this.runUpgrades.melee = currentLevels.melee;
+        this.runUpgrades.ranged = currentLevels.ranged;
+        
+        // Update option purchased counts to match actual levels
+        this.options.forEach(option => {
+          if (option.type === 'melee') {
+            option.purchased = currentLevels.melee;
+          } else if (option.type === 'ranged') {
+            option.purchased = currentLevels.ranged;
+          }
+        });
+        
+        log.debug(`Shop synced with weapon manager: melee ${currentLevels.melee}, ranged ${currentLevels.ranged}`);
+      } else {
+        log.warn('WeaponUpgradeManager not available for shop sync');
+      }
+    } catch (error) {
+      log.error('Failed to sync shop with weapon upgrade manager:', error);
+    }
   }
 }

@@ -47,9 +47,10 @@ export class GameObject {
         this.spriteRect.width = frameWidth;
         this.spriteRect.height = frameHeight;
 
-        console.log(
-          `Auto-calculated sprite dimensions: ${frameWidth}x${frameHeight} (cols: ${this.sheetCols}, rows: 4) for ${imagePath}`
-        );
+        // Only log sprite loading for debugging purposes
+        // console.log(
+        //   `Auto-calculated sprite dimensions: ${frameWidth}x${frameHeight} (cols: ${this.sheetCols}, rows: 4) for ${imagePath}`
+        // );
       };
     }
   }

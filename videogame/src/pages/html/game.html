@@ -10,7 +10,9 @@
 <body class="game-page">
   <header class="game-header">
     <span id="welcome-msg">Welcome, username</span>
-    <button id="logout-btn">Logout</button>
+    <div class="pause-indicator">
+      Press <kbd>P</kbd> to pause
+    </div>
   </header>
   <main>
     <div id="status">Loading game...</div>
@@ -18,10 +20,9 @@
   </main>
 
   <script type="module">
-    import { logoutUser } from '../../utils/api.js';
+    import { createRun } from '../../utils/api.js';
     
     const status = document.getElementById('status');
-    const logoutButton = document.getElementById('logout-btn');
 
     /**
      * Clear all session data for complete logout
@@ -49,68 +50,32 @@
     }
 
     /**
-     * Enhanced logout functionality with comprehensive session management
+     * NEW: Ensure run data exists for gameplay
      */
-    async function performLogout() {
-      console.log('Starting logout process...');
+    async function ensureRunData() {
+      const userId = localStorage.getItem('currentUserId');
+      const runId = localStorage.getItem('currentRunId');
+      
+      if (runId) {
+        console.log('Run data exists:', runId);
+        return true;
+      }
+      
+      console.log('No run data found, creating new run...');
       
       try {
-        // Update UI to show logout in progress
-        logoutButton.disabled = true;
-        logoutButton.textContent = 'Logging out...';
-        
-        // Get session data before clearing
-        const sessionToken = localStorage.getItem('sessionToken');
-        const userId = localStorage.getItem('currentUserId');
-        const sessionId = localStorage.getItem('currentSessionId');
-        const runId = localStorage.getItem('currentRunId');
-        
-        console.log('Current session state:', {
-          hasSessionToken: !!sessionToken,
-          userId: userId,
-          sessionId: sessionId,
-          runId: runId || 'NONE'
-        });
-        
-        // Attempt to notify backend of logout
-        if (sessionToken) {
-          try {
-            console.log('Notifying server of logout...');
-            await logoutUser(sessionToken);
-            console.log('Server logout successful');
-          } catch (apiError) {
-            console.warn('Server logout failed, proceeding with local cleanup:', apiError.message);
-            // Continue with logout even if API fails
-          }
-        } else {
-          console.log('No session token found, skipping server logout');
-        }
-        
-        // Always clear local session data
-        clearAllSessionData();
-        
-        // Update UI to show logout success
-        logoutButton.textContent = 'Logged out';
-        
-        console.log('Logout process complete, redirecting...');
-        
-        // Brief delay before redirect for user feedback
-        setTimeout(() => {
-          window.location.href = 'landing.html';
-        }, 1000);
+        const runData = await createRun(parseInt(userId));
+        localStorage.setItem('currentRunId', runData.runId);
+        console.log('New run created successfully:', runData.runId);
+        return true;
         
       } catch (error) {
-        console.error('Logout process error:', error);
+        console.error('Failed to create run:', error);
         
-        // Even if logout fails, clear local data and redirect
-        clearAllSessionData();
-        
-        // Update UI to show there was an issue but we're proceeding
-        logoutButton.textContent = 'Logout (Error)';
-        
-        setTimeout(() => {
-          window.location.href = 'landing.html';
-        }, 1500);
+        // Set test mode flag
+        localStorage.setItem('testMode', 'true');
+        console.warn('Running in test mode - some features may be limited');
+        return true; // Allow test mode
       }
     }
 
@@ -144,37 +109,37 @@
 
     // Validate session before initializing game
     if (validateSession()) {
-      // Handle logout functionality
-      logoutButton.addEventListener('click', async () => {
-        // Confirm logout action
-        const confirmLogout = confirm('Are you sure you want to logout? Any unsaved progress may be lost.');
-        if (!confirmLogout) {
-          return;
+      // NEW: Initialize game with run data validation
+      async function initializeGame() {
+        try {
+          status.textContent = 'Validating session...';
+          
+          // Ensure run data exists
+          const runDataReady = await ensureRunData();
+          if (!runDataReady) {
+            throw new Error('Failed to initialize run data');
+          }
+          
+          status.textContent = 'Loading modules...';
+
+          // Import main game module
+          const { main } = await import('/main.js');
+
+          status.textContent = 'Starting game...';
+          main();
+          status.style.display = 'none'; // Hide status once game is running
+
+        } catch (error) {
+          status.textContent = 'Error loading game: ' + error.message;
+          console.error('Game initialization error:', error);
         }
-        
-        await performLogout();
-      });
-
-      // Initialize game
-      try {
-        status.textContent = 'Loading modules...';
-
-        // Import main game module
-        const { main } = await import('/main.js');
-
-        status.textContent = 'Starting game...';
-        main();
-        status.style.display = 'none'; // Hide status once game is running
-
-      } catch (error) {
-        status.textContent = 'Error loading game: ' + error.message;
-        console.error('Game initialization error:', error);
-        
-        // If game fails to load, provide option to logout
-        logoutButton.style.display = 'block';
       }
+      
+      // Start game initialization
+      initializeGame();
     }
   </script>
+
 </body>
 
 </html>

@@ -3,11 +3,11 @@
  * Ranged enemy type that attacks from a distance with projectiles
  * Less common but more dangerous enemy type on floor 1
  */
-import { RangedEnemy } from "../../entities/RangedEnemy.js";
+import { Enemy } from "../../entities/Enemy.js";
 import { ENEMY_CONSTANTS } from "../../../constants/gameConstants.js";
 import { Vec } from "../../../utils/Vec.js";
 
-export class GoblinArcher extends RangedEnemy {
+export class GoblinArcher extends Enemy {
   constructor(position) {
     const config = ENEMY_CONSTANTS.GOBLIN_ARCHER;
     
@@ -29,6 +29,9 @@ export class GoblinArcher extends RangedEnemy {
     this.attackDuration = config.attackCooldown;
     this.projectileSpeed = config.projectileSpeed;
     this.retreatDistance = config.retreatDistance;
+    
+    // Initialize projectile system for ranged attacks
+    this.initializeProjectiles();
   }
 
   // Override moveTo for static behavior
