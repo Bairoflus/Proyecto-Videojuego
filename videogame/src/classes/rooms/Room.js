@@ -36,10 +36,10 @@ export class Room {
     this.shopActivationArea = null; // Shop activation area
     this.playerInShopArea = false; // Track if player is in shop activation area
     this.shopCanBeOpened = true; // Prevent reopening until player leaves area
-    
+
     // FIX: Add boss defeated flag for immediate transition activation
     this.bossDefeated = false; // Track if boss has been defeated for immediate transition
-    
+
     this.parseLayout();
 
     // Create shop instance for shop rooms
@@ -56,6 +56,12 @@ export class Room {
 
     // FIXED: Don't auto-generate enemies in constructor
     // Enemy generation will be handled by initializeEnemies() for new rooms only
+  }
+  addEntity(entity) {
+    if (typeof entity.setCurrentRoom === 'function') {
+      entity.setCurrentRoom(this);
+    }
+    this.objects.enemies.push(entity);
   }
 
   // NEW METHOD: Initialize enemies for NEW combat rooms only
@@ -133,8 +139,22 @@ export class Room {
     }
   }
 
+  // NEW: Helper method to clean undefined/null enemies from array
+  cleanEnemiesArray() {
+    const originalLength = this.objects.enemies.length;
+    this.objects.enemies = this.objects.enemies.filter(enemy => enemy !== undefined && enemy !== null);
+    const cleanedLength = this.objects.enemies.length;
+    
+    if (originalLength !== cleanedLength) {
+      console.warn(`ENEMIES ARRAY CLEANED: Removed ${originalLength - cleanedLength} undefined/null entries`);
+    }
+  }
+
   // Draws all room objects
   draw(ctx) {
+    // CRITICAL: Clean enemies array before drawing
+    this.cleanEnemiesArray();
+    
     // Draw background first
     if (variables.backgroundImage && variables.backgroundImage.complete) {
       ctx.drawImage(
@@ -147,7 +167,7 @@ export class Room {
     }
 
     // Draw walls
-    ctx.fillStyle = "gray";
+    ctx.fillStyle = "brown";
     this.objects.walls.forEach((wall) => {
       ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
     });
@@ -160,8 +180,8 @@ export class Room {
       this.objects.chest.draw(ctx);
     }
 
-    // Draw enemies
-    this.objects.enemies.forEach((enemy) => enemy.draw(ctx));
+    // Draw enemies (now with additional safety)
+    this.objects.enemies.filter(enemy => enemy !== undefined && enemy !== null).forEach((enemy) => enemy.draw(ctx));
 
     // Draw shop activation area if this is a shop room
     if (this.roomType === "shop" && this.shopActivationArea) {
@@ -208,6 +228,9 @@ export class Room {
 
   // Updates all room objects
   update(deltaTime) {
+    // CRITICAL: Clean enemies array before updating
+    this.cleanEnemiesArray();
+    
     this.objects.coins.forEach((coin) => coin.update(deltaTime));
 
     // Update chest if it exists
@@ -229,7 +252,7 @@ export class Room {
     }
 
     // Update enemies
-    this.objects.enemies.forEach((enemy) => {
+    this.objects.enemies.filter(enemy => enemy !== undefined && enemy !== null).forEach((enemy) => {
       // Ensure enemy has room reference for collision detection
       if (!enemy.currentRoom) {
         enemy.setCurrentRoom(this);
@@ -254,22 +277,23 @@ export class Room {
         }
 
         // Update enemy with player reference for projectile handling
-        enemy.update(deltaTime, window.game.player);
+        enemy.update(deltaTime, window.game.player, this);
       } else {
         // Even dead enemies need to update their projectiles
-        enemy.update(deltaTime, window.game.player);
+        enemy.update(deltaTime, window.game.player, this);
       }
     });
 
-    // Remove dead enemies from the array
-    const previousEnemyCount = this.objects.enemies.length;
-    
+    // Remove dead enemies from the array (also filter out undefined/null)
+    const previousEnemyCount = this.objects.enemies.filter(enemy => enemy !== undefined && enemy !== null).length;
+
     // ENHANCED: Better logging for enemy removal
-    const deadEnemies = this.objects.enemies.filter((enemy) => enemy.state === "dead");
-    const aliveEnemiesBefore = this.objects.enemies.filter((enemy) => enemy.state !== "dead");
-    
+    const deadEnemies = this.objects.enemies.filter((enemy) => enemy && enemy.state === "dead");
+    const aliveEnemiesBefore = this.objects.enemies.filter((enemy) => enemy && enemy.state !== "dead");
+
+    // CRITICAL: Filter out both dead enemies AND undefined/null entries
     this.objects.enemies = this.objects.enemies.filter(
-      (enemy) => enemy.state !== "dead"
+      (enemy) => enemy !== undefined && enemy !== null && enemy.state !== "dead"
     );
     const currentEnemyCount = this.objects.enemies.length;
 
@@ -292,7 +316,7 @@ export class Room {
     ) {
       console.log("ALL ENEMIES DEFEATED - Spawning chest");
       this.spawnChest();
-      
+
       // IMMEDIATE DIAGNOSTIC: Check transition state right after enemy cleanup
       console.log("IMMEDIATE TRANSITION CHECK AFTER ENEMY CLEANUP:");
       console.log(`  - Room type: ${this.roomType}, Combat room: ${this.isCombatRoom}`);
@@ -300,7 +324,7 @@ export class Room {
       console.log(`  - Alive enemies: ${this.objects.enemies.filter(e => e.state !== 'dead').length}`);
       console.log(`  - Dead enemies removed: ${deadEnemies.length}`);
       console.log(`  - Can transition: ${this.canTransition()}`);
-      
+
       // FORCE VERIFICATION: Double-check all enemies are actually dead
       const stillAlive = this.objects.enemies.filter(e => e.state !== 'dead');
       if (stillAlive.length > 0) {
@@ -310,12 +334,12 @@ export class Room {
         });
       } else {
         console.log("VERIFICATION PASSED - All enemies confirmed dead/removed");
-        
+
         // FORCE NOTIFICATION to Game.js that room is now clear
         if (window.game) {
           console.log("NOTIFYING GAME: Combat room is now clear for transition");
           window.game.roomJustCleared = true; // Set flag for immediate feedback
-          
+
           // If player is already at right edge, trigger transition check immediately
           if (window.game.player && this.isPlayerAtRightEdge(window.game.player)) {
             console.log("PLAYER AT RIGHT EDGE - Transition should be possible now!");
@@ -349,7 +373,7 @@ export class Room {
             runId: parseInt(localStorage.getItem('currentRunId')),
             roomId: window.game?.floorGenerator?.getCurrentRoomId() || 1
           };
-          
+
           // Open shop with proper data
           this.objects.shop.open(shopData, () => {
             this.shopCanBeOpened = false;
@@ -414,12 +438,12 @@ export class Room {
       // Initialize debug counter if not exists
       if (!this.rightEdgeDebugCounter) this.rightEdgeDebugCounter = 0;
       this.rightEdgeDebugCounter++;
-      
+
       // Log every 30 frames when player is near transition area
       if (this.rightEdgeDebugCounter % 30 === 0) {
         const playerCenterY = playerHitbox.y + playerHitbox.height / 2;
         const yDifference = Math.abs(playerCenterY - middleY);
-        
+
         console.log('🎯 RIGHT EDGE DEBUG - Player near transition zone:', {
           playerX: Math.round(playerHitbox.x),
           playerY: Math.round(playerHitbox.y),
@@ -434,7 +458,7 @@ export class Room {
           isAtMiddleY,
           finalResult: isAtRightEdge && isAtMiddleY,
           failureReason: !isAtRightEdge ? 'X position not in transition zone' :
-                        !isAtMiddleY ? 'Y position not centered enough' : 'None'
+            !isAtMiddleY ? 'Y position not centered enough' : 'None'
         });
       }
     }
@@ -639,12 +663,15 @@ export class Room {
 
   // ENHANCED: Checks if the room can transition with better logging and boss room handling
   canTransition() {
+    // CRITICAL: Clean enemies array before checking states
+    this.cleanEnemiesArray();
+    
     // Boss room: locked until boss (and any adds) are dead
     if (this.roomType === 'boss') {
-      const totalEnemies = this.objects.enemies.length;
-      const aliveEnemies = this.objects.enemies.filter(e => e.state !== 'dead');
+      const totalEnemies = this.objects.enemies.filter(enemy => enemy !== undefined && enemy !== null).length;
+      const aliveEnemies = this.objects.enemies.filter(e => e !== undefined && e !== null && e.state !== 'dead');
       const deadEnemies = totalEnemies - aliveEnemies.length;
-      
+
       // ENHANCED: More robust boss room transition logic
       const allEnemiesDead = aliveEnemies.length === 0;
       const bossDefeatedFlag = this.bossDefeated === true;
@@ -679,8 +706,8 @@ export class Room {
     }
 
     // Regular combat rooms: must clear all enemies
-    const totalEnemies = this.objects.enemies.length;
-    const aliveEnemies = this.objects.enemies.filter(e => e.state !== 'dead');
+    const totalEnemies = this.objects.enemies.filter(enemy => enemy !== undefined && enemy !== null).length;
+    const aliveEnemies = this.objects.enemies.filter(e => e !== undefined && e !== null && e.state !== 'dead');
     const deadEnemies = totalEnemies - aliveEnemies.length;
     const canTransition = aliveEnemies.length === 0;
 

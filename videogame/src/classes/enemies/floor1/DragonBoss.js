@@ -125,7 +125,8 @@ export class DragonBoss extends Boss {
             },
         ];
 
-        super(position, width, height, color, maxHp, attacks);
+        super(position, width, height, color, maxHp, attacks, "dragon boss");
+        this.displayName = "Dragon Boss";
 
         // === Fire Ball configuration ===
         this.fireDuration = 4000;      // ms window
