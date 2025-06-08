@@ -31,6 +31,15 @@ export class Drone extends Enemy {
         this.bursting = false;
     }
 
+    getHitboxBounds() {
+        return {
+            x: this.position.x,
+            y: this.position.y,
+            width: this.width,
+            height: this.height
+        };
+    }
+
     // Anula moveTo para mantener el dron estático
     moveTo() { }
 

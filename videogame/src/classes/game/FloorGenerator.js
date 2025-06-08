@@ -214,11 +214,11 @@ export class FloorGenerator {
 
         if (roomType === 'boss') {
             let boss;
-            if (this.floorCount === 2) {
+            if (this.floorCount === 1) {
                 // Floor 1 boss
                 boss = new DragonBoss(new Vec(380, 75));
             }
-            else if (this.floorCount === 1) {
+            else if (this.floorCount === 2) {
                 // Floor 2 boss
                 boss = new Supersoldier(new Vec(380, 75));
             } else {

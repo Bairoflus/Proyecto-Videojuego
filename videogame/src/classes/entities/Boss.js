@@ -10,6 +10,10 @@ export class Boss extends Enemy {
         this.phase = 1;
         this.nextAttackTime = 0;
         this.fightStartTime = Date.now(); // Track fight duration for boss kill registration
+        
+        // Retraso inicial antes del primer ataque (para todos los jefes)
+        this.initialDelay = true;
+        this.initialDelayTime = 3000; // 3 segundos de espera
     }
 
     updatePhase() {
@@ -29,6 +33,15 @@ export class Boss extends Enemy {
     update(deltaTime) {
         super.update(deltaTime);
         this.updatePhase();
+
+        // Manejar el retraso inicial
+        if (this.initialDelay) {
+            this.initialDelayTime -= deltaTime;
+            if (this.initialDelayTime <= 0) {
+                this.initialDelay = false;
+            }
+            return; // No ejecutar ataques durante el retraso inicial
+        }
 
         if (Date.now() > this.nextAttackTime) {
             const attack = this.getAttackForCurrentPhase();

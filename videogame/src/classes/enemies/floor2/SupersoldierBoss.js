@@ -10,13 +10,54 @@ export class Supersoldier extends Boss {
         const maxHp = 1000;
         const color = "#2a75f3"; // azul metálico
 
-        // Definimos ataques por fase: fase 1 = regeneración con barrera, fase 2 = ataque cargado
+        // Definimos ataques por fase: fase 1 = drones, fase 2 = escudo, fase 3 = ataque cargado
         const attacks = [
             {
-                name: "Shield Regen",
+                name: "Drone Summon",
                 phase: 1,
+                cooldown: 12000, // 12s entre invocaciones
+                execute: (self) => {
+                    // No invocar drones durante el periodo de espera inicial
+                    if (self.initialDelay) {
+                        return;
+                    }
+                    
+                    // Solo invocar si no hemos alcanzado el límite de drones
+                    if (self.drones.length < self.maxDrones) {
+                        // Calcular posición para el nuevo dron (alrededor del jefe)
+                        const angle = Math.random() * Math.PI * 2; // Ángulo aleatorio
+                        const distance = 100; // Distancia desde el jefe
+                        const spawnPos = new Vec(
+                            self.position.x + Math.cos(angle) * distance,
+                            self.position.y + Math.sin(angle) * distance
+                        );
+
+                        // Implementación limpia y directa
+                        const drone = new Drone(spawnPos);
+                        drone.setCurrentRoom(self.currentRoom);   // para que room.update() lo reciba bien
+                        drone.parent = self;                      // para daño al jefe
+                        self.currentRoom.objects.enemies.push(drone);
+                        self.drones.push(drone);
+
+                        console.log("Supersoldier ha invocado un dron en posición:",
+                            { x: Math.round(spawnPos.x), y: Math.round(spawnPos.y) });
+
+                        console.log("Supersoldier ha invocado un dron");
+                    } else {
+                        console.log("Supersoldier ya tiene el máximo de drones");
+                    }
+                }
+            },
+            {
+                name: "Shield Regen",
+                phase: 2,
                 cooldown: 15000, // 15s entre regeneraciones
                 execute: (self) => {
+                    // No activar escudo durante el periodo de espera inicial
+                    if (self.initialDelay) {
+                        return;
+                    }
+                    
                     // Inicia regeneración gradual (100 puntos totales)
                     self.isRegenerating = true;
                     self.totalRegenAmount = 100;
@@ -36,8 +77,8 @@ export class Supersoldier extends Boss {
                         self.shieldDir = dy > 0 ? "down" : "up";
                     }
 
-                    // Ajustar la distancia de la barrera según la posición del jugador
-                    self.barrierDistance = 50; // Distancia base cercana al jefe
+                    // Ajustar la distancia de la barrera para que esté más centrada
+                    self.barrierDistance = 40; // Distancia reducida para mejor centrado
 
                     // Quitar barrera tras duración
                     setTimeout(() => {
@@ -60,9 +101,14 @@ export class Supersoldier extends Boss {
             },
             {
                 name: "Charged Shot",
-                phase: 2,
+                phase: 3,
                 cooldown: 8000, // 8s entre disparos cargados
                 execute: (self) => {
+                    // No cargar disparo durante el periodo de espera inicial
+                    if (self.initialDelay) {
+                        return;
+                    }
+                    
                     // Iniciar el ataque cargado
                     self.isChargingShot = true;
                     self.chargeTime = 0;
@@ -91,37 +137,6 @@ export class Supersoldier extends Boss {
 
                     console.log("Supersoldier está cargando un disparo potente");
                 }
-            },
-            {
-                name: "Drone Summon",
-                phase: 3,
-                cooldown: 12000, // 12s entre invocaciones
-                execute: (self) => {
-                    // Solo invocar si no hemos alcanzado el límite de drones
-                    if (self.drones.length < self.maxDrones) {
-                        // Calcular posición para el nuevo dron (alrededor del jefe)
-                        const angle = Math.random() * Math.PI * 2; // Ángulo aleatorio
-                        const distance = 100; // Distancia desde el jefe
-                        const spawnPos = new Vec(
-                            self.position.x + Math.cos(angle) * distance,
-                            self.position.y + Math.sin(angle) * distance
-                        );
-
-                        // Implementación limpia y directa
-                        const drone = new Drone(spawnPos);
-                        drone.setCurrentRoom(self.currentRoom);   // para que room.update() lo reciba bien
-                        drone.parent = self;                      // para daño al jefe
-                        self.currentRoom.objects.enemies.push(drone);
-                        self.drones.push(drone);
-
-                        console.log("Supersoldier ha invocado un dron en posición:",
-                            { x: Math.round(spawnPos.x), y: Math.round(spawnPos.y) });
-
-                        console.log("Supersoldier ha invocado un dron");
-                    } else {
-                        console.log("Supersoldier ya tiene el máximo de drones");
-                    }
-                }
             }
         ];
 
@@ -134,7 +149,9 @@ export class Supersoldier extends Boss {
         this.stunned = false;
         this.stunTimeLeft = 0;
         this.barrierWallRegistered = false;
-        this.barrierDistance = 50; // Distancia base de la barrera
+        this.barrierDistance = 40; // Distancia reducida para mejor centrado
+
+
 
         // Propiedades para el ataque cargado
         this.isChargingShot = false;
@@ -157,12 +174,15 @@ export class Supersoldier extends Boss {
         // Si hay barrera activa, dibújala
         if (this.shieldDir) {
             ctx.save();
-            ctx.translate(this.position.x, this.position.y);
+            ctx.translate(
+                this.position.x + this.width / 2,
+                this.position.y + this.height / 2
+            );
             ctx.fillStyle = "rgba(0, 200, 255, 0.5)";
 
-            const barrierLength = this.width * 2; // Barrera más larga
+            const barrierLength = this.width * 3; // Barrera más larga (aumentada para mejor simetría)
             const barrierThickness = 20; // Grosor de la barrera
-            const barrierDistance = this.barrierDistance || 50; // Usar la distancia configurada
+            const barrierDistance = this.barrierDistance || 40; // Distancia reducida para centrar mejor
 
             // Dibujar barrera según la dirección
             switch (this.shieldDir) {
@@ -173,10 +193,10 @@ export class Supersoldier extends Boss {
                     ctx.fillRect(-barrierLength / 2, this.height / 2 + barrierDistance, barrierLength, barrierThickness);
                     break;
                 case "left":
-                    ctx.fillRect(-this.width / 2 - barrierDistance - barrierThickness, -barrierLength / 2, barrierThickness, barrierLength);
+                    ctx.fillRect(-this.width / 2 - barrierDistance - barrierThickness, - barrierLength / 2, barrierThickness, barrierLength);
                     break;
                 case "right":
-                    ctx.fillRect(this.width / 2 + barrierDistance, -barrierLength / 2, barrierThickness, barrierLength);
+                    ctx.fillRect(this.width / 2 + barrierDistance, - barrierLength / 2, barrierThickness, barrierLength);
                     break;
             }
             ctx.restore();
@@ -394,9 +414,9 @@ export class Supersoldier extends Boss {
         // Manejar colisiones con la barrera si está activa
         if (this.shieldDir) {
             const player = window.game.player;
-            const barrierLength = this.width * 2;
-            const barrierThickness = 20;
-            const barrierDistance = this.barrierDistance || 50; // Usar la distancia configurada
+            const barrierLength = this.width * 3; // Barrera más larga (aumentada para mejor simetría)
+            const barrierThickness = 20; // Grosor de la barrera
+            const barrierDistance = this.barrierDistance || 40; // Distancia reducida para centrar mejor
 
             // Crear hitbox para la barrera según la dirección
             let barrierHitbox;
@@ -598,6 +618,16 @@ export class Supersoldier extends Boss {
         }
     }
 
+    // Método para obtener la hitbox del jefe
+    getHitboxBounds() {
+        return {
+            x: this.position.x,
+            y: this.position.y,
+            width: this.width,
+            height: this.height
+        };
+    }
+
     // Función auxiliar para comprobar colisiones
     checkCollision(entity, rect) {
         // Verificar que ambos objetos existen y tienen las propiedades necesarias
@@ -606,11 +636,19 @@ export class Supersoldier extends Boss {
             return false;
         }
 
+        // Usar getHitboxBounds si está disponible
+        const entityBounds = entity.getHitboxBounds ? entity.getHitboxBounds() : {
+            x: entity.position.x,
+            y: entity.position.y,
+            width: entity.width,
+            height: entity.height
+        };
+
         return (
-            entity.position.x < rect.x + rect.width &&
-            entity.position.x + entity.width > rect.x &&
-            entity.position.y < rect.y + rect.height &&
-            entity.position.y + entity.height > rect.y
+            entityBounds.x < rect.x + rect.width &&
+            entityBounds.x + entityBounds.width > rect.x &&
+            entityBounds.y < rect.y + rect.height &&
+            entityBounds.y + entityBounds.height > rect.y
         );
     }
 }
