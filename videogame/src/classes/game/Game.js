@@ -677,6 +677,17 @@ export class Game {
     ctx.fillRect(40, 40, barWidth * hpRatio, barHeight);
     ctx.strokeStyle = "white";
     ctx.strokeRect(40, 40, barWidth, barHeight);
+    
+    // Draw health text (HP actual/máximo)
+    const currentHP = Math.round(this.player.health);
+    const maxHP = Math.round(this.player.maxHealth);
+    ctx.fillStyle = "white";
+    ctx.font = "12px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`HP ${currentHP}/${maxHP}`, 40 + barWidth / 2, 40 + barHeight / 2);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
 
     // Draw stamina bar
     const staminaRatio = this.player.stamina / this.player.maxStamina;
