@@ -4,10 +4,10 @@
 -- Version: 3.0 - NEW: Support for run persistence, permanent & temporary upgrades
 -- Objective: Complete views for all missing functionalities
 -- New Views for:
--- 1. ✅ Run progress and persistence
--- 2. ✅ Permanent upgrades with calculated values
--- 3. ✅ Temporary upgrades with active status
--- 4. ✅ Enhanced analytics with run numbers
+-- 1. Run progress and persistence
+-- 2. Permanent upgrades with calculated values
+-- 3. Temporary upgrades with active status
+-- 4. Enhanced analytics with run numbers
 -- ===================================================
 
 USE dbshatteredtimeline;
@@ -433,12 +433,12 @@ SELECT
         END SEPARATOR ','
     ) as permanent_upgrades,
     -- Active weapon upgrades
-    COALESCE(wut.melee_level, 1) as melee_level,
-    COALESCE(wut.ranged_level, 1) as ranged_level,
-    -- Flags
+    COALESCE(MAX(wut.melee_level), 1) as melee_level,
+    COALESCE(MAX(wut.ranged_level), 1) as ranged_level,
+    -- Flags (FIXED: Use aggregate functions)
     CASE WHEN ss.save_id IS NOT NULL THEN TRUE ELSE FALSE END as has_save_state,
-    CASE WHEN ppu.upgrade_id IS NOT NULL THEN TRUE ELSE FALSE END as has_permanent_upgrades,
-    CASE WHEN wut.temp_upgrade_id IS NOT NULL THEN TRUE ELSE FALSE END as has_temp_upgrades
+    CASE WHEN COUNT(ppu.upgrade_id) > 0 THEN TRUE ELSE FALSE END as has_permanent_upgrades,
+    CASE WHEN COUNT(wut.temp_upgrade_id) > 0 THEN TRUE ELSE FALSE END as has_temp_upgrades
 FROM users u
 INNER JOIN user_run_progress urp ON u.user_id = urp.user_id
 LEFT JOIN save_states ss ON u.user_id = ss.user_id AND ss.is_active = TRUE
@@ -446,8 +446,7 @@ LEFT JOIN permanent_player_upgrades ppu ON u.user_id = ppu.user_id
 LEFT JOIN weapon_upgrades_temp wut ON u.user_id = wut.user_id AND wut.is_active = TRUE
 WHERE u.is_active = TRUE
 GROUP BY u.user_id, urp.current_run_number, ss.floor_id, ss.room_id, 
-         ss.current_hp, ss.gold, wut.melee_level, wut.ranged_level, 
-         ss.save_id, wut.temp_upgrade_id;
+         ss.current_hp, ss.gold, ss.save_id;
 
 -- NEW VIEW: Complete player statistics for API
 CREATE VIEW vw_complete_player_stats AS

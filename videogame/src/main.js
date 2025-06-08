@@ -25,11 +25,18 @@ export function main() {
     console.log('🚀 Game ready - starting game loop');
     
     let previousTime = 0;
-    function frame(currentTime) {
+    async function frame(currentTime) {
       const deltaTime = currentTime - previousTime;
       previousTime = currentTime;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      game.update(deltaTime);
+      
+      // Handle async update without blocking frame rate
+      try {
+        await game.update(deltaTime);
+      } catch (error) {
+        console.error('Game update error:', error);
+      }
+      
       game.draw(ctx);
       requestAnimationFrame(frame);
     }

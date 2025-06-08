@@ -69,6 +69,9 @@ export class Player extends AnimatedObject {
     this.staminaRegenDelay = PLAYER_CONSTANTS.STAMINA_REGEN_DELAY;
     this.staminaRegenCooldown = 0;
 
+    // NEW v3.0: Movement speed multiplier for permanent upgrades
+    this.speedMultiplier = 1.0; // Default speed (no bonus)
+
     // Gold and shop system
     this.gold = 0;
     this.meleeDamageBonus = 0;
@@ -1273,7 +1276,12 @@ export class Player extends AnimatedObject {
         this.velocity[move.axis] += move.direction;
       }
     }
-    this.velocity = this.velocity.normalize().times(variables.playerSpeed);
+    
+    // NEW v3.0: Apply movement speed multiplier from permanent upgrades
+    const baseSpeed = variables.playerSpeed;
+    const finalSpeed = baseSpeed * (this.speedMultiplier || 1.0);
+    
+    this.velocity = this.velocity.normalize().times(finalSpeed);
   }
 
   setMovementAnimation() {

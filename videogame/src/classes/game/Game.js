@@ -36,6 +36,11 @@ export class Game {
     this.transitionCooldown = 0; // Cooldown timer between transitions
     this.transitionCooldownTime = 500; // 500ms cooldown between transitions
     
+    // NEW: Visual transition feedback
+    this.transitionState = null; // 'starting', 'in_progress', 'completing'
+    this.transitionMessage = null; // Message to show during transition
+    this.transitionStartTime = null; // For timing
+    
     // FIX: Enemy synchronization management
     this.needsEnemySync = false; // Flag to force enemy array synchronization when needed
     
@@ -73,6 +78,11 @@ export class Game {
 
     // FIX: Now initialize game objects AFTER properties are set up
     this.globalShop = new Shop();
+    
+    // FIXED: Initialize PermanentUpgradePopup (was missing!)
+    this.permanentUpgradePopup = new PermanentUpgradePopup();
+    console.log('PermanentUpgradePopup initialized');
+    
     this.createEventListeners();
     this.floorGenerator = new FloorGenerator();
     this.enemies = [];
@@ -103,7 +113,7 @@ export class Game {
    */
   async initializeManagers() {
     try {
-      console.log('Initializing Game Managers...');
+      console.log('Initializing Game Managers v3.0...');
       
       // Ensure run data exists BEFORE initializing managers
       await this.ensureRunDataExists();
@@ -112,47 +122,107 @@ export class Game {
       const userId = parseInt(localStorage.getItem('currentUserId'));
       const runId = parseInt(localStorage.getItem('currentRunId'));
       
-      // Initialize saveStateManager (load saved state if exists)
-      const savedState = await saveStateManager.loadSaveState(userId);
-      console.log('SaveStateManager initialized:', savedState ? '(found saved state)' : '(no saved state)');
+      // NEW v3.0: Use complete player initialization in one call
+      console.log('Loading complete player data (v3.0)...');
+      const { initializePlayerData } = await import('../../utils/api.js');
       
-      // Initialize weaponUpgradeManager
-      await weaponUpgradeManager.initialize(userId, runId);
-      console.log('WeaponUpgradeManager initialized');
+      this.playerInitData = await initializePlayerData(userId);
       
-      // IMPORTANT: Sync player weapon levels after weaponUpgradeManager is initialized
-      if (this.player && typeof this.player.forceReloadWeaponLevels === 'function') {
-        this.player.forceReloadWeaponLevels();
-        console.log('Player weapon levels synchronized with manager');
+      if (this.playerInitData) {
+        console.log('Player v3.0 initialization data loaded:', this.playerInitData);
+        
+        // Extract and store data for use in initObjects
+        this.runNumber = this.playerInitData.run_number;
+        this.weaponLevels = {
+          melee: this.playerInitData.melee_level || 1,
+          ranged: this.playerInitData.ranged_level || 1
+        };
+        this.permanentUpgrades = this.playerInitData.permanent_upgrades_parsed || {};
+        this.hasSaveState = this.playerInitData.has_save_state === 1;
+        
+        // NEW v3.0: Auto-sync localStorage runId with database if inconsistent
+        const localStorageRunId = parseInt(localStorage.getItem('currentRunId'));
+        if (localStorageRunId !== this.runNumber) {
+          console.warn(`Run ID sync issue detected! localStorage: ${localStorageRunId}, Database: ${this.runNumber}`);
+          console.log('Auto-syncing localStorage with database run number...');
+          
+          // Need to create/get the correct run for the current run number
+          try {
+            const { createRun } = await import('../../utils/api.js');
+            const newRunResult = await createRun(userId);
+            if (newRunResult.success) {
+              localStorage.setItem('currentRunId', newRunResult.runId);
+              console.log(`localStorage synced: runId updated to ${newRunResult.runId} for run number ${this.runNumber}`);
+            }
+          } catch (error) {
+            console.error('Failed to sync runId, using database run number as fallback:', error);
+            localStorage.setItem('currentRunId', this.runNumber); // Fallback
+          }
+        }
+        
+        console.log('v3.0 data extracted:', {
+          runNumber: this.runNumber,
+          weaponLevels: this.weaponLevels,
+          permanentUpgrades: this.permanentUpgrades,
+          hasSaveState: this.hasSaveState
+        });
+        
+        // NEW v3.0: Sync run number with FloorGenerator
+        if (this.floorGenerator && this.runNumber) {
+          // Wait for FloorGenerator to load its run progress
+          let attempts = 0;
+          const maxAttempts = 50; // 5 seconds max wait
+          
+          while (!this.floorGenerator.runProgressLoaded && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+          }
+          
+          // Force sync the run number
+          this.floorGenerator.runCount = this.runNumber;
+          console.log(`FloorGenerator run number synced to: ${this.runNumber}`);
+        }
+      } else {
+        console.warn('Failed to load player v3.0 data, using fallback values');
+        // Use fallback values
+        this.runNumber = 1;
+        this.weaponLevels = { melee: 1, ranged: 1 };
+        this.permanentUpgrades = {};
+        this.hasSaveState = false;
       }
       
-      // Create permanent upgrade popup
-      this.permanentUpgradePopup = new PermanentUpgradePopup();
-      console.log('PermanentUpgradePopup created');
+      // Initialize managers with proper user data
+      console.log('Initializing saveStateManager...');
+      // saveStateManager doesn't need initialize() - it's auto-initialized as singleton
+      // Just check if it has save state available
+      const hasSavedState = await saveStateManager.loadSaveState(userId);
       
-      this.managersInitialized = true;
+      console.log('Initializing weaponUpgradeManager...');
+      // NEW v3.0: Use the corrected/synced runId from localStorage
+      const syncedRunId = parseInt(localStorage.getItem('currentRunId'));
+      await weaponUpgradeManager.initialize(userId, syncedRunId, this.weaponLevels);
+      
+      // Check for existing saved state
       this.managersInitializationResult = {
         success: true,
-        saveStateManager: true,
-        weaponUpgradeManager: true,
-        hasSavedState: !!savedState
+        hasSavedState: !!hasSavedState,
+        userData: { userId, runId: syncedRunId }
       };
       
-      console.log('All managers initialized successfully');
+      console.log('All Game Managers v3.0 initialized successfully');
+      this.managersInitialized = true; // Mark as complete
       
-      // Enable debug commands
-      this.initializeSessionDebugCommands();
+      return this.managersInitializationResult;
       
     } catch (error) {
-      console.error('Failed to initialize managers:', error);
-      this.managersInitializationResult = { 
-        success: false, 
+      console.error('Failed to initialize managers v3.0:', error);
+      this.managersInitializationResult = {
+        success: false,
         error: error.message
       };
+      this.managersInitialized = true; // Mark as complete even on error to prevent infinite wait
       
-      // Enable test mode on manager failure
-      localStorage.setItem('testMode', 'true');
-      console.warn('Test mode enabled due to manager initialization failure');
+      return this.managersInitializationResult;
     }
   }
 
@@ -490,6 +560,95 @@ export class Game {
               console.error('❌ State sync check failed:', error);
               return false;
             }
+          },
+          // NEW: Permanent upgrade popup debugging commands
+          popup: {
+            status: () => {
+              if (!window.game) {
+                console.error('❌ Game instance not found');
+                return null;
+              }
+              
+              const status = {
+                popupExists: !!window.game.permanentUpgradePopup,
+                isActive: window.game.permanentUpgradePopup ? window.game.permanentUpgradePopup.isActive : false,
+                bossUpgradeShown: window.game.bossUpgradeShown,
+                gameState: window.game.gameState,
+                isBossRoom: window.game.floorGenerator ? window.game.floorGenerator.isBossRoom() : false,
+                aliveEnemies: window.game.enemies ? window.game.enemies.filter(e => e.state !== 'dead').length : 'N/A'
+              };
+              
+              console.log('🎭 PERMANENT UPGRADE POPUP STATUS:');
+              console.table(status);
+              return status;
+            },
+            reset: () => {
+              if (!window.game) {
+                console.error('❌ Game instance not found');
+                return false;
+              }
+              
+              console.log('🔄 Resetting permanent upgrade popup flags...');
+              window.game.resetBossFlags();
+              
+              if (window.game.permanentUpgradePopup && window.game.permanentUpgradePopup.isActive) {
+                window.game.permanentUpgradePopup.hide();
+                console.log('✅ Popup hidden');
+              }
+              
+              window.game.gameState = 'playing';
+              console.log('✅ Game state reset to playing');
+              console.log('✅ All popup flags reset - popup should show on next boss kill');
+              
+              return true;
+            },
+            forceShow: () => {
+              if (!window.game || !window.game.permanentUpgradePopup) {
+                console.error('❌ Game or popup not found');
+                return false;
+              }
+              
+              console.log('🎭 Force showing permanent upgrade popup...');
+              window.game.resetBossFlags(); // Reset flags first
+              window.game.permanentUpgradePopup.show();
+              window.game.gameState = "upgradeSelection";
+              window.game.bossUpgradeShown = true;
+              
+              console.log('✅ Popup force shown');
+              return true;
+            },
+            testBossDeath: () => {
+              if (!window.game) {
+                console.error('❌ Game instance not found');
+                return false;
+              }
+              
+              console.log('⚔️ Simulating boss death for popup test...');
+              
+              // Reset flags first
+              window.game.resetBossFlags();
+              
+              // Simulate boss room and boss defeat
+              if (window.game.currentRoom) {
+                window.game.currentRoom.roomType = 'boss';
+                window.game.currentRoom.bossDefeated = true;
+              }
+              
+              // Trigger popup logic
+              if (window.game.permanentUpgradePopup && !window.game.bossUpgradeShown) {
+                console.log('✅ Showing permanent upgrade popup after simulated boss defeat');
+                window.game.permanentUpgradePopup.show();
+                window.game.gameState = "upgradeSelection";
+                window.game.bossUpgradeShown = true;
+                window.game.bossJustDefeated = true;
+                
+                console.log('✅ Boss death simulation complete - popup should be visible');
+                return true;
+              } else {
+                console.error('❌ Popup not available or flags preventing display');
+                return false;
+              }
+            }
           }
         }
       };
@@ -508,6 +667,12 @@ export class Game {
       console.log('  gameSessionDebug.room.resetBoss() - Reset boss room flags');
       console.log('  gameSessionDebug.room.emergencyReset() - Emergency reset all transition flags');
       console.log('  gameSessionDebug.room.syncState() - Check state synchronization');
+      console.log('');
+      console.log('🎭 Permanent upgrade popup debugging commands:');
+      console.log('  gameSessionDebug.popup.status() - Check popup and boss flags status');
+      console.log('  gameSessionDebug.popup.reset() - Reset all popup flags');
+      console.log('  gameSessionDebug.popup.forceShow() - Force show popup for testing');
+      console.log('  gameSessionDebug.popup.testBossDeath() - Simulate boss death to test popup');
     }
   }
 
@@ -531,6 +696,34 @@ export class Game {
     this.player = new Player(startPos, 64, 64, "blue");
     this.player.setCurrentRoom(this.currentRoom);
 
+    // NEW v3.0: Apply permanent upgrades from initialization data BEFORE weapon sync
+    if (this.permanentUpgrades && Object.keys(this.permanentUpgrades).length > 0) {
+      console.log('Applying permanent upgrades from v3.0 initialization data:', this.permanentUpgrades);
+      
+      Object.entries(this.permanentUpgrades).forEach(([type, value]) => {
+        console.log(`Applying v3.0 permanent upgrade: ${type} = ${value}`);
+        
+        switch(type) {
+          case 'health_max':
+            this.player.maxHealth = value;
+            this.player.health = value; // Start with full health
+            console.log(`Health set from permanent upgrades: ${this.player.maxHealth}`);
+            break;
+          case 'stamina_max':
+            this.player.maxStamina = value;
+            this.player.stamina = value; // Start with full stamina
+            console.log(`Stamina set from permanent upgrades: ${this.player.maxStamina}`);
+            break;
+          case 'movement_speed':
+            this.player.speedMultiplier = value;
+            console.log(`Movement speed set from permanent upgrades: ${(value * 100).toFixed(1)}%`);
+            break;
+        }
+      });
+      
+      console.log('All v3.0 permanent upgrades applied during player initialization');
+    }
+
     // NEW: Critical weapon sync after player creation and save state loading
     if (this.managersInitialized && window.weaponUpgradeManager) {
       // Force reload weapon levels after player is created
@@ -548,27 +741,20 @@ export class Game {
       }, 100); // Small delay to ensure everything is properly initialized
     }
 
-    // Apply saved state to player if available
+    // Apply saved state to player if available (override any defaults)
     if (savedState) {
       this.player.health = savedState.health || this.player.maxHealth;
       this.player.gold = savedState.gold || 0;
       
-      console.log('Saved state applied to player:', {
+      console.log('Saved state applied to player (override):', {
         health: this.player.health,
         gold: this.player.gold,
         position: `(${startPos.x}, ${startPos.y})`
       });
     }
 
-    // NEW: Load and apply permanent upgrades after player creation
-    if (this.managersInitialized) {
-      const userId = parseInt(localStorage.getItem('currentUserId'));
-      if (userId) {
-        this.loadPermanentUpgrades(userId).catch(error => {
-          console.error('Failed to load permanent upgrades during initialization:', error);
-        });
-      }
-    }
+    // REMOVED: Individual loadPermanentUpgrades call since it's now handled above in v3.0 style
+    // The permanent upgrades are already applied from this.permanentUpgrades
 
     // Configure shop with current game data
     this.configureShopGameData();
@@ -583,6 +769,17 @@ export class Game {
 
     // Initialize enemies array from current room
     this.enemies = this.currentRoom ? this.currentRoom.objects.enemies : [];
+    
+    // NEW v3.0: Log final player state after complete initialization
+    console.log('Player v3.0 initialization complete:', {
+      runNumber: this.runNumber,
+      health: `${this.player.health}/${this.player.maxHealth}`,
+      stamina: `${this.player.stamina}/${this.player.maxStamina}`,
+      speedMultiplier: this.player.speedMultiplier || 1.0,
+      weaponLevels: this.weaponLevels,
+      gold: this.player.gold,
+      hasSaveState: this.hasSaveState
+    });
   }
 
   /**
@@ -731,6 +928,8 @@ export class Game {
       const boss = room.objects.enemies.find(e => e instanceof Boss);
       drawBossHealthBar(ctx, boss);
     }
+    
+    // Removed transition overlay - no more visual feedback during transitions
   }
 
   drawUI(ctx) {
@@ -741,7 +940,8 @@ export class Game {
     const barHeight = 20;
 
     // Draw Run/Floor/Room info in bottom-right corner
-    const currentRun = this.floorGenerator.getCurrentRun();
+    // NEW v3.0: Use run number from initialization data (more reliable)
+    const currentRun = this.runNumber || this.floorGenerator.getCurrentRun(); // Fallback to FloorGenerator
     const currentFloor = this.floorGenerator.getCurrentFloor();
     const currentRoom = this.floorGenerator.getCurrentRoomIndex() + 1; // Convert to 1-based
     const totalRooms = this.floorGenerator.getTotalRooms();
@@ -878,6 +1078,26 @@ export class Game {
 
       // Reset floor generator to beginning - FIXED: Use correct method name
       await this.floorGenerator.resetToInitialState();
+      
+      // NEW v3.0: Sync frontend run number after death reset
+      console.log("Syncing frontend run number after death...");
+      this.runNumber = this.floorGenerator.getCurrentRun();
+      console.log(`Frontend run number updated to: ${this.runNumber}`);
+      
+      // NEW v3.0: Update localStorage with new runId after death
+      try {
+        const newRunId = localStorage.getItem('currentRunId');
+        if (newRunId) {
+          console.log(`localStorage runId after death: ${newRunId}`);
+          
+          // Update weaponUpgradeManager with new runId
+          const syncedRunId = parseInt(newRunId);
+          await weaponUpgradeManager.initialize(userId, syncedRunId);
+          console.log("WeaponUpgradeManager re-initialized with new runId after death");
+        }
+      } catch (error) {
+        console.error("Failed to sync runId after death:", error);
+      }
 
       // Reinitialize objects
       this.initObjects();
@@ -893,6 +1113,11 @@ export class Game {
       this.resetBossFlags();
       
       await this.floorGenerator.resetToInitialState();
+      
+      // NEW v3.0: Sync run number even in fallback
+      this.runNumber = this.floorGenerator.getCurrentRun();
+      console.log(`Fallback: Frontend run number updated to: ${this.runNumber}`);
+      
       this.initObjects();
       console.log("Game reset completed with local fallback");
     }
@@ -952,6 +1177,9 @@ export class Game {
       // FIX: Lock transitions immediately to prevent race conditions
       this.isTransitioning = true;
       console.log("ROOM TRANSITION LOCKED");
+      
+      // NEW: Update visual state
+      this.transitionState = 'in_progress';
 
       // DETAILED LOGGING before transition
       const beforeIndex = this.floorGenerator.getCurrentRoomIndex();
@@ -963,6 +1191,9 @@ export class Game {
       // BOSS ROOM TRANSITION LOGIC
       if (wasInBossRoom) {
         console.log("BOSS ROOM - Proceeding to next floor");
+        
+        // Update visual state for boss transition
+        this.transitionMessage = "Advancing to next floor...";
         
         // Auto-save after boss completion
         console.log(`Auto-saving after boss completion...`);
@@ -995,6 +1226,9 @@ export class Game {
       } else {
         // NORMAL ROOM TRANSITION (not boss room, forward only)
         console.log("🏃 NORMAL ROOM TRANSITION - Moving forward");
+        
+        // Update visual state for normal transition
+        this.transitionMessage = "Moving to next room...";
         
         if (!this.floorGenerator.nextRoom()) {
           console.log("Room transition FAILED - Could not advance to next room");
@@ -1122,7 +1356,32 @@ export class Game {
     }
   }
 
-  update(deltaTime) {
+  /**
+   * NEW: Non-blocking room transition without visual overlay
+   * Keeps transitions smooth without blocking render or showing overlays
+   */
+  startRoomTransition(direction) {
+    // Just set the transition flag, no visual feedback
+    this.isTransitioning = true;
+    
+    console.log("Starting non-blocking room transition");
+    
+    // Execute transition asynchronously without blocking render
+    this.handleRoomTransition(direction)
+      .then(() => {
+        // No visual feedback, just log completion
+        console.log("Room transition completed successfully");
+      })
+      .catch((error) => {
+        console.error("Error in non-blocking room transition:", error);
+        
+        // Emergency cleanup
+        this.isTransitioning = false;
+        this.transitionCooldown = 0;
+      });
+  }
+
+  async update(deltaTime) {
     // NEW: Don't update if game is not ready yet
     if (!this.isReady) {
       return;
@@ -1342,10 +1601,8 @@ export class Game {
     
     if (isAtRightEdge && isNotTransitioning && noCooldown && canTransition) {
       console.log("ROOM TRANSITION TRIGGERED - Player at right edge");
-      // Don't block the game loop with async operations
-      this.handleRoomTransition("right").catch(error => {
-        console.error("Error in room transition:", error);
-      });
+      // NEW: Non-blocking transition with visual feedback
+      this.startRoomTransition("right");
     } else if (nearRightEdge && canTransition) {
       // Only log when player is near edge but transition not triggered
       if (window.transitionDebugCounter % 30 === 0) { // Every half second
@@ -1721,7 +1978,8 @@ export class Game {
       statsContainer.innerHTML = '<div class="loading">Loading statistics...</div>';
       
       // Get current run stats (local)
-      const currentRun = this.floorGenerator.getCurrentRun();
+      // NEW v3.0: Use run number from initialization data (more reliable)
+      const currentRun = this.runNumber || this.floorGenerator.getCurrentRun(); // Fallback to FloorGenerator
       const currentFloor = this.floorGenerator.getCurrentFloor();
       const currentRoom = this.floorGenerator.getCurrentRoomIndex() + 1;
       const totalRooms = this.floorGenerator.getTotalRooms();
@@ -1948,6 +2206,25 @@ export class Game {
     try {
       console.log('Starting game initialization...');
       
+      // NEW v3.0: Wait for managers to initialize BEFORE loading saved state and initializing objects
+      console.log('Waiting for managers v3.0 to initialize...');
+      
+      // Wait for managers to complete initialization
+      let maxWaitTime = 10000; // 10 seconds max wait
+      let waitedTime = 0;
+      const checkInterval = 100; // Check every 100ms
+      
+      while (!this.managersInitialized && waitedTime < maxWaitTime) {
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        waitedTime += checkInterval;
+      }
+      
+      if (!this.managersInitialized) {
+        console.warn('Managers initialization timed out, proceeding with defaults');
+      } else {
+        console.log('Managers v3.0 initialization complete, proceeding with game initialization');
+      }
+      
       // Load saved state BEFORE initializing objects
       await this.loadSavedState().then(() => {
         this.initObjects(); // Now this.player won't be overwritten
@@ -2066,30 +2343,167 @@ export class Game {
     return Math.ceil(roomId / 6);
   }
 
-  // NEW: Load and apply permanent upgrades to player
+  // NEW: Load and apply permanent upgrades to player (ENHANCED v3.0)
   async loadPermanentUpgrades(userId) {
     try {
-      console.log('Loading permanent upgrades for player...');
+      console.log('Loading permanent upgrades v3.0 for player...');
       
-      // Fetch permanent upgrades from backend
+      // Use the enhanced v3.0 getPermanentUpgrades that returns calculated values
       const upgrades = await getPermanentUpgrades(userId);
       
       if (upgrades && upgrades.length > 0) {
-        console.log('Permanent upgrades loaded successfully:', upgrades);
+        console.log('Permanent upgrades v3.0 loaded successfully:', upgrades);
         
-        // Apply upgrades to player
+        // NEW v3.0: Apply calculated upgrades directly to player
         upgrades.forEach(upgrade => {
-          this.player.applyUpgrade(upgrade);
+          console.log(`Applying permanent upgrade: ${upgrade.upgrade_type} = ${upgrade.calculated_value}`);
+          
+          switch(upgrade.upgrade_type) {
+            case 'health_max':
+              const healthBonus = upgrade.calculated_value - 100; // Base health is 100
+              this.player.maxHealth = upgrade.calculated_value;
+              this.player.health = Math.min(this.player.health + healthBonus, this.player.maxHealth);
+              console.log(`Health upgraded: +${healthBonus} (total: ${this.player.maxHealth})`);
+              break;
+              
+            case 'stamina_max':
+              const staminaBonus = upgrade.calculated_value - 100; // Base stamina is 100
+              this.player.maxStamina = upgrade.calculated_value;
+              this.player.stamina = Math.min(this.player.stamina + staminaBonus, this.player.maxStamina);
+              console.log(`Stamina upgraded: +${staminaBonus} (total: ${this.player.maxStamina})`);
+              break;
+              
+            case 'movement_speed':
+              // Speed upgrade is a multiplier (e.g., 1.1 for 10% increase)
+              this.player.speedMultiplier = upgrade.calculated_value;
+              console.log(`Movement speed upgraded: ${(upgrade.calculated_value * 100).toFixed(1)}% of base speed`);
+              break;
+          }
         });
         
-        console.log('Permanent upgrades applied to player');
+        console.log('All permanent upgrades v3.0 applied to player');
+        
+        // Log final player stats
+        console.log('Final player stats after permanent upgrades:', {
+          health: `${this.player.health}/${this.player.maxHealth}`,
+          stamina: `${this.player.stamina}/${this.player.maxStamina}`,
+          speedMultiplier: this.player.speedMultiplier || 1.0
+        });
+        
       } else {
         console.log('No permanent upgrades found for player');
       }
       
     } catch (error) {
-      console.error('Failed to load permanent upgrades:', error);
+      console.error('Failed to load permanent upgrades v3.0:', error);
+      
+      // Fallback: Try to use locally stored permanent upgrades from initialization
+      if (this.permanentUpgrades && Object.keys(this.permanentUpgrades).length > 0) {
+        console.log('Using fallback permanent upgrades from initialization data:', this.permanentUpgrades);
+        
+        // Apply fallback upgrades if available
+        Object.entries(this.permanentUpgrades).forEach(([type, value]) => {
+          console.log(`Applying fallback upgrade: ${type} = ${value}`);
+          
+          switch(type) {
+            case 'health_max':
+              this.player.maxHealth = value;
+              this.player.health = Math.min(this.player.health, this.player.maxHealth);
+              break;
+            case 'stamina_max':
+              this.player.maxStamina = value;
+              this.player.stamina = Math.min(this.player.stamina, this.player.maxStamina);
+              break;
+            case 'movement_speed':
+              this.player.speedMultiplier = value;
+              break;
+          }
+        });
+        
+        console.log('Fallback permanent upgrades applied successfully');
+      }
     }
+  }
+
+  /**
+   * NEW: Draw transition overlay to provide visual feedback
+   * Prevents canvas from appearing empty during room transitions
+   */
+  drawTransitionOverlay(ctx) {
+    // Semi-transparent dark overlay
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillRect(0, 0, variables.canvasWidth, variables.canvasHeight);
+    
+    // Calculate elapsed time for animation
+    const elapsed = this.transitionStartTime ? Date.now() - this.transitionStartTime : 0;
+    const progress = Math.min(elapsed / 1000, 1); // 1 second max for full animation
+    
+    // Animated progress bar
+    const barWidth = 300;
+    const barHeight = 8;
+    const barX = (variables.canvasWidth - barWidth) / 2;
+    const barY = variables.canvasHeight / 2 + 40;
+    
+    // Progress bar background
+    ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    
+    // Progress bar fill with color based on state
+    let barColor = "#4CAF50"; // Green for normal
+    if (this.transitionState === 'error') {
+      barColor = "#F44336"; // Red for error
+    } else if (this.transitionState === 'completing') {
+      barColor = "#2196F3"; // Blue for completing
+    }
+    
+    ctx.fillStyle = barColor;
+    ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+    
+    // Main transition message
+    ctx.fillStyle = "white";
+    ctx.font = "bold 24px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    
+    const messageY = variables.canvasHeight / 2;
+    ctx.fillText(this.transitionMessage, variables.canvasWidth / 2, messageY);
+    
+    // Animated dots for "in progress" states
+    if (this.transitionState === 'starting' || this.transitionState === 'in_progress') {
+      const dotCount = Math.floor(elapsed / 200) % 4; // Cycle every 800ms
+      const dots = ".".repeat(dotCount);
+      
+      ctx.font = "bold 20px Arial";
+      ctx.fillText(dots, variables.canvasWidth / 2, messageY + 35);
+    }
+    
+    // Additional status text
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    
+    let statusText = "";
+    switch (this.transitionState) {
+      case 'starting':
+        statusText = "Saving game state...";
+        break;
+      case 'in_progress':
+        statusText = "Loading next room...";
+        break;
+      case 'completing':
+        statusText = "Ready to continue!";
+        break;
+      case 'error':
+        statusText = "Something went wrong";
+        break;
+    }
+    
+    if (statusText) {
+      ctx.fillText(statusText, variables.canvasWidth / 2, messageY + 60);
+    }
+    
+    // Reset text properties
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
   }
 }
 

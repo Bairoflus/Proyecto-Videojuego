@@ -5,9 +5,9 @@
 -- Tables: 12 essential (added user_run_progress for run persistence)
 -- Objective: Fix run persistence, permanent upgrades, and temporary upgrades
 -- Missing Functionalities FIXED:
--- 1. ✅ Run number persistence across logout/login
--- 2. ✅ Permanent upgrades loading and application
--- 3. ✅ Temporary upgrades persistence between sessions
+-- 1. Run number persistence across logout/login
+-- 2. Permanent upgrades loading and application
+-- 3. Temporary upgrades persistence between sessions
 -- ===================================================
 
 -- Drop database if exists and create new one
