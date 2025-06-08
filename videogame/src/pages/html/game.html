@@ -19,7 +19,7 @@
 
   <script type="module">
     import { logoutUser, createRun } from '../../utils/api.js';
-    
+
     const status = document.getElementById('status');
     const logoutButton = document.getElementById('logout-btn');
 
@@ -30,13 +30,13 @@
     function clearAllSessionData() {
       console.log('Clearing all session data...');
       const sessionKeys = [
-        'sessionToken', 
-        'currentUserId', 
-        'currentSessionId', 
+        'sessionToken',
+        'currentUserId',
+        'currentSessionId',
         'currentRunId',
         'runCreationFailed'
       ];
-      
+
       sessionKeys.forEach(key => {
         const value = localStorage.getItem(key);
         if (value) {
@@ -44,7 +44,7 @@
           console.log(`  Cleared ${key}: ${value}`);
         }
       });
-      
+
       console.log('Session data cleanup complete');
     }
 
@@ -54,23 +54,23 @@
     async function ensureRunData() {
       const userId = localStorage.getItem('currentUserId');
       const runId = localStorage.getItem('currentRunId');
-      
+
       if (runId) {
         console.log('Run data exists:', runId);
         return true;
       }
-      
+
       console.log('No run data found, creating new run...');
-      
+
       try {
         const runData = await createRun(parseInt(userId));
         localStorage.setItem('currentRunId', runData.runId);
         console.log('New run created successfully:', runData.runId);
         return true;
-        
+
       } catch (error) {
         console.error('Failed to create run:', error);
-        
+
         // Set test mode flag
         localStorage.setItem('testMode', 'true');
         console.warn('Running in test mode - some features may be limited');
@@ -83,25 +83,25 @@
      */
     async function performLogout() {
       console.log('Starting logout process...');
-      
+
       try {
         // Update UI to show logout in progress
         logoutButton.disabled = true;
         logoutButton.textContent = 'Logging out...';
-        
+
         // Get session data before clearing
         const sessionToken = localStorage.getItem('sessionToken');
         const userId = localStorage.getItem('currentUserId');
         const sessionId = localStorage.getItem('currentSessionId');
         const runId = localStorage.getItem('currentRunId');
-        
+
         console.log('Current session state:', {
           hasSessionToken: !!sessionToken,
           userId: userId,
           sessionId: sessionId,
           runId: runId || 'NONE'
         });
-        
+
         // Attempt to notify backend of logout
         if (sessionToken) {
           try {
@@ -115,29 +115,29 @@
         } else {
           console.log('No session token found, skipping server logout');
         }
-        
+
         // Always clear local session data
         clearAllSessionData();
-        
+
         // Update UI to show logout success
         logoutButton.textContent = 'Logged out';
-        
+
         console.log('Logout process complete, redirecting...');
-        
+
         // Brief delay before redirect for user feedback
         setTimeout(() => {
           window.location.href = 'landing.html';
         }, 1000);
-        
+
       } catch (error) {
         console.error('Logout process error:', error);
-        
+
         // Even if logout fails, clear local data and redirect
         clearAllSessionData();
-        
+
         // Update UI to show there was an issue but we're proceeding
         logoutButton.textContent = 'Logout (Error)';
-        
+
         setTimeout(() => {
           window.location.href = 'landing.html';
         }, 1500);
@@ -151,7 +151,7 @@
       const sessionToken = localStorage.getItem('sessionToken');
       const userId = localStorage.getItem('currentUserId');
       const sessionId = localStorage.getItem('currentSessionId');
-      
+
       if (!sessionToken || !userId || !sessionId) {
         console.warn('Incomplete session data detected, redirecting to login');
         console.log('Session validation failed:', {
@@ -159,15 +159,15 @@
           hasUserId: !!userId,
           hasSessionId: !!sessionId
         });
-        
+
         // Clear any partial session data
         clearAllSessionData();
-        
+
         // Redirect to login
         window.location.href = 'login.html';
         return false;
       }
-      
+
       console.log('Session validation passed');
       return true;
     }
@@ -181,7 +181,7 @@
         if (!confirmLogout) {
           return;
         }
-        
+
         await performLogout();
       });
 
@@ -189,13 +189,13 @@
       async function initializeGame() {
         try {
           status.textContent = 'Validating session...';
-          
+
           // Ensure run data exists
           const runDataReady = await ensureRunData();
           if (!runDataReady) {
             throw new Error('Failed to initialize run data');
           }
-          
+
           status.textContent = 'Loading modules...';
 
           // Import main game module
@@ -208,12 +208,12 @@
         } catch (error) {
           status.textContent = 'Error loading game: ' + error.message;
           console.error('Game initialization error:', error);
-          
+
           // If game fails to load, provide option to logout
           logoutButton.style.display = 'block';
         }
       }
-      
+
       // Start game initialization
       initializeGame();
     }
@@ -221,7 +221,7 @@
 
   <!-- 🧪 Game Testing Suite - Testing tools commented out for now -->
   <!-- <script type="module" src="../../browser_game_test.js"></script> -->
-  
+
   <script>
     // Display testing instructions after game loads
     setTimeout(() => {

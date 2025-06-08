@@ -15,7 +15,7 @@
       font-weight: bold;
       position: relative;
     }
-    
+
     .dev-controls {
       position: fixed;
       top: 60px;
@@ -30,7 +30,7 @@
       z-index: 1000;
       border: 2px solid #4ecdc4;
     }
-    
+
     .dev-controls button {
       margin: 2px;
       padding: 5px 10px;
@@ -41,11 +41,11 @@
       cursor: pointer;
       font-size: 11px;
     }
-    
+
     .dev-controls button:hover {
       background: #45b7b8;
     }
-    
+
     .dev-info {
       background: rgba(255, 107, 107, 0.9);
       color: white;
@@ -54,7 +54,7 @@
       border-radius: 4px;
       font-weight: bold;
     }
-    
+
     #status {
       background: rgba(0, 0, 0, 0.8);
       color: #4ecdc4;
@@ -78,7 +78,7 @@
   <!-- Developer Controls Panel -->
   <div class="dev-controls" id="devControls">
     <div class="dev-info">🛠️ DEV TOOLS</div>
-    
+
     <div style="margin: 10px 0;">
       <strong>Game Controls:</strong><br>
       <button onclick="restartGame()">🔄 Restart Game</button>
@@ -86,27 +86,27 @@
       <button onclick="godMode()">🛡️ God Mode</button>
       <button onclick="addGold()">💰 +1000 Gold</button>
     </div>
-    
+
     <div style="margin: 10px 0;">
       <strong>Room Controls:</strong><br>
       <button onclick="forceNextRoom()">➡️ Next Room</button>
       <button onclick="clearEnemies()">⚔️ Clear Enemies</button>
       <button onclick="spawnChest()">📦 Spawn Chest</button>
     </div>
-    
+
     <div style="margin: 10px 0;">
       <strong>Debug Info:</strong><br>
       <button onclick="showGameState()">📊 Game State</button>
       <button onclick="testRoomMapping()">🗺️ Test Mapping</button>
       <button onclick="checkServices()">🔧 Check Services</button>
     </div>
-    
+
     <div style="margin: 10px 0;">
       <strong>Session:</strong><br>
       <button onclick="showSessionData()">📋 Session Data</button>
       <button onclick="toggleTestMode()">🧪 Toggle Test Mode</button>
     </div>
-    
+
     <button onclick="toggleDevPanel()" style="margin-top: 10px; background: #ff6b6b;">❌ Hide Panel</button>
   </div>
 
@@ -122,34 +122,34 @@
      */
 
     const status = document.getElementById('status');
-    
+
     /**
      * Setup developer environment with test data
      */
     function setupDeveloperEnvironment() {
       console.log('🧪 SETTING UP DEVELOPER ENVIRONMENT');
       console.log('━'.repeat(60));
-      
+
       // Clear any existing session data
       const sessionKeys = [
-        'sessionToken', 
-        'currentUserId', 
-        'currentSessionId', 
+        'sessionToken',
+        'currentUserId',
+        'currentSessionId',
         'currentRunId',
         'runCreationFailed'
       ];
-      
+
       sessionKeys.forEach(key => {
         localStorage.removeItem(key);
       });
-      
+
       // Set up fake developer session data
       localStorage.setItem('testMode', 'true');
       localStorage.setItem('developerMode', 'true');
       localStorage.setItem('currentUserId', '999'); // Fake dev user ID
       localStorage.setItem('currentSessionId', '999'); // Fake dev session ID
       localStorage.setItem('currentRunId', '999'); // Fake dev run ID
-      
+
       console.log('✅ Developer environment configured');
       console.log('✅ Test mode enabled');
       console.log('✅ Fake session data created');
@@ -164,15 +164,15 @@
       try {
         status.textContent = '🛠️ Setting up developer environment...';
         setupDeveloperEnvironment();
-        
+
         status.textContent = '📦 Loading game modules...';
-        
+
         // Import main game module
         const { main } = await import('/main.js');
-        
+
         status.textContent = '🎮 Starting game in developer mode...';
         main();
-        
+
         // Hide status and show success
         setTimeout(() => {
           status.style.display = 'none';
@@ -191,7 +191,7 @@
         console.error('Developer game initialization error:', error);
       }
     }
-    
+
     /**
      * Show developer welcome message
      */
@@ -210,19 +210,19 @@
       console.log('  window.game - Direct game instance access');
       console.log('━'.repeat(50));
     }
-    
+
     // Start developer game initialization immediately
     initializeDeveloperGame();
   </script>
 
   <!-- Load game testing suite - commented out for now -->
   <!-- <script type="module" src="../../browser_game_test.js"></script> -->
-  
+
   <!-- Developer Tools JavaScript -->
   <script>
     // Global developer functions
     window.devTools = {
-      
+
       // Game control functions
       restartGame() {
         if (window.game) {
@@ -233,7 +233,7 @@
           console.error('❌ Game instance not found');
         }
       },
-      
+
       killPlayer() {
         if (window.game && window.game.player) {
           console.log('💀 Killing player...');
@@ -243,7 +243,7 @@
           console.error('❌ Player not found');
         }
       },
-      
+
       godMode() {
         if (window.game && window.game.player) {
           console.log('🛡️ Activating god mode...');
@@ -255,7 +255,7 @@
           console.error('❌ Player not found');
         }
       },
-      
+
       addGold() {
         if (window.game && window.game.player) {
           console.log('💰 Adding 1000 gold...');
@@ -265,7 +265,7 @@
           console.error('❌ Player not found');
         }
       },
-      
+
       // Room control functions
       forceNextRoom() {
         if (window.game) {
@@ -279,7 +279,7 @@
           console.error('❌ Game instance not found');
         }
       },
-      
+
       clearEnemies() {
         if (window.game && window.game.currentRoom) {
           console.log('⚔️ Clearing all enemies...');
@@ -293,7 +293,7 @@
           console.error('❌ Current room not found');
         }
       },
-      
+
       spawnChest() {
         if (window.game && window.game.currentRoom) {
           console.log('📦 Spawning chest...');
@@ -303,7 +303,7 @@
           console.error('❌ Current room not found');
         }
       },
-      
+
       // Debug info functions
       showGameState() {
         if (window.game) {
@@ -324,7 +324,7 @@
           console.error('❌ Game instance not found');
         }
       },
-      
+
       testRoomMapping() {
         console.log('🗺️ Testing room mapping...');
         if (window.testMapping) {
@@ -333,7 +333,7 @@
           console.error('❌ Room mapping test not available');
         }
       },
-      
+
       checkServices() {
         console.log('🔧 Checking services...');
         if (window.gameServiceDebug) {
@@ -343,7 +343,7 @@
           console.error('❌ Service debug not available');
         }
       },
-      
+
       // Session functions
       showSessionData() {
         console.log('📋 CURRENT SESSION DATA:');
@@ -356,13 +356,13 @@
         };
         console.table(data);
       },
-      
+
       toggleTestMode() {
         const current = localStorage.getItem('testMode') === 'true';
         localStorage.setItem('testMode', !current);
         console.log(`🧪 Test mode ${!current ? 'ENABLED' : 'DISABLED'}`);
       },
-      
+
       toggleDevPanel() {
         const panel = document.getElementById('devControls');
         if (panel.style.display === 'none') {
@@ -374,7 +374,7 @@
         }
       }
     };
-    
+
     // Make functions globally available for buttons
     window.restartGame = window.devTools.restartGame;
     window.killPlayer = window.devTools.killPlayer;
@@ -389,7 +389,7 @@
     window.showSessionData = window.devTools.showSessionData;
     window.toggleTestMode = window.devTools.toggleTestMode;
     window.toggleDevPanel = window.devTools.toggleDevPanel;
-    
+
     // Display developer instructions after game loads
     setTimeout(() => {
       console.log('🧪 DEVELOPER TOOLS READY');
@@ -414,4 +414,4 @@
   </script>
 </body>
 
-</html> 
+</html>

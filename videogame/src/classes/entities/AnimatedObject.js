@@ -34,24 +34,20 @@ export class AnimatedObject extends GameObject {
   updateFrame(deltaTime) {
     this.totalTime += deltaTime;
     if (this.totalTime > this.frameDuration) {
-      // Allow non-repeating animations to exceed maxFrame for completion detection
+      // Proper frame advancement for both repeating and non-repeating animations
       if (this.frame < this.maxFrame) {
         this.frame++;
       } else if (this.repeat) {
         this.frame = this.minFrame;
-      } else {
-        this.frame++; // Allow exceeding maxFrame for non-repeating animations
       }
+      // For non-repeating animations, clamp at maxFrame (don't exceed it)
 
       // Ensure spriteRect exists before updating
       if (this.spriteRect) {
-        // Clamp frame to valid range for sprite display (prevent wrong direction frames)
-        const displayFrame = Math.min(this.frame, this.maxFrame);
-        
         const oldX = this.spriteRect.x;
         const oldY = this.spriteRect.y;
-        this.spriteRect.x = displayFrame % this.sheetCols;
-        this.spriteRect.y = Math.floor(displayFrame / this.sheetCols);
+        this.spriteRect.x = this.frame % this.sheetCols;
+        this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
 
         // Debug logging for sprite frame changes during attacks (only for significant changes)
         if (

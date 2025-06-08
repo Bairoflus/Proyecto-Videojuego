@@ -10,10 +10,10 @@ import { Coin } from "../entities/Coin.js";
 import { Chest } from "../entities/Chest.js";
 import { Shop } from "../entities/Shop.js";
 import { GoblinDagger } from "../enemies/floor1/GoblinDagger.js";
+import { SwordGoblin } from "../enemies/floor1/SwordGoblin.js";
 import { GoblinArcher } from "../enemies/floor1/GoblinArcher.js";
 import { MageGoblin } from "../enemies/floor1/MageGoblin.js";
 import { GreatBowGoblin } from "../enemies/floor1/GreatBowGoblin.js";
-import { SwordGoblin } from "../enemies/floor1/SwordGoblin.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
 import {
@@ -65,17 +65,23 @@ export class Room {
     console.log(`🎮 ROOM.initializeEnemies() called:`, {
       isCombatRoom: this.isCombatRoom,
       currentEnemyCount: this.objects.enemies.length,
-      roomType: this.roomType
+      roomType: this.roomType,
     });
 
     if (this.isCombatRoom && this.objects.enemies.length === 0) {
-      console.log('✅ Generating NEW enemies for fresh combat room...');
+      console.log("✅ Generating NEW enemies for fresh combat room...");
       this.generateEnemies();
-      console.log(`✅ Enemy generation complete: ${this.objects.enemies.length} enemies created`);
+      console.log(
+        `✅ Enemy generation complete: ${this.objects.enemies.length} enemies created`
+      );
     } else if (this.isCombatRoom) {
-      console.log(`🔄 Skipping enemy generation: ${this.objects.enemies.length} enemies already exist (SAVED STATE)`);
+      console.log(
+        `🔄 Skipping enemy generation: ${this.objects.enemies.length} enemies already exist (SAVED STATE)`
+      );
     } else {
-      console.log(`ℹ️ Non-combat room (${this.roomType}): No enemy generation needed`);
+      console.log(
+        `ℹ️ Non-combat room (${this.roomType}): No enemy generation needed`
+      );
     }
   }
 
@@ -241,13 +247,25 @@ export class Room {
         // Set player as target for enemy AI
         if (window.game && window.game.player) {
           enemy.target = window.game.player;
-          // Get player hitbox center position
-          const playerHitbox = window.game.player.getHitboxBounds();
-          const playerCenter = new Vec(
-            playerHitbox.x + playerHitbox.width / 2,
-            playerHitbox.y + playerHitbox.height / 2
-          );
-          enemy.moveTo(playerCenter);
+          
+          // Check if enemy is a melee type (has MeleeEnemy in its constructor chain)
+          // Melee enemies need the full player object for hitbox overlap detection
+          // Ranged enemies need the player center position as a Vec
+          if (enemy.constructor.name.includes('Dagger') || 
+              enemy.constructor.name.includes('Sword') || 
+              enemy.type === 'goblin_dagger' || 
+              enemy.type === 'sword_goblin') {
+            // Melee enemies - pass full player object
+            enemy.moveTo(window.game.player);
+          } else {
+            // Ranged enemies - pass player center position as Vec
+            const playerHitbox = window.game.player.getHitboxBounds();
+            const playerCenter = new Vec(
+              playerHitbox.x + playerHitbox.width / 2,
+              playerHitbox.y + playerHitbox.height / 2
+            );
+            enemy.moveTo(playerCenter);
+          }
 
           // For all enemy types, call their attack method with player reference
           enemy.attack(window.game.player);
@@ -437,9 +455,9 @@ export class Room {
     const archerCount = Math.floor(remainingRareCount * 0.6);
     const mageCount = remainingRareCount - archerCount;
 
-    // Split common enemies between GoblinDagger and SwordGoblin (70% dagger, 30% sword)
-    const daggerCount = Math.floor(commonCount * 0.7);
-    const swordCount = Math.max(1, commonCount - daggerCount); // Ensure at least 1 SwordGoblin
+    // Split common enemies between GoblinDagger and SwordGoblin (60% dagger, 40% sword)
+    const daggerCount = Math.floor(commonCount * 0.6);
+    const swordCount = commonCount - daggerCount;
 
     log.debug(
       `Enemy distribution: ${enemyCount} total | ${daggerCount} GoblinDagger + ${swordCount} SwordGoblin (${Math.round(
@@ -461,7 +479,7 @@ export class Room {
 
     let successfulPlacements = 0;
 
-    // Generate common enemies (left half, excluding safe zone)
+    // Generate GoblinDagger enemies (left half, excluding safe zone)
     log.debug("Generating GoblinDagger enemies (left half)...");
     for (let i = 0; i < daggerCount; i++) {
       const position = this.getValidEnemyPosition(true, safeZone);
@@ -477,6 +495,25 @@ export class Room {
         );
       } else {
         log.warn(`  Failed to place GoblinDagger ${i + 1}`);
+      }
+    }
+
+    // Generate SwordGoblin enemies (left half, excluding safe zone)
+    log.debug("Generating SwordGoblin enemies (left half)...");
+    for (let i = 0; i < swordCount; i++) {
+      const position = this.getValidEnemyPosition(true, safeZone);
+      if (position) {
+        const enemy = new SwordGoblin(position);
+        enemy.setCurrentRoom(this); // Set room reference for collision detection
+        this.objects.enemies.push(enemy);
+        successfulPlacements++;
+        log.verbose(
+          `  SwordGoblin ${i + 1} placed at (${Math.round(
+            position.x
+          )}, ${Math.round(position.y)})`
+        );
+      } else {
+        log.warn(`  Failed to place SwordGoblin ${i + 1}`);
       }
     }
 
@@ -645,7 +682,26 @@ export class Room {
   isValidEnemyPosition(position) {
     // Create a temporary enemy to test collision
     const tempEnemy = new GoblinDagger(position);
-    return !this.checkWallCollision(tempEnemy);
+    
+    // Check wall collision
+    if (this.checkWallCollision(tempEnemy)) {
+      return false;
+    }
+    
+    // Check collision with existing enemies
+    const tempHitbox = tempEnemy.getHitboxBounds();
+    for (const existingEnemy of this.objects.enemies) {
+      if (existingEnemy.state === "dead") continue;
+      
+      const existingHitbox = existingEnemy.getHitboxBounds();
+      
+      // Check if hitboxes overlap
+      if (this.checkRectangleCollision(tempHitbox, existingHitbox)) {
+        return false;
+      }
+    }
+    
+    return true;
   }
 
   // Checks if the room can transition (no enemies alive)

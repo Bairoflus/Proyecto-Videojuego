@@ -48,8 +48,7 @@ export class MageGoblin extends RangedEnemy {
     };
 
     // Sprite paths
-    this.walkSpritePath =
-      "/assets/sprites/enemies/floor1/mage_goblin/walk.png";
+    this.walkSpritePath = "/assets/sprites/enemies/floor1/mage_goblin/walk.png";
     this.spellcastSpritePath =
       "/assets/sprites/enemies/floor1/mage_goblin/spellcast.png";
 
@@ -83,7 +82,7 @@ export class MageGoblin extends RangedEnemy {
       this.state = "retreating";
       const retreatDirection = enemyCenter.minus(targetPosition);
       this.velocity = retreatDirection.normalize().times(this.movementSpeed);
-      
+
       // Update direction based on movement
       this.updateDirectionFromMovement();
 
@@ -93,7 +92,7 @@ export class MageGoblin extends RangedEnemy {
       // Move closer if too far
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
-      
+
       // Update direction based on movement
       this.updateDirectionFromMovement();
 
@@ -136,7 +135,8 @@ export class MageGoblin extends RangedEnemy {
   }
 
   attack(target) {
-    if (this.state === "dead" || this.isCasting || this.attackCooldown > 0) return;
+    if (this.state === "dead" || this.isCasting || this.attackCooldown > 0)
+      return;
 
     // Calculate target hitbox center position
     const targetHitbox = target.getHitboxBounds();
@@ -154,7 +154,7 @@ export class MageGoblin extends RangedEnemy {
 
     const aimDirection = targetCenter.minus(mageCenter);
     const distance = aimDirection.magnitude();
-    
+
     if (distance <= this.attackRange) {
       // Set state to attacking
       this.state = "attacking";
@@ -213,15 +213,15 @@ export class MageGoblin extends RangedEnemy {
       this.baseDamage, // Use enemy's base damage
       this.projectileType // Use inherited projectile type (magic_bolt)
     );
-    
+
     // Set projectile travel distance limit
     if (this.projectileRange) {
       projectile.setMaxTravelDistance(this.projectileRange);
     }
-    
+
     // Set room reference for wall collision detection
     projectile.setCurrentRoom(this.currentRoom);
-    
+
     this.projectiles.push(projectile);
   }
 

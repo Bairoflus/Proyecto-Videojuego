@@ -1,14 +1,13 @@
 /**
  * Sword Goblin enemy class
- * Stronger melee enemy type that attacks at close range with a sword
- * Slightly slower but deals more damage than Goblin Dagger
+ * Melee enemy type that attacks at close range with a larger attack range than dagger goblins
  * Found commonly on floor 1
  */
 import { MeleeEnemy } from "../../entities/MeleeEnemy.js";
 import { Vec } from "../../../utils/Vec.js";
-import { Rect } from "../../../utils/Rect.js";
-import { ENEMY_CONSTANTS, SPRITE_SCALING_CONSTANTS } from "../../../constants/gameConstants.js";
+import { ENEMY_CONSTANTS } from "../../../constants/gameConstants.js";
 import { variables } from "../../../config.js";
+import { boxOverlap } from "../../../draw.js";
 
 export class SwordGoblin extends MeleeEnemy {
   constructor(position) {
@@ -18,14 +17,15 @@ export class SwordGoblin extends MeleeEnemy {
       position,
       config.size.width,
       config.size.height,
-      "darkred", // color (temporary, will be replaced by sprite)
-      9, // sheetCols for walk sprites (sword_goblin has same layout as other goblins)
+      "red", // color (temporary, will be replaced by sprite)
+      9, // sheetCols for walk sprites (sword_goblin has same layout as dagger_goblin)
       "sword_goblin", // type
       config.speed,
       config.damage,
       config.health,
       config.attackRange, // detection range
-      { width: config.attackRange, height: config.attackRange } // attack area dimensions
+      { width: config.attackRange, height: config.attackRange }, // attack area dimensions
+      "goblin" // enemyTypeName for backend mapping
     );
 
     // Set specific properties
@@ -34,54 +34,56 @@ export class SwordGoblin extends MeleeEnemy {
     // Animation properties
     this.isAttacking = false;
     this.currentDirection = "down"; // Default direction
-    this.attackTarget = null; // Store target for damage application
-
-    // Constant draw dimensions for consistent on-screen size (64×64 like DaggerGoblin)
-    this.drawW = SPRITE_SCALING_CONSTANTS.BASE_CHARACTER_SIZE;
-    this.drawH = SPRITE_SCALING_CONSTANTS.BASE_CHARACTER_SIZE;
 
     // Sprite scaling configuration - per animation type
     this.spriteScaling = {
       walk: 1.0, // Sword goblins look fine at normal size when walking
-      attack: 1.05, // Very slight scale up to compensate for padding without making goblin too big
+      attack: 1.0, // Sword goblins look fine at normal size when attacking
     };
 
-    // Sprite paths for sword goblin (using absolute paths)
+    // Sprite paths - using sword_goblin sprite sheets
     this.walkSpritePath =
       "/assets/sprites/enemies/floor1/sword_goblin/walk.png";
     this.attackSpritePath =
       "/assets/sprites/enemies/floor1/sword_goblin/slash.png";
 
-    // Initialize with walking sprite and proper animation (like DaggerGoblin)
+    // Initialize with walking sprite and proper animation
     this.setSprite(this.walkSpritePath);
 
     // Set initial walking animation for down direction
     const initialWalkFrames = this.getWalkFrames(this.currentDirection);
     this.setAnimation(initialWalkFrames[0], initialWalkFrames[1], true, 100);
+
+    // console.log(
+    //   `SwordGoblin created with ${this.sheetCols} columns, direction: ${this.currentDirection}`
+    // );
   }
 
-  // Get attack frame ranges based on direction (6 columns for slash sprite)
-  moveTo(targetPosition) {
+  // Override moveTo for aggressive chase behavior with sprite animation
+  moveTo(player) {
     if (this.state === "dead") return;
 
-    // Calculate direction from enemy's hitbox center to target position
-    const enemyHitbox = this.getHitboxBounds();
-    const enemyCenter = new Vec(
-      enemyHitbox.x + enemyHitbox.width / 2,
-      enemyHitbox.y + enemyHitbox.height / 2
-    );
-
-    // Always chase the player aggressively
-    const direction = targetPosition.minus(enemyCenter);
-    const distance = direction.magnitude();
-
-    // Just move toward the target - attack will be called separately by Room.js
-    if (distance > this.attackRange) {
-      // Chase the player
+    // Check if hitboxes are overlapping
+    if (!boxOverlap(this, player)) {
+      // Chase the player until hitboxes overlap
       const previousState = this.state;
       const previousDirection = this.currentDirection;
 
       this.state = "chasing";
+
+      // Calculate direction from enemy's hitbox center to player's hitbox center
+      const enemyHitbox = this.getHitboxBounds();
+      const playerHitbox = player.getHitboxBounds();
+      const enemyCenter = new Vec(
+        enemyHitbox.x + enemyHitbox.width / 2,
+        enemyHitbox.y + enemyHitbox.height / 2
+      );
+      const playerCenter = new Vec(
+        playerHitbox.x + playerHitbox.width / 2,
+        playerHitbox.y + playerHitbox.height / 2
+      );
+
+      const direction = playerCenter.minus(enemyCenter);
       this.velocity = direction.normalize().times(this.movementSpeed);
 
       // Update direction based on movement
@@ -98,10 +100,10 @@ export class SwordGoblin extends MeleeEnemy {
         this.updateAnimation();
       }
     } else {
-      // Stop moving when in attack range - actual attack will be handled by Room.js
+      // Stop moving when hitboxes overlap - ready to attack
       this.velocity = new Vec(0, 0);
       if (this.state !== "attacking") {
-        this.state = "idle"; // Set to idle, will change to attacking when attack() is called
+        this.state = "attacking"; // Ready to attack when hitboxes overlap
       }
     }
   }
@@ -127,7 +129,7 @@ export class SwordGoblin extends MeleeEnemy {
     }
   }
 
-  // Attack method - now uses shared parent attack system
+  // Attack method - applies damage directly to target
   attack(target) {
     if (this.state === "dead" || this.isAttacking) return;
 
@@ -135,74 +137,70 @@ export class SwordGoblin extends MeleeEnemy {
     this.state = "attacking";
     this.isAttacking = true;
     this.velocity = new Vec(0, 0); // Stop moving during attack
-    this.attackTarget = target; // Store target for damage application
+
+    // Apply damage directly to target
+    target.takeDamage(this.baseDamage);
 
     // Update animation to attack sprite
     this.updateAnimation();
+
+    // console.log(
+    //   `Sword goblin attacking in direction: ${this.currentDirection}, damage applied: ${this.baseDamage}`
+    // );
   }
 
-  // Get proper frame range based on direction and current sprite layout
-  getFrameRange(direction, layoutCols) {
-    const directionMap = {
-      up: 0,
-      left: 1,
-      down: 2,
-      right: 3
-    };
-    
-    const row = directionMap[direction] || 2; // Default to down
-    const startFrame = row * layoutCols;
-    const endFrame = startFrame + layoutCols - 1;
-    
-    return [startFrame, endFrame];
-  }
-
-  // Get attack frame ranges based on direction (6 columns for slash sprite)
+  // Get attack frame ranges based on direction (same as dagger goblin)
   getAttackFrames(direction) {
-    return this.getFrameRange(direction, 6);
+    const frameRanges = {
+      up: [0, 5], // slash.png, row 0, 6 frames
+      left: [6, 11], // slash.png, row 1, 6 frames
+      down: [12, 17], // slash.png, row 2, 6 frames
+      right: [18, 23], // slash.png, row 3, 6 frames
+    };
+    return frameRanges[direction] || frameRanges.down;
   }
 
-  // Get walk frame ranges based on direction (9 columns for walk sprite)
+  // Get walking frame ranges based on direction
   getWalkFrames(direction) {
-    return this.getFrameRange(direction, 9);
+    const frameRanges = {
+      up: [0, 8], // walk.png, row 0, frames 0-8
+      left: [9, 17], // walk.png, row 1, frames 9-17
+      down: [18, 26], // walk.png, row 2, frames 18-26
+      right: [27, 35], // walk.png, row 3, frames 27-35
+    };
+    return frameRanges[direction] || frameRanges.down;
   }
 
-  // Update sprite sheet dimensions and force recalculation
-  updateSpriteSheet(newSheetCols, spritePath) {
-    console.log(`[SwordGoblin] Updating sprite sheet: ${newSheetCols} cols, path: ${spritePath}`);
-    
-    // Update sheet columns first (critical for proper frame calculations)
-    this.sheetCols = newSheetCols;
-    
-    // Set the new sprite which will trigger dimension recalculation
-    this.setSprite(spritePath);
-    
-    // Force recalculation of frame dimensions based on new sheet layout
-    if (this.spriteImage) {
-      this.frameW = this.spriteImage.width / this.sheetCols;
-      this.frameH = this.spriteImage.height / 4; // 4 rows for all our sprites
-      console.log(`[SwordGoblin] Frame dimensions: ${this.frameW}x${this.frameH}, Draw size: ${this.drawW}x${this.drawH}`);
-    }
-  }
-
-  // Update animation based on current state with proper sprite sheet dimension handling
   updateAnimation() {
+    // Update sprite and animation based on current state
+    // console.log(
+    //   `SwordGoblin updateAnimation: state=${this.state}, direction=${this.currentDirection}`
+    // );
+
     switch (this.state) {
       case "chasing":
       case "idle":
         // Use walking animation for chasing and idle states
-        this.updateSpriteSheet(9, this.walkSpritePath); // Walk sprites: 9×4 layout
+        this.sheetCols = 9; // Walk sprites have 9 columns
+        this.setSprite(this.walkSpritePath);
 
         const walkFrames = this.getWalkFrames(this.currentDirection);
         this.setAnimation(walkFrames[0], walkFrames[1], true, 100);
+        // console.log(
+        //   `Set walking animation: frames ${walkFrames[0]}-${walkFrames[1]} for direction ${this.currentDirection}`
+        // );
         break;
 
       case "attacking":
         // Use attack animation for attacking state
-        this.updateSpriteSheet(6, this.attackSpritePath); // Attack sprites: 6×4 layout
+        this.sheetCols = 6; // Attack sprites have 6 columns
+        this.setSprite(this.attackSpritePath);
 
         const attackFrames = this.getAttackFrames(this.currentDirection);
         this.setAnimation(attackFrames[0], attackFrames[1], false, 100);
+        // console.log(
+        //   `Set attack animation: frames ${attackFrames[0]}-${attackFrames[1]}, repeat=false`
+        // );
         break;
 
       case "dead":
@@ -211,30 +209,24 @@ export class SwordGoblin extends MeleeEnemy {
 
       default:
         // Fallback to walking animation
-        this.updateSpriteSheet(9, this.walkSpritePath);
+        this.sheetCols = 9;
+        this.setSprite(this.walkSpritePath);
         const defaultFrames = this.getWalkFrames(this.currentDirection);
         this.setAnimation(defaultFrames[0], defaultFrames[1], true, 100);
+      // console.log(
+      //   `Fallback to walking animation: frames ${defaultFrames[0]}-${defaultFrames[1]}`
+      // );
     }
   }
 
-  // Override update to handle attack completion and state transitions with proper damage timing
-  update(deltaTime, player) {
-    super.update(deltaTime, player);
-
-    // Handle damage application during attack animation using shared system
-    if (this.isAttacking && this.attackTarget && !this.hasAppliedDamage) {
-      // Apply damage at the middle of the attack animation (around frame 3 for 6-frame attack)
-      const middleFrame = Math.floor(this.maxFrame / 2);
-      if (this.frame >= middleFrame) {
-        // Use shared attack system from parent class
-        this.applyAttackDamage(this.attackTarget);
-      }
-    }
+  // Override update to handle attack completion and state transitions
+  update(deltaTime) {
+    super.update(deltaTime);
 
     // Check if attack animation is complete
-    if (this.isAttacking && this.frame >= this.maxFrame) {
+    // Since frame is now properly clamped at maxFrame, check for completion
+    if (this.isAttacking && this.frame >= this.maxFrame && this.totalTime >= this.frameDuration) {
       this.isAttacking = false;
-      this.attackTarget = null;
 
       // Transition back to chasing state (will be updated by moveTo next frame)
       this.state = "chasing";
@@ -244,8 +236,6 @@ export class SwordGoblin extends MeleeEnemy {
 
   // Override draw method to handle sprite scaling for better visibility
   draw(ctx) {
-    if (this.state === "dead") return;
-
     // Custom sprite rendering with proper per-animation scaling
     if (this.spriteImage && this.spriteRect) {
       // Determine current animation type for scaling
@@ -265,7 +255,7 @@ export class SwordGoblin extends MeleeEnemy {
       ctx.drawImage(
         this.spriteImage,
         this.spriteRect.x * this.spriteRect.width, // sx - source x (no scaling)
-        this.spriteRect.y * this.spriteRect.height, // sy - source y (no scaling)  
+        this.spriteRect.y * this.spriteRect.height, // sy - source y (no scaling)
         this.spriteRect.width, // sw - source width (no scaling)
         this.spriteRect.height, // sh - source height (no scaling)
         drawX, // dx - destination x (centered)
@@ -288,16 +278,14 @@ export class SwordGoblin extends MeleeEnemy {
       ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
     }
 
-    // Draw hitbox if debugging is enabled
+    // Call parent draw method for health bar and hitbox debugging
+    // But skip the sprite drawing part since we handled it above
     if (variables.showHitboxes) {
       const hitbox = this.getHitboxBounds();
-      ctx.strokeStyle = "darkred";
+      ctx.strokeStyle = "red";
       ctx.lineWidth = 2;
       ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
     }
-
-    // Draw attack area for debugging
-    this.drawAttackArea(ctx);
 
     // Draw health bar
     const healthBarWidth = this.width;

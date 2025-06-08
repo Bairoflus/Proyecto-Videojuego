@@ -31,8 +31,12 @@ export class Rect {
    * @returns {boolean} True if point is inside rectangle
    */
   contains(x, y) {
-    return x >= this.x && x <= this.x + this.width &&
-           y >= this.y && y <= this.y + this.height;
+    return (
+      x >= this.x &&
+      x <= this.x + this.width &&
+      y >= this.y &&
+      y <= this.y + this.height
+    );
   }
 
   /**
@@ -42,7 +46,7 @@ export class Rect {
   getCenter() {
     return {
       x: this.x + this.width / 2,
-      y: this.y + this.height / 2
+      y: this.y + this.height / 2,
     };
   }
 

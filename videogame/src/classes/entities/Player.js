@@ -616,8 +616,8 @@ export class Player extends AnimatedObject {
       );
 
       // Check collisions separately
-      const canMoveX = !this.currentRoom?.checkWallCollision(tempPlayerX);
-      const canMoveY = !this.currentRoom?.checkWallCollision(tempPlayerY);
+      const canMoveX = !this.currentRoom?.checkWallCollision(tempPlayerX) && !this.checkEnemyCollision(tempPlayerX);
+      const canMoveY = !this.currentRoom?.checkWallCollision(tempPlayerY) && !this.checkEnemyCollision(tempPlayerY);
 
       // Apply movement based on collisions
       if (canMoveX) {
@@ -777,8 +777,8 @@ export class Player extends AnimatedObject {
       );
 
       // Check collisions separately
-      const canMoveX = !this.currentRoom?.checkWallCollision(tempPlayerX);
-      const canMoveY = !this.currentRoom?.checkWallCollision(tempPlayerY);
+      const canMoveX = !this.currentRoom?.checkWallCollision(tempPlayerX) && !this.checkEnemyCollision(tempPlayerX);
+      const canMoveY = !this.currentRoom?.checkWallCollision(tempPlayerY) && !this.checkEnemyCollision(tempPlayerY);
 
       // Apply movement based on collisions
       if (canMoveX) {
@@ -1195,6 +1195,96 @@ export class Player extends AnimatedObject {
       this.spriteRect.x = this.frame % this.sheetCols;
       this.spriteRect.y = Math.floor(this.frame / this.sheetCols);
     }
+  }
+
+  /**
+   * Check collision with enemies with overlap tolerance
+   * Allows slight overlap but prevents walking through enemies
+   * Modified to be more permissive with melee enemies for improved hitbox overlap behavior
+   * @param {Object} testPlayer - Test player object with position and hitbox
+   * @returns {boolean} True if collision would prevent movement
+   */
+  checkEnemyCollision(testPlayer) {
+    if (!this.currentRoom || !this.currentRoom.objects.enemies) {
+      return false;
+    }
+
+    const playerHitbox = testPlayer.getHitboxBounds();
+    const currentPlayerHitbox = this.getHitboxBounds();
+    const baseOverlapTolerance = 0.3; // Base 30% overlap tolerance
+
+    // Check collision with all alive enemies
+    for (const enemy of this.currentRoom.objects.enemies) {
+      // Skip dead enemies
+      if (enemy.state === "dead") {
+        continue;
+      }
+
+      const enemyHitbox = enemy.getHitboxBounds();
+
+      // Determine if this is a melee enemy - be more permissive with melee enemies
+      const isMeleeEnemy = enemy.constructor.name.includes('Dagger') || 
+                          enemy.constructor.name.includes('Sword') || 
+                          enemy.type === 'goblin_dagger' || 
+                          enemy.type === 'sword_goblin' ||
+                          (enemy.constructor.name === 'MeleeEnemy');
+
+      // Use higher tolerance for melee enemies, especially when they're attacking
+      let overlapTolerance = baseOverlapTolerance;
+      if (isMeleeEnemy) {
+        // Allow much more overlap with melee enemies when they're in attacking state
+        overlapTolerance = enemy.state === "attacking" ? 0.8 : 0.6; // 80% when attacking, 60% when chasing
+      }
+
+      // Calculate current overlap with this enemy
+      const currentXOverlap = Math.max(0, 
+        Math.min(currentPlayerHitbox.x + currentPlayerHitbox.width, enemyHitbox.x + enemyHitbox.width) - 
+        Math.max(currentPlayerHitbox.x, enemyHitbox.x)
+      );
+      const currentYOverlap = Math.max(0,
+        Math.min(currentPlayerHitbox.y + currentPlayerHitbox.height, enemyHitbox.y + enemyHitbox.height) - 
+        Math.max(currentPlayerHitbox.y, enemyHitbox.y)
+      );
+
+      // Calculate new overlap after proposed movement
+      const newXOverlap = Math.max(0, 
+        Math.min(playerHitbox.x + playerHitbox.width, enemyHitbox.x + enemyHitbox.width) - 
+        Math.max(playerHitbox.x, enemyHitbox.x)
+      );
+      const newYOverlap = Math.max(0,
+        Math.min(playerHitbox.y + playerHitbox.height, enemyHitbox.y + enemyHitbox.height) - 
+        Math.max(playerHitbox.y, enemyHitbox.y)
+      );
+
+      // Check if overlapping at all after movement
+      if (newXOverlap > 0 && newYOverlap > 0) {
+        // Calculate overlap percentages for new position
+        const newXOverlapPercent = newXOverlap / Math.min(playerHitbox.width, enemyHitbox.width);
+        const newYOverlapPercent = newYOverlap / Math.min(playerHitbox.height, enemyHitbox.height);
+
+        // If currently overlapping, always allow movement that reduces overlap (escape movement)
+        const isCurrentlyOverlapping = currentXOverlap > 0 && currentYOverlap > 0;
+        if (isCurrentlyOverlapping) {
+          const currentXOverlapPercent = currentXOverlap / Math.min(currentPlayerHitbox.width, enemyHitbox.width);
+          const currentYOverlapPercent = currentYOverlap / Math.min(currentPlayerHitbox.height, enemyHitbox.height);
+          
+          // Allow movement if it reduces overall overlap OR if it's a melee enemy in attacking state
+          const overlapReduced = (newXOverlapPercent + newYOverlapPercent) < (currentXOverlapPercent + currentYOverlapPercent);
+          const isMeleeAttacking = isMeleeEnemy && enemy.state === "attacking";
+          
+          if (overlapReduced || isMeleeAttacking) {
+            continue; // Allow this movement
+          }
+        }
+
+        // Block movement if overlap exceeds tolerance in either direction
+        if (newXOverlapPercent > overlapTolerance || newYOverlapPercent > overlapTolerance) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   // Get attack status information for debugging

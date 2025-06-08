@@ -7,6 +7,7 @@ import { MeleeEnemy } from "../../entities/MeleeEnemy.js";
 import { Vec } from "../../../utils/Vec.js";
 import { ENEMY_CONSTANTS } from "../../../constants/gameConstants.js";
 import { variables } from "../../../config.js";
+import { boxOverlap } from "../../../draw.js";
 
 export class GoblinDagger extends MeleeEnemy {
   constructor(position) {
@@ -59,27 +60,30 @@ export class GoblinDagger extends MeleeEnemy {
   }
 
   // Override moveTo for aggressive chase behavior with sprite animation
-  moveTo(targetPosition) {
+  moveTo(player) {
     if (this.state === "dead") return;
 
-    // Calculate direction from enemy's hitbox center to target position
-    const enemyHitbox = this.getHitboxBounds();
-    const enemyCenter = new Vec(
-      enemyHitbox.x + enemyHitbox.width / 2,
-      enemyHitbox.y + enemyHitbox.height / 2
-    );
-
-    // Always chase the player aggressively
-    const direction = targetPosition.minus(enemyCenter);
-    const distance = direction.magnitude();
-
-    // Just move toward the target - attack will be called separately by Room.js
-    if (distance > this.attackRange) {
-      // Chase the player
+    // Check if hitboxes are overlapping
+    if (!boxOverlap(this, player)) {
+      // Chase the player until hitboxes overlap
       const previousState = this.state;
       const previousDirection = this.currentDirection;
 
       this.state = "chasing";
+
+      // Calculate direction from enemy's hitbox center to player's hitbox center
+      const enemyHitbox = this.getHitboxBounds();
+      const playerHitbox = player.getHitboxBounds();
+      const enemyCenter = new Vec(
+        enemyHitbox.x + enemyHitbox.width / 2,
+        enemyHitbox.y + enemyHitbox.height / 2
+      );
+      const playerCenter = new Vec(
+        playerHitbox.x + playerHitbox.width / 2,
+        playerHitbox.y + playerHitbox.height / 2
+      );
+
+      const direction = playerCenter.minus(enemyCenter);
       this.velocity = direction.normalize().times(this.movementSpeed);
 
       // Update direction based on movement
@@ -96,10 +100,10 @@ export class GoblinDagger extends MeleeEnemy {
         this.updateAnimation();
       }
     } else {
-      // Stop moving when in attack range - actual attack will be handled by Room.js
+      // Stop moving when hitboxes overlap - ready to attack
       this.velocity = new Vec(0, 0);
       if (this.state !== "attacking") {
-        this.state = "idle"; // Set to idle, will change to attacking when attack() is called
+        this.state = "attacking"; // Ready to attack when hitboxes overlap
       }
     }
   }
@@ -125,7 +129,7 @@ export class GoblinDagger extends MeleeEnemy {
     }
   }
 
-  // Attack method - now uses shared parent attack system
+  // Attack method - applies damage directly to target
   attack(target) {
     if (this.state === "dead" || this.isAttacking) return;
 
@@ -134,14 +138,14 @@ export class GoblinDagger extends MeleeEnemy {
     this.isAttacking = true;
     this.velocity = new Vec(0, 0); // Stop moving during attack
 
-    // Use shared attack system from parent class
-    const damageApplied = this.applyAttackDamage(target);
+    // Apply damage directly to target
+    target.takeDamage(this.baseDamage);
 
     // Update animation to attack sprite
     this.updateAnimation();
 
     // console.log(
-    //   `Goblin dagger attacking in direction: ${this.currentDirection}, damage applied: ${damageApplied}`
+    //   `Goblin dagger attacking in direction: ${this.currentDirection}, damage applied: ${this.baseDamage}`
     // );
   }
 
@@ -220,7 +224,8 @@ export class GoblinDagger extends MeleeEnemy {
     super.update(deltaTime);
 
     // Check if attack animation is complete
-    if (this.isAttacking && this.frame >= this.maxFrame) {
+    // Since frame is now properly clamped at maxFrame, check for completion
+    if (this.isAttacking && this.frame >= this.maxFrame && this.totalTime >= this.frameDuration) {
       this.isAttacking = false;
 
       // Transition back to chasing state (will be updated by moveTo next frame)
@@ -250,7 +255,7 @@ export class GoblinDagger extends MeleeEnemy {
       ctx.drawImage(
         this.spriteImage,
         this.spriteRect.x * this.spriteRect.width, // sx - source x (no scaling)
-        this.spriteRect.y * this.spriteRect.height, // sy - source y (no scaling)  
+        this.spriteRect.y * this.spriteRect.height, // sy - source y (no scaling)
         this.spriteRect.width, // sw - source width (no scaling)
         this.spriteRect.height, // sh - source height (no scaling)
         drawX, // dx - destination x (centered)
@@ -281,9 +286,6 @@ export class GoblinDagger extends MeleeEnemy {
       ctx.lineWidth = 2;
       ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
     }
-
-    // Draw attack area for debugging
-    this.drawAttackArea(ctx);
 
     // Draw health bar
     const healthBarWidth = this.width;
