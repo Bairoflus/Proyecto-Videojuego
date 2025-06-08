@@ -8,7 +8,7 @@ export class Drone extends Enemy {
     constructor(position) {
         const width = 32;
         const height = 32;
-        const color = "#ffcc00";  // dorado para destacar
+        const color = "#ffcc00";  // gold color to stand out
         const maxHp = 100;
         super(position, width, height, color,
             0,
@@ -21,12 +21,12 @@ export class Drone extends Enemy {
         this.displayName = "Drone";
         this.projectiles = [];
 
-        // Parámetros de ráfaga
+        // Burst parameters
         this.burstTimer = 0;
-        this.burstDelay = 4000;    // segundos entre ráfagas
+        this.burstDelay = 4000;    // seconds between bursts
         this.shotTimer = 0;
-        this.shotInterval = 300;  // segundos entre cada disparo en la ráfaga
-        this.shotsPerBurst = 5;    // disparos por ráfaga
+        this.shotInterval = 300;   // seconds between each shot in burst
+        this.shotsPerBurst = 5;    // shots per burst
         this.shotsFired = 0;
         this.bursting = false;
     }
@@ -40,17 +40,17 @@ export class Drone extends Enemy {
         };
     }
 
-    // Anula moveTo para mantener el dron estático
+    // Override moveTo to keep drone static
     moveTo() { }
 
     update(dt, player, room) {
         if (this.health <= 0) {
-            // Ya no aplicamos daño aquí, el jefe detectará el dron destruido
-            // y aplicará el daño en su propio método update
+            // We no longer apply damage here, the boss will detect the destroyed drone
+            // and apply damage in its own update method
             return;
         }
 
-        // Gestión de ráfagas
+        // Burst management
         this.burstTimer += dt;
         if (!this.bursting && this.burstTimer >= this.burstDelay) {
             this.bursting = true;
@@ -65,14 +65,14 @@ export class Drone extends Enemy {
                 this._fireAt(player.position, room);
                 this.shotTimer = 0;
                 this.shotsFired += 1;
-                // Si completó la ráfaga, cerrarla
+                // If burst completed, close it
                 if (this.shotsFired >= this.shotsPerBurst) {
                     this.bursting = false;
                 }
             }
         }
 
-        // Actualiza proyectiles del dron
+        // Update drone projectiles
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const p = this.projectiles[i];
             p.update(dt);
@@ -92,23 +92,23 @@ export class Drone extends Enemy {
             this.position.y + this.height / 2
         );
 
-        // Crear un punto objetivo en la dirección del ángulo
+        // Create a target point in the angle direction
         const targetPoint = new Vec(
             start.x + Math.cos(angle) * 1000,
             start.y + Math.sin(angle) * 1000
         );
 
-        // Velocidad y daño del proyectil
+        // Projectile speed and damage
         const speed = 75;
         const damage = 20;
 
-        // Crear un proyectil con un punto de inicio y un objetivo
+        // Create a projectile with a start point and target
         const proj = new Projectile(
             start,
             targetPoint,
             speed,
             damage,
-            4  // Radio más pequeño para proyectiles
+            4  // Smaller radius for projectiles
         );
 
         proj.color = "#ff4444";
@@ -119,9 +119,9 @@ export class Drone extends Enemy {
 
     draw(ctx) {
         super.draw(ctx);
-        // Dibuja proyectiles
+        // Draw projectiles
         this.projectiles.forEach(p => p.draw(ctx));
-        // Se eliminó el texto de depuración que mostraba el nombre y la vida
+        // Removed debug text that showed name and health
     }
 
     drawUI(ctx) {

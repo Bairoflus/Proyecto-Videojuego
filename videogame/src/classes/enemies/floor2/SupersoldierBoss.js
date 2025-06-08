@@ -8,82 +8,82 @@ export class Supersoldier extends Boss {
         const width = 64;
         const height = 64;
         const maxHp = 1000;
-        const color = "#2a75f3"; // azul metálico
+        const color = "#2a75f3"; // metallic blue
 
-        // Definimos ataques por fase: fase 1 = drones, fase 2 = escudo, fase 3 = ataque cargado
+        // Define attacks by phase: phase 1 = drones, phase 2 = shield, phase 3 = charged attack
         const attacks = [
             {
                 name: "Drone Summon",
                 phase: 1,
-                cooldown: 12000, // 12s entre invocaciones
+                cooldown: 12000, // 12s between summons
                 execute: (self) => {
-                    // No invocar drones durante el periodo de espera inicial
+                    // Don't summon drones during initial delay period
                     if (self.initialDelay) {
                         return;
                     }
                     
-                    // Solo invocar si no hemos alcanzado el límite de drones
+                    // Only summon if we haven't reached the drone limit
                     if (self.drones.length < self.maxDrones) {
-                        // Calcular posición para el nuevo dron (alrededor del jefe)
-                        const angle = Math.random() * Math.PI * 2; // Ángulo aleatorio
-                        const distance = 100; // Distancia desde el jefe
+                        // Calculate position for the new drone (around the boss)
+                        const angle = Math.random() * Math.PI * 2; // Random angle
+                        const distance = 100; // Distance from boss
                         const spawnPos = new Vec(
                             self.position.x + Math.cos(angle) * distance,
                             self.position.y + Math.sin(angle) * distance
                         );
 
-                        // Implementación limpia y directa
+                        // Clean and direct implementation
                         const drone = new Drone(spawnPos);
-                        drone.setCurrentRoom(self.currentRoom);   // para que room.update() lo reciba bien
-                        drone.parent = self;                      // para daño al jefe
+                        drone.setCurrentRoom(self.currentRoom);   // so room.update() handles it properly
+                        drone.parent = self;                      // for damage to boss
                         self.currentRoom.objects.enemies.push(drone);
                         self.drones.push(drone);
 
-                        console.log("Supersoldier ha invocado un dron en posición:",
+                        console.log("Supersoldier has summoned a drone at position:",
                             { x: Math.round(spawnPos.x), y: Math.round(spawnPos.y) });
 
-                        console.log("Supersoldier ha invocado un dron");
+                        console.log("Supersoldier has summoned a drone");
                     } else {
-                        console.log("Supersoldier ya tiene el máximo de drones");
+                        console.log("Supersoldier already has maximum drones");
                     }
                 }
             },
             {
                 name: "Shield Regen",
                 phase: 2,
-                cooldown: 15000, // 15s entre regeneraciones
+                cooldown: 15000, // 15s between regenerations
                 execute: (self) => {
-                    // No activar escudo durante el periodo de espera inicial
+                    // Don't activate shield during initial delay period
                     if (self.initialDelay) {
                         return;
                     }
                     
-                    // Inicia regeneración gradual (100 puntos totales)
+                    // Start gradual regeneration (100 total points)
                     self.isRegenerating = true;
                     self.totalRegenAmount = 100;
                     self.currentRegenAmount = 0;
 
-                    // Determina posición de la barrera según el jugador
+                    // Determine barrier position based on player
                     const player = window.game.player;
 
-                    // Calcular dirección basada en la posición relativa del jugador
+                    // Calculate direction based on player's relative position
                     const dx = player.position.x - self.position.x;
                     const dy = player.position.y - self.position.y;
 
-                    // Determinar la dirección principal (la mayor diferencia)
+                    // Determine main direction (largest difference)
                     if (Math.abs(dx) > Math.abs(dy)) {
                         self.shieldDir = dx > 0 ? "right" : "left";
                     } else {
                         self.shieldDir = dy > 0 ? "down" : "up";
                     }
 
-                    // Ajustar la distancia de la barrera para que esté más centrada
-                    self.barrierDistance = 40; // Distancia reducida para mejor centrado
+                    // Adjust barrier distance for better centering
+                    self.barrierDistance = 40; // Reduced distance for better centering
 
-                    // Quitar barrera tras duración
+                    // Remove barrier after duration
                     setTimeout(() => {
                         self.shieldDir = null;
-                        // Asegurarse de limpiar la barrera
+                        // Make sure to clean up the barrier
                         if (self.barrierWallRegistered && self.currentRoom) {
                             if (self.currentRoom.objects.temporaryWalls) {
                                 self.currentRoom.objects.temporaryWalls = [];
@@ -102,27 +102,27 @@ export class Supersoldier extends Boss {
             {
                 name: "Charged Shot",
                 phase: 3,
-                cooldown: 8000, // 8s entre disparos cargados
+                cooldown: 8000, // 8s between charged shots
                 execute: (self) => {
-                    // No cargar disparo durante el periodo de espera inicial
+                    // Don't charge shot during initial delay period
                     if (self.initialDelay) {
                         return;
                     }
                     
-                    // Iniciar el ataque cargado
+                    // Start charged attack
                     self.isChargingShot = true;
                     self.chargeTime = 0;
-                    self.chargeDuration = 2000; // 2 segundos de carga
-                    self.warningStartTime = 1500; // Parpadeo en los últimos 500ms
+                    self.chargeDuration = 2000; // 2 seconds charge time
+                    self.warningStartTime = 1500; // Blinking in last 500ms
 
-                    // Apuntar al jugador
+                    // Aim at player
                     const player = window.game.player;
                     self.targetPosition = new Vec(
                         player.position.x + player.width / 2,
                         player.position.y + player.height / 2
                     );
 
-                    // Calcular dirección del disparo
+                    // Calculate shot direction
                     const sourcePosition = new Vec(
                         self.position.x + self.width / 2,
                         self.position.y + self.height / 2
@@ -135,7 +135,7 @@ export class Supersoldier extends Boss {
                         y: dy / distance
                     };
 
-                    console.log("Supersoldier está cargando un disparo potente");
+                    console.log("Supersoldier is charging a powerful shot");
                 }
             }
         ];
@@ -149,11 +149,9 @@ export class Supersoldier extends Boss {
         this.stunned = false;
         this.stunTimeLeft = 0;
         this.barrierWallRegistered = false;
-        this.barrierDistance = 40; // Distancia reducida para mejor centrado
+        this.barrierDistance = 40; // Reduced distance for better centering
 
-
-
-        // Propiedades para el ataque cargado
+        // Properties for charged attack
         this.isChargingShot = false;
         this.chargeTime = 0;
         this.chargeDuration = 2000;
@@ -162,16 +160,16 @@ export class Supersoldier extends Boss {
         this.shotDirection = null;
         this.laserColor = "red";
 
-        // Propiedades para los drones
+        // Properties for drones
         this.drones = [];
-        this.maxDrones = 2; // Máximo 2 drones activos a la vez
+        this.maxDrones = 2; // Maximum 2 active drones at once
     }
 
     drawUI(ctx) {
-        // Dibuja barra y nombre
+        // Draw bar and name
         super.drawUI(ctx);
 
-        // Si hay barrera activa, dibújala
+        // If barrier is active, draw it
         if (this.shieldDir) {
             ctx.save();
             ctx.translate(
@@ -180,11 +178,11 @@ export class Supersoldier extends Boss {
             );
             ctx.fillStyle = "rgba(0, 200, 255, 0.5)";
 
-            const barrierLength = this.width * 3; // Barrera más larga (aumentada para mejor simetría)
-            const barrierThickness = 20; // Grosor de la barrera
-            const barrierDistance = this.barrierDistance || 40; // Distancia reducida para centrar mejor
+            const barrierLength = this.width * 3; // Longer barrier (increased for better symmetry)
+            const barrierThickness = 20; // Barrier thickness
+            const barrierDistance = this.barrierDistance || 40; // Reduced distance for better centering
 
-            // Dibujar barrera según la dirección
+            // Draw barrier based on direction
             switch (this.shieldDir) {
                 case "up":
                     ctx.fillRect(-barrierLength / 2, -this.height / 2 - barrierDistance - barrierThickness, barrierLength, barrierThickness);
@@ -202,21 +200,21 @@ export class Supersoldier extends Boss {
             ctx.restore();
         }
 
-        // Dibujar láser de apuntado si está cargando el disparo
+        // Draw targeting laser if charging shot
         if (this.isChargingShot && this.targetPosition) {
             const sourceX = this.position.x + this.width / 2;
             const sourceY = this.position.y + this.height / 2;
 
-            // Determinar el color del láser (parpadeo en los últimos 500ms)
+            // Determine laser color (blinking in last 500ms)
             if (this.chargeTime >= this.warningStartTime) {
-                // Parpadeo rápido entre rojo y amarillo
-                const blinkRate = 100; // ms por parpadeo
+                // Fast blinking between red and yellow
+                const blinkRate = 100; // ms per blink
                 this.laserColor = Math.floor((this.chargeTime - this.warningStartTime) / blinkRate) % 2 === 0 ? "red" : "yellow";
             } else {
                 this.laserColor = "red";
             }
 
-            // Dibujar línea de láser
+            // Draw laser line
             ctx.beginPath();
             ctx.moveTo(sourceX, sourceY);
             ctx.lineTo(this.targetPosition.x, this.targetPosition.y);
@@ -224,52 +222,52 @@ export class Supersoldier extends Boss {
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Dibujar punto de mira en el objetivo
+            // Draw targeting dot at target
             ctx.beginPath();
             ctx.arc(this.targetPosition.x, this.targetPosition.y, 5, 0, Math.PI * 2);
             ctx.fillStyle = this.laserColor;
             ctx.fill();
         }
 
-        // Mostrar estado de aturdimiento
+        // Show stunned state
         if (this.stunned) {
             ctx.save();
             ctx.translate(this.position.x, this.position.y - this.height / 2 - 20);
             ctx.fillStyle = "yellow";
             ctx.font = "12px Arial";
             ctx.textAlign = "center";
-            ctx.fillText("¡ATURDIDO!", 0, 0);
+            ctx.fillText("STUNNED!", 0, 0);
             ctx.restore();
         }
     }
 
     update(deltaTime) {
-        // Si está aturdido, no hacer nada más que actualizar el tiempo de aturdimiento
+        // If stunned, do nothing but update stun time
         if (this.stunned) {
             this.stunTimeLeft -= deltaTime;
             if (this.stunTimeLeft <= 0) {
                 this.stunned = false;
-                // Interrumpir la curación cuando sale del aturdimiento
+                // Interrupt healing when coming out of stun
                 this.isRegenerating = false;
             }
-            return; // No ejecutar el resto del update mientras esté aturdido
+            return; // Don't execute the rest of update while stunned
         }
 
         super.update(deltaTime);
 
-        // Actualizar ataque cargado
+        // Update charged attack
         if (this.isChargingShot) {
             this.chargeTime += deltaTime;
 
-            // Actualizar la posición objetivo durante toda la carga
-            if (window.game && window.game.player) { // Siempre seguir al jugador
+            // Update target position during the entire charge
+            if (window.game && window.game.player) { // Always follow player
                 const player = window.game.player;
                 this.targetPosition = new Vec(
                     player.position.x + player.width / 2,
                     player.position.y + player.height / 2
                 );
 
-                // Actualizar dirección del disparo
+                // Update shot direction
                 const sourcePosition = new Vec(
                     this.position.x + this.width / 2,
                     this.position.y + this.height / 2
@@ -283,34 +281,34 @@ export class Supersoldier extends Boss {
                 };
             }
 
-            // Cuando termina la carga, disparar
+            // When charge completes, fire
             if (this.chargeTime >= this.chargeDuration) {
                 this.fireChargedShot();
                 this.isChargingShot = false;
             }
         }
 
-        // Perseguir al jugador cuando no está aturdido, no tiene barrera activa y no está cargando un disparo
+        // Chase player when not stunned, no active barrier, and not charging a shot
         if (!this.stunned && !this.shieldDir && !this.isChargingShot && window.game && window.game.player) {
             const player = window.game.player;
-            const moveSpeed = 0.3; // Velocidad de movimiento
+            const moveSpeed = 0.3; // Movement speed
 
-            // Calcular dirección hacia el jugador
+            // Calculate direction toward player
             const dx = player.position.x - this.position.x;
             const dy = player.position.y - this.position.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            // Solo moverse si el jugador está a cierta distancia
+            // Only move if player is at a certain distance
             if (distance > 100) {
-                // Normalizar y aplicar velocidad
+                // Normalize and apply speed
                 const moveX = dx / distance * moveSpeed;
                 const moveY = dy / distance * moveSpeed;
 
-                // Mover al jefe hacia el jugador
+                // Move boss toward player
                 this.position.x += moveX;
                 this.position.y += moveY;
 
-                // Evitar colisiones con paredes si hay una sala actual
+                // Avoid wall collisions if there's a current room
                 if (this.currentRoom && this.currentRoom.checkWallCollision(this)) {
                     this.position.x -= moveX;
                     this.position.y -= moveY;
@@ -318,33 +316,33 @@ export class Supersoldier extends Boss {
             }
         }
 
-        // Regeneración gradual de vida (hasta 100 puntos totales)
+        // Gradual health regeneration (up to 100 total points)
         if (this.isRegenerating && this.currentRegenAmount < this.totalRegenAmount) {
-            // 20 puntos por segundo = 20 * deltaTime / 1000 por frame
+            // 20 points per second = 20 * deltaTime / 1000 per frame
             const regenAmount = 20 * deltaTime / 1000;
             this.health = Math.min(this.maxHealth, this.health + regenAmount);
             this.currentRegenAmount += regenAmount;
 
-            // Detener regeneración al alcanzar el límite
+            // Stop regeneration when reaching the limit
             if (this.currentRegenAmount >= this.totalRegenAmount) {
                 this.isRegenerating = false;
             }
         }
 
-        // Actualizar lista de drones (eliminar los destruidos)
+        // Update drone list (remove destroyed ones)
         if (this.drones.length > 0) {
-            // Filtrar drones destruidos
+            // Filter destroyed drones
             const destroyedDrones = this.drones.filter(drone => drone.health <= 0);
 
-            // Por cada dron destruido, dañar al jefe
+            // For each destroyed drone, damage the boss
             destroyedDrones.forEach(drone => {
                 this.damageFromDrone();
             });
 
-            // Actualizar la lista de drones activos
+            // Update the list of active drones
             this.drones = this.drones.filter(drone => drone.health > 0);
 
-            // Actualizar cada dron activo
+            // Update each active drone
             this.drones.forEach(drone => {
                 if (window.game && window.game.player) {
                     drone.update(deltaTime, window.game.player, this.currentRoom);
@@ -352,16 +350,16 @@ export class Supersoldier extends Boss {
             });
         }
 
-        // Actualizar proyectiles si existen
+        // Update projectiles if they exist
         if (this.projectiles && this.projectiles.length > 0) {
             for (let i = this.projectiles.length - 1; i >= 0; i--) {
                 const projectile = this.projectiles[i];
 
-                // Actualizar posición
+                // Update position
                 projectile.position.x += projectile.velocity.x * deltaTime / 1000;
                 projectile.position.y += projectile.velocity.y * deltaTime / 1000;
 
-                // Actualizar tiempo de vida
+                // Update lifetime
                 projectile.timeAlive += deltaTime;
                 if (projectile.timeAlive >= projectile.lifetime) {
                     projectile.isActive = false;
@@ -369,7 +367,7 @@ export class Supersoldier extends Boss {
                     continue;
                 }
 
-                // Comprobar colisiones con paredes
+                // Check wall collisions
                 if (this.currentRoom) {
                     const tempObj = {
                         position: projectile.position,
@@ -390,7 +388,7 @@ export class Supersoldier extends Boss {
                     }
                 }
 
-                // Comprobar colisión con el jugador
+                // Check collision with player
                 const player = window.game.player;
                 if (player && player.health > 0) {
                     const playerHitbox = player.getHitboxBounds();
@@ -405,20 +403,20 @@ export class Supersoldier extends Boss {
                         player.takeDamage(projectile.damage);
                         projectile.isActive = false;
                         this.projectiles.splice(i, 1);
-                        console.log(`Proyectil cargado impactó al jugador por ${projectile.damage} de daño`);
+                        console.log(`Charged projectile hit player for ${projectile.damage} damage`);
                     }
                 }
             }
         }
 
-        // Manejar colisiones con la barrera si está activa
+        // Handle barrier collisions if active
         if (this.shieldDir) {
             const player = window.game.player;
-            const barrierLength = this.width * 3; // Barrera más larga (aumentada para mejor simetría)
-            const barrierThickness = 20; // Grosor de la barrera
-            const barrierDistance = this.barrierDistance || 40; // Distancia reducida para centrar mejor
+            const barrierLength = this.width * 3; // Longer barrier (increased for better symmetry)
+            const barrierThickness = 20; // Barrier thickness
+            const barrierDistance = this.barrierDistance || 40; // Reduced distance for better centering
 
-            // Crear hitbox para la barrera según la dirección
+            // Create hitbox for barrier based on direction
             let barrierHitbox;
 
             switch (this.shieldDir) {
@@ -456,9 +454,9 @@ export class Supersoldier extends Boss {
                     break;
             }
 
-            // Registrar la barrera como un muro temporal en la sala actual
+            // Register barrier as a temporary wall in current room
             if (!this.barrierWallRegistered && this.currentRoom) {
-                // Crear un objeto Rect para la barrera (igual que los muros)
+                // Create a Rect object for the barrier (same as walls)
                 const barrierWall = {
                     x: barrierHitbox.x,
                     y: barrierHitbox.y,
@@ -466,22 +464,22 @@ export class Supersoldier extends Boss {
                     height: barrierHitbox.height
                 };
 
-                // Añadir la barrera a los muros de la sala
+                // Add barrier to room walls
                 if (!this.currentRoom.objects.temporaryWalls) {
                     this.currentRoom.objects.temporaryWalls = [];
                 }
                 this.currentRoom.objects.temporaryWalls.push(barrierWall);
 
-                // Extender el método checkWallCollision de la sala para incluir muros temporales
+                // Extend room's checkWallCollision method to include temporary walls
                 if (!this.currentRoom.originalCheckWallCollision) {
                     this.currentRoom.originalCheckWallCollision = this.currentRoom.checkWallCollision;
                     this.currentRoom.checkWallCollision = function (obj) {
-                        // Primero verificar colisión con muros normales
+                        // First check collision with normal walls
                         if (this.originalCheckWallCollision(obj)) {
                             return true;
                         }
 
-                        // Luego verificar colisión con muros temporales
+                        // Then check collision with temporary walls
                         if (this.objects.temporaryWalls) {
                             const objHitbox = obj.getHitboxBounds();
                             return this.objects.temporaryWalls.some(wall =>
@@ -499,7 +497,7 @@ export class Supersoldier extends Boss {
                 this.barrierWallRegistered = true;
             }
 
-            // Comprobar colisiones con proyectiles del jugador
+            // Check collisions with player projectiles
             if (window.game.projectiles) {
                 window.game.projectiles.forEach(projectile => {
                     if (projectile.fromPlayer && this.checkCollision(projectile, barrierHitbox)) {
@@ -508,12 +506,12 @@ export class Supersoldier extends Boss {
                 });
             }
         } else if (this.barrierWallRegistered && this.currentRoom) {
-            // Eliminar la barrera cuando ya no está activa
+            // Remove barrier when no longer active
             if (this.currentRoom.objects.temporaryWalls) {
                 this.currentRoom.objects.temporaryWalls = [];
             }
 
-            // Restaurar el método original de comprobación de colisiones
+            // Restore original collision check method
             if (this.currentRoom.originalCheckWallCollision) {
                 this.currentRoom.checkWallCollision = this.currentRoom.originalCheckWallCollision;
                 this.currentRoom.originalCheckWallCollision = null;
@@ -523,34 +521,34 @@ export class Supersoldier extends Boss {
         }
     }
 
-    // Sobrescribir el método takeDamage para añadir aturdimiento
+    // Override takeDamage method to add stunning
     takeDamage(amount) {
         super.takeDamage(amount);
 
-        // Aturdir al jefe solo cuando tiene la barrera activa
+        // Stun the boss only when barrier is active
         if (!this.stunned && this.shieldDir) {
             this.stunned = true;
-            this.stunTimeLeft = 2000; // 2 segundos de aturdimiento
-            // Interrumpir la curación inmediatamente al recibir daño
+            this.stunTimeLeft = 2000; // 2 seconds of stun
+            // Interrupt healing immediately when taking damage
             if (this.isRegenerating) {
                 this.isRegenerating = false;
             }
         }
     }
 
-    // Método para recibir daño cuando un dron es destruido
+    // Method to take damage when a drone is destroyed
     damageFromDrone() {
-        const damageAmount = 50; // Cantidad fija de daño por dron
+        const damageAmount = 50; // Fixed damage amount per drone
         this.health = Math.max(0, this.health - damageAmount);
-        console.log(`Supersoldier recibió ${damageAmount} de daño por un dron destruido`);
+        console.log(`Supersoldier took ${damageAmount} damage from a destroyed drone`);
 
-        // Verificar si el jefe murió por este daño
+        // Check if boss died from this damage
         if (this.health <= 0) {
             this.die();
         }
     }
 
-    // Función para disparar el proyectil cargado
+    // Function to fire the charged shot
     fireChargedShot() {
         if (!this.shotDirection || !this.targetPosition) return;
 
@@ -559,32 +557,32 @@ export class Supersoldier extends Boss {
             this.position.y + this.height / 2
         );
 
-        // Crear un proyectil grande
+        // Create a large projectile
         const projectile = {
             position: new Vec(sourcePosition.x, sourcePosition.y),
-            velocity: new Vec(this.shotDirection.x * 400, this.shotDirection.y * 400), // Velocidad alta
-            damage: 200, // Daño alto
-            radius: 15, // Radio grande
+            velocity: new Vec(this.shotDirection.x * 400, this.shotDirection.y * 400), // High velocity
+            damage: 200, // High damage
+            radius: 15, // Large radius
             isActive: true,
             fromPlayer: false,
             color: "yellow",
-            lifetime: 3000, // 3 segundos de vida
+            lifetime: 3000, // 3 seconds lifetime
             timeAlive: 0
         };
 
-        // Añadir el proyectil a la lista de proyectiles
+        // Add projectile to projectiles list
         if (!this.projectiles) this.projectiles = [];
         this.projectiles.push(projectile);
 
-        console.log("Supersoldier disparó un proyectil cargado");
+        console.log("Supersoldier fired a charged projectile");
     }
 
-    // Método para dibujar el jefe y sus proyectiles
+    // Method to draw the boss and its projectiles
     draw(ctx) {
-        // Dibujar el jefe
+        // Draw the boss
         super.draw(ctx);
 
-        // Dibujar drones
+        // Draw drones
         if (this.drones && this.drones.length > 0) {
             this.drones.forEach(drone => {
                 if (drone && typeof drone.draw === 'function') {
@@ -593,7 +591,7 @@ export class Supersoldier extends Boss {
             });
         }
 
-        // Dibujar proyectiles
+        // Draw projectiles
         if (this.projectiles && this.projectiles.length > 0) {
             this.projectiles.forEach(projectile => {
                 if (projectile.isActive) {
@@ -602,12 +600,12 @@ export class Supersoldier extends Boss {
                     ctx.fillStyle = projectile.color || "yellow";
                     ctx.fill();
 
-                    // Añadir un borde brillante
+                    // Add a glowing border
                     ctx.strokeStyle = "white";
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // Efecto de brillo
+                    // Glow effect
                     ctx.beginPath();
                     ctx.arc(projectile.position.x, projectile.position.y, projectile.radius * 1.5, 0, Math.PI * 2);
                     ctx.strokeStyle = "rgba(255, 255, 0, 0.3)";
@@ -618,7 +616,7 @@ export class Supersoldier extends Boss {
         }
     }
 
-    // Método para obtener la hitbox del jefe
+    // Method to get the boss hitbox
     getHitboxBounds() {
         return {
             x: this.position.x,
@@ -628,15 +626,15 @@ export class Supersoldier extends Boss {
         };
     }
 
-    // Función auxiliar para comprobar colisiones
+    // Helper function to check collisions
     checkCollision(entity, rect) {
-        // Verificar que ambos objetos existen y tienen las propiedades necesarias
+        // Verify that both objects exist and have the necessary properties
         if (!entity || !rect || !entity.position || !rect.x || !rect.y ||
             rect.width === undefined || rect.height === undefined || entity.width === undefined || entity.height === undefined) {
             return false;
         }
 
-        // Usar getHitboxBounds si está disponible
+        // Use getHitboxBounds if available
         const entityBounds = entity.getHitboxBounds ? entity.getHitboxBounds() : {
             x: entity.position.x,
             y: entity.position.y,
