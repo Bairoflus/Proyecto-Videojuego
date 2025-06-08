@@ -36,10 +36,10 @@ export class Room {
     this.shopActivationArea = null; // Shop activation area
     this.playerInShopArea = false; // Track if player is in shop activation area
     this.shopCanBeOpened = true; // Prevent reopening until player leaves area
-    
+
     // FIX: Add boss defeated flag for immediate transition activation
     this.bossDefeated = false; // Track if boss has been defeated for immediate transition
-    
+
     this.parseLayout();
 
     // Create shop instance for shop rooms
@@ -56,6 +56,12 @@ export class Room {
 
     // FIXED: Don't auto-generate enemies in constructor
     // Enemy generation will be handled by initializeEnemies() for new rooms only
+  }
+  addEntity(entity) {
+    if (typeof entity.setCurrentRoom === 'function') {
+      entity.setCurrentRoom(this);
+    }
+    this.objects.enemies.push(entity);
   }
 
   // NEW METHOD: Initialize enemies for NEW combat rooms only
@@ -254,20 +260,20 @@ export class Room {
         }
 
         // Update enemy with player reference for projectile handling
-        enemy.update(deltaTime, window.game.player);
+        enemy.update(deltaTime, window.game.player, this);
       } else {
         // Even dead enemies need to update their projectiles
-        enemy.update(deltaTime, window.game.player);
+        enemy.update(deltaTime, window.game.player, this);
       }
     });
 
     // Remove dead enemies from the array
     const previousEnemyCount = this.objects.enemies.length;
-    
+
     // ENHANCED: Better logging for enemy removal
     const deadEnemies = this.objects.enemies.filter((enemy) => enemy.state === "dead");
     const aliveEnemiesBefore = this.objects.enemies.filter((enemy) => enemy.state !== "dead");
-    
+
     this.objects.enemies = this.objects.enemies.filter(
       (enemy) => enemy.state !== "dead"
     );
@@ -319,7 +325,7 @@ export class Room {
             runId: parseInt(localStorage.getItem('currentRunId')),
             roomId: window.game?.floorGenerator?.getCurrentRoomId() || 1
           };
-          
+
           // Open shop with proper data
           this.objects.shop.open(shopData, () => {
             this.shopCanBeOpened = false;
@@ -583,7 +589,7 @@ export class Room {
       const totalEnemies = this.objects.enemies.length;
       const aliveEnemies = this.objects.enemies.filter(e => e.state !== 'dead');
       const deadEnemies = totalEnemies - aliveEnemies.length;
-      
+
       // ENHANCED: More robust boss room transition logic
       const allEnemiesDead = aliveEnemies.length === 0;
       const bossDefeatedFlag = this.bossDefeated === true;
@@ -597,7 +603,7 @@ export class Room {
           // Ensure bossDefeated flag is set for consistency
           this.bossDefeated = true;
         }
-        
+
         console.log(`BOSS ROOM TRANSITION ALLOWED - Player can advance to next floor`);
       } else {
         const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');

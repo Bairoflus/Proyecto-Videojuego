@@ -1,6 +1,7 @@
 import { Enemy } from "./Enemy.js";
 import { AnimatedObject } from "./AnimatedObject.js";
 import { registerBossKill } from "../../utils/api.js";
+import { variables } from "../../config.js";
 
 export class Boss extends Enemy {
     constructor(position, width, height, color, maxHp, attacks = [], enemyTypeName = "dragon") {
@@ -85,6 +86,15 @@ export class Boss extends Enemy {
         ctx.font = "16px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
-        ctx.fillText(this.displayName, x + barWidth / 2, y - 6);
+        ctx.fillText(this.displayName.toUpperCase(), x + barWidth / 2, y - 6);
+        
+        // Texto: HP actual/máximo
+        const currentHP = Math.round(this.health);
+        const maxHP = Math.round(this.maxHealth);
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`HP ${currentHP}/${maxHP}`, x + barWidth / 2, y + barHeight / 2);
     }
 }
