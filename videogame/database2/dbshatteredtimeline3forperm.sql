@@ -1,13 +1,10 @@
 -- ===================================================
--- SHATTERED TIMELINE - COMPLETE DATABASE v3.0
+-- SHATTERED TIMELINE - DATABASE STRUCTURE v3.0
 -- ===================================================
--- Version: 3.0 - Fixed persistence issues and missing functionalities
--- Tables: 12 essential (added user_run_progress for run persistence)
--- Objective: Fix run persistence, permanent upgrades, and temporary upgrades
--- Missing Functionalities FIXED:
--- 1. Run number persistence across logout/login
--- 2. Permanent upgrades loading and application
--- 3. Temporary upgrades persistence between sessions
+-- Version: 3.0 - Complete database structure with fixed persistence
+-- Focus: Tables, constraints, indexes, and initial data only
+-- Objective: Create database structure for run persistence, permanent & temporary upgrades
+-- Note: Execute objects3.sql after this file for views, triggers, and procedures
 -- ===================================================
 
 -- Drop database if exists and create new one
@@ -56,7 +53,7 @@ CREATE TABLE sessions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT = 'Active user sessions';
 
 -- ===================================================
--- NEW: USER RUN PROGRESS (CRITICAL FIX)
+-- USER RUN PROGRESS (CRITICAL FIX)
 -- ===================================================
 
 -- NEW TABLE: user_run_progress - Persistent run counter per user
@@ -260,7 +257,7 @@ ADD CONSTRAINT fk_sessions_user
     FOREIGN KEY (user_id) REFERENCES users(user_id) 
     ON DELETE CASCADE;
 
--- NEW: User run progress constraints
+-- User run progress constraints
 ALTER TABLE user_run_progress 
 ADD CONSTRAINT fk_user_run_progress_user 
     FOREIGN KEY (user_id) REFERENCES users(user_id) 
@@ -345,145 +342,6 @@ ADD CONSTRAINT fk_player_settings_user
     ON DELETE CASCADE;
 
 -- ===================================================
--- TRIGGERS AND PROCEDURES (ENHANCED FOR v3.0)
--- ===================================================
-
--- NEW TRIGGER: Initialize user run progress for new users
-DELIMITER //
-CREATE TRIGGER tr_create_user_run_progress
-AFTER INSERT ON users
-FOR EACH ROW
-BEGIN
-    INSERT INTO user_run_progress (user_id) VALUES (NEW.user_id);
-    INSERT INTO player_settings (user_id) VALUES (NEW.user_id);
-    INSERT INTO player_stats (user_id) VALUES (NEW.user_id);
-END//
-DELIMITER ;
-
--- NEW TRIGGER: Update permanent upgrade calculated values
-DELIMITER //
-CREATE TRIGGER tr_calculate_permanent_upgrade_values
-BEFORE INSERT ON permanent_player_upgrades
-FOR EACH ROW
-BEGIN
-    -- Calculate values based on upgrade type and level
-    CASE NEW.upgrade_type
-        WHEN 'health_max' THEN 
-            SET NEW.base_value = 100;
-            SET NEW.current_value = 100 + (NEW.level * 15);  -- +15 HP per level
-        WHEN 'stamina_max' THEN 
-            SET NEW.base_value = 100;
-            SET NEW.current_value = 100 + (NEW.level * 20);  -- +20 Stamina per level
-        WHEN 'movement_speed' THEN 
-            SET NEW.base_value = 1.0;
-            SET NEW.current_value = 1.0 + (NEW.level * 0.1); -- +10% speed per level
-    END CASE;
-END//
-DELIMITER ;
-
--- NEW TRIGGER: Update permanent upgrade calculated values on update
-DELIMITER //
-CREATE TRIGGER tr_update_permanent_upgrade_values
-BEFORE UPDATE ON permanent_player_upgrades
-FOR EACH ROW
-BEGIN
-    -- Recalculate values when level changes
-    IF NEW.level != OLD.level THEN
-        CASE NEW.upgrade_type
-            WHEN 'health_max' THEN 
-                SET NEW.base_value = 100;
-                SET NEW.current_value = 100 + (NEW.level * 15);
-            WHEN 'stamina_max' THEN 
-                SET NEW.base_value = 100;
-                SET NEW.current_value = 100 + (NEW.level * 20);
-            WHEN 'movement_speed' THEN 
-                SET NEW.base_value = 1.0;
-                SET NEW.current_value = 1.0 + (NEW.level * 0.1);
-        END CASE;
-    END IF;
-END//
-DELIMITER ;
-
--- NEW TRIGGER: Increment run number on new run creation
-DELIMITER //
-CREATE TRIGGER tr_increment_run_number
-BEFORE INSERT ON run_history
-FOR EACH ROW
-BEGIN
-    DECLARE current_run_num INT DEFAULT 1;
-    
-    -- Get current run number for the user
-    SELECT current_run_number INTO current_run_num 
-    FROM user_run_progress 
-    WHERE user_id = NEW.user_id;
-    
-    -- Set the run number for this run
-    SET NEW.run_number = current_run_num;
-    
-    -- Increment run counter for next run
-    UPDATE user_run_progress 
-    SET current_run_number = current_run_number + 1,
-        last_updated = NOW()
-    WHERE user_id = NEW.user_id;
-END//
-DELIMITER ;
-
--- ENHANCED TRIGGER: Update player_stats when run ends
-DELIMITER //
-CREATE TRIGGER tr_update_player_stats_after_run
-AFTER UPDATE ON run_history
-FOR EACH ROW
-BEGIN
-    IF NEW.ended_at IS NOT NULL AND OLD.ended_at IS NULL THEN
-        -- Update player stats
-        INSERT INTO player_stats (
-            user_id, total_runs, total_kills, total_deaths, 
-            total_gold_earned, total_gold_spent, total_bosses_killed, 
-            total_playtime_seconds, highest_floor_ever
-        )
-        VALUES (
-            NEW.user_id, 1, NEW.total_kills, 1, 
-            NEW.final_gold, NEW.gold_spent, NEW.bosses_killed, 
-            NEW.duration_seconds, NEW.final_floor
-        )
-        ON DUPLICATE KEY UPDATE 
-            total_runs = total_runs + 1,
-            total_kills = total_kills + NEW.total_kills,
-            total_deaths = total_deaths + 1,
-            total_gold_earned = total_gold_earned + NEW.final_gold,
-            total_gold_spent = total_gold_spent + NEW.gold_spent,
-            total_bosses_killed = total_bosses_killed + NEW.bosses_killed,
-            total_playtime_seconds = total_playtime_seconds + NEW.duration_seconds,
-            highest_floor_ever = GREATEST(highest_floor_ever, NEW.final_floor);
-            
-        -- Update user run progress
-        UPDATE user_run_progress 
-        SET highest_floor_reached = GREATEST(highest_floor_reached, NEW.final_floor),
-            total_completed_runs = total_completed_runs + 1,
-            last_updated = NOW()
-        WHERE user_id = NEW.user_id;
-        
-        -- Mark weapon upgrades as inactive when run ends
-        UPDATE weapon_upgrades_temp 
-        SET is_active = FALSE 
-        WHERE user_id = NEW.user_id AND run_id = NEW.run_id;
-    END IF;
-END//
-DELIMITER ;
-
--- ENHANCED TRIGGER: Update run gold_spent when weapon purchase occurs
-DELIMITER //
-CREATE TRIGGER tr_update_run_gold_spent
-AFTER INSERT ON weapon_upgrade_purchases
-FOR EACH ROW
-BEGIN
-    UPDATE run_history 
-    SET gold_spent = gold_spent + NEW.cost
-    WHERE run_id = NEW.run_id;
-END//
-DELIMITER ;
-
--- ===================================================
 -- INITIAL DATA FOR TESTING AND ADMIN
 -- ===================================================
 
@@ -523,53 +381,46 @@ WHERE TABLE_SCHEMA = 'dbshatteredtimeline'
 ORDER BY TABLE_NAME, COLUMN_NAME;
 
 -- ===================================================
--- DATABASE SUMMARY v3.0 - COMPLETE FUNCTIONALITY
+-- DATABASE STRUCTURE SUMMARY v3.0
 -- ===================================================
 /*
 TOTAL TABLES: 12 (NEW: +1 user_run_progress)
 - Authentication: 2 (users, sessions)
-- NEW: User Progress: 1 (user_run_progress) - CRITICAL FIX
+- User Progress: 1 (user_run_progress) - CRITICAL FIX
 - Player State: 3 (save_states, permanent_player_upgrades, weapon_upgrades_temp)  
 - Analytics: 5 (player_stats, run_history, weapon_upgrade_purchases, enemy_kills, boss_kills)
 - Configuration: 1 (player_settings)
 
-✅ FIXED FUNCTIONALITIES v3.0:
+STRUCTURE FEATURES v3.0:
 
 #1 RUN PERSISTENCE (CRITICAL FIX):
 - NEW TABLE: user_run_progress with current_run_number
-- NEW TRIGGER: tr_increment_run_number (auto-increment run number)
 - ENHANCED: All analytics tables now store run_number
 - RESULT: Run number persists across logout/login
 
 #2 PERMANENT UPGRADES (ENHANCED):
 - NEW COLUMNS: current_value, base_value in permanent_player_upgrades
-- NEW TRIGGERS: Auto-calculate upgrade values (health +15, stamina +20, speed +10%)
 - RESULT: Frontend can read calculated values directly from DB
 
 #3 TEMPORARY UPGRADES (ENHANCED):
 - NEW COLUMN: is_active in weapon_upgrades_temp
 - NEW COLUMN: run_number for validation
-- NEW TRIGGER: Mark upgrades inactive when run ends
 - RESULT: Upgrades persist between logout/login until run ends
 
 #4 ADDITIONAL ENHANCEMENTS:
 - ENHANCED: All tables track run_number for better analytics
 - ENHANCED: player_stats tracks highest_floor_ever
 - ENHANCED: user_run_progress tracks highest_floor_reached
-- ENHANCED: Comprehensive triggers for data consistency
+- ENHANCED: Complete foreign key constraint enforcement
 
-✅ MISSING FUNCTIONALITIES NOW IMPLEMENTED:
-1. ✅ Run number persistence across sessions
-2. ✅ Permanent upgrades auto-loading with calculated values
-3. ✅ Temporary upgrades persistence until run completion
-4. ✅ Complete analytics with run number tracking
+NEXT STEP: Execute objects3.sql for views, triggers, and procedures
 
 ADMIN CREDENTIALS:
 - Username: admin
 - Password: 123456
 - Email: admin@shatteredtimeline.com
 
-RESULT: 100% Complete database with ALL required functionalities
+RESULT: Complete database structure with ALL required functionalities
 ENGINE: InnoDB for all tables
 CHARSET: utf8mb4 for full Unicode support
 NORMALIZATION: 1NF, 2NF, 3NF compliant

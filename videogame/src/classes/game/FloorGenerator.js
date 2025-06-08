@@ -217,17 +217,26 @@ export class FloorGenerator {
             if (this.floorCount === 1) {
                 // Floor 1 boss
                 boss = new DragonBoss(new Vec(380, 75));
+                console.log(`Floor 1 boss (DragonBoss) created for room ${roomIndex}`);
             }
             else if (this.floorCount === 2) {
                 // Floor 2 boss
                 boss = new Supersoldier(new Vec(380, 75));
+                console.log(`Floor 2 boss (Supersoldier) created for room ${roomIndex}`);
             } else {
-                // Floor 3 boss (or any future floors)
-                console.warn(`No boss defined for floor ${this.floorCount}, using default DragonBoss`);
-                // Default to DragonBoss for any undefined floor
+                // Floor 3+ boss (use DragonBoss as fallback)
+                console.warn(`No specific boss defined for floor ${this.floorCount}, using DragonBoss as fallback`);
+                boss = new DragonBoss(new Vec(380, 75));
+                console.log(`Floor ${this.floorCount} boss (DragonBoss fallback) created for room ${roomIndex}`);
             }
-            room.objects.enemies.push(boss);
-            console.log(`Boss added to room ${roomIndex}, total enemies: ${room.objects.enemies.length}`);
+            
+            // CRITICAL: Verify boss was created before adding to enemies
+            if (boss) {
+                room.objects.enemies.push(boss);
+                console.log(`Boss successfully added to room ${roomIndex}, total enemies: ${room.objects.enemies.length}`);
+            } else {
+                console.error(`CRITICAL ERROR: Boss creation failed for floor ${this.floorCount}, room ${roomIndex}`);
+            }
         }
 
         // Save the room state

@@ -480,4 +480,81 @@ export async function hasActiveTemporaryUpgrades(userId) {
         console.error('Failed to check active temporary upgrades:', error);
         return false;
     }
+}
+
+/**
+ * Clear all session-related localStorage data
+ * This ensures complete logout cleanup across the entire application
+ * CRITICAL: Must be called on ALL logout scenarios to prevent data contamination
+ */
+export function clearSessionLocalStorage() {
+    console.log('🧹 Clearing all session localStorage data...');
+    
+    // Complete list of all session-related keys
+    const sessionKeys = [
+        'sessionToken',
+        'currentUserId', 
+        'currentSessionId',
+        'currentRunId',
+        'testMode',
+        'runCreationFailed',
+        'gameSettings',
+        // Add any other session-specific keys here
+    ];
+    
+    const clearedKeys = [];
+    
+    sessionKeys.forEach(key => {
+        const previousValue = localStorage.getItem(key);
+        if (previousValue !== null) {
+            localStorage.removeItem(key);
+            clearedKeys.push(`${key}: ${previousValue}`);
+            console.log(`  ✅ Cleared ${key}`);
+        }
+    });
+    
+    if (clearedKeys.length > 0) {
+        console.log(`🧹 Session cleanup complete. Cleared ${clearedKeys.length} keys:`);
+        clearedKeys.forEach(entry => console.log(`    - ${entry}`));
+    } else {
+        console.log('🧹 No session data found to clear');
+    }
+    
+    return clearedKeys.length;
+}
+
+/**
+ * Enhanced logout with complete session cleanup
+ * @param {string} sessionToken - Session token for backend logout
+ * @returns {Promise<boolean>} Success status
+ */
+export async function enhancedLogout(sessionToken = null) {
+    try {
+        console.log('🚪 Starting enhanced logout process...');
+        
+        // Step 1: Backend logout if token available
+        if (sessionToken) {
+            console.log('🔐 Logging out from backend...');
+            await logoutUser(sessionToken);
+            console.log('✅ Backend logout successful');
+        } else {
+            console.log('⚠️ No session token provided - skipping backend logout');
+        }
+        
+        // Step 2: Complete localStorage cleanup (CRITICAL)
+        const clearedCount = clearSessionLocalStorage();
+        
+        console.log(`✅ Enhanced logout complete - cleared ${clearedCount} localStorage entries`);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Enhanced logout error:', error);
+        
+        // CRITICAL: Even if backend logout fails, ALWAYS clear localStorage
+        console.log('🧹 Force clearing localStorage despite backend error...');
+        const clearedCount = clearSessionLocalStorage();
+        console.log(`🧹 Force cleanup complete - cleared ${clearedCount} localStorage entries`);
+        
+        return false; // Indicate backend logout failed
+    }
 } 

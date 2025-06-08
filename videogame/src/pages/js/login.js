@@ -2,7 +2,7 @@
  * Enhanced Login page functionality with improved session management and user feedback
  * Issue #7: Frontend Login Flow Enhancement
  */
-import { loginUser, createRun } from '../../utils/api.js';
+import { loginUser, createRun, clearSessionLocalStorage } from '../../utils/api.js';
 
 // Login states for improved UI feedback
 const LOGIN_STATES = {
@@ -19,18 +19,13 @@ let currentLoginState = LOGIN_STATES.IDLE;
 
 /**
  * Clear all previous session data to ensure clean state
+ * UPDATED: Now uses centralized function from api.js
  */
 function clearSessionData() {
     console.log('Clearing previous session data...');
-    const sessionKeys = ['sessionToken', 'currentUserId', 'currentSessionId', 'currentRunId'];
-    
-    sessionKeys.forEach(key => {
-        const previousValue = localStorage.getItem(key);
-        if (previousValue) {
-            localStorage.removeItem(key);
-            console.log(`  Cleared ${key}: ${previousValue}`);
-        }
-    });
+    // Use centralized function for consistent cleanup
+    const clearedCount = clearSessionLocalStorage();
+    console.log(`Session cleanup complete: ${clearedCount} keys cleared`);
 }
 
 /**

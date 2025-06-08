@@ -6,7 +6,7 @@ import { variables, keyDirections } from "../../config.js";
 import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
 import { Boss } from "../entities/Boss.js";
-import { completeRun, createRun, registerEnemyKill, registerBossKill, getPermanentUpgrades } from "../../utils/api.js";
+import { completeRun, createRun, registerEnemyKill, registerBossKill, getPermanentUpgrades, getCurrentRunInfo } from "../../utils/api.js";
 import { saveStateManager } from "../../utils/saveStateManager.js";
 import { weaponUpgradeManager } from "../../utils/weaponUpgradeManager.js";
 import { PermanentUpgradePopup } from "../ui/PermanentUpgradePopup.js";
@@ -94,6 +94,35 @@ export class Game {
     window.weaponUpgradeManager = weaponUpgradeManager;
     window.saveStateManager = saveStateManager;
 
+    // NEW: Global command to fix stuck transition flag
+    window.fixTransitionFlag = () => {
+      if (!window.game) {
+        console.error('❌ Game instance not found');
+        return false;
+      }
+
+      console.log('🔧 FIXING STUCK TRANSITION FLAG...');
+      
+      // Clear the stuck flag
+      window.game.isTransitioning = false;
+      window.game.transitionCooldown = 0;
+      
+      // Reset any related transition state
+      window.game.transitionState = null;
+      window.game.transitionMessage = null;
+      window.game.transitionStartTime = null;
+      
+      console.log('✅ Transition flag reset - Try moving to the right edge now');
+      console.log('Current state:', {
+        isTransitioning: window.game.isTransitioning,
+        transitionCooldown: window.game.transitionCooldown
+      });
+      
+      return true;
+    };
+
+    console.log('🔧 Emergency fix command available: fixTransitionFlag()');
+
     // FIXED: Initialize game asynchronously but signal when ready
     this.initializeGameAsync();
 
@@ -103,8 +132,7 @@ export class Game {
       this.initializeDebugCommands();
     }
 
-    // Initialize managers
-    this.initializeManagers();
+    // REMOVED: Initialize managers - now done in initializeGameAsync()
   }
 
   /**
@@ -140,23 +168,48 @@ export class Game {
         this.permanentUpgrades = this.playerInitData.permanent_upgrades_parsed || {};
         this.hasSaveState = this.playerInitData.has_save_state === 1;
 
+        console.log('EXTRACTED DATA DEBUG:', {
+          rawRunNumber: this.playerInitData.run_number,
+          extractedRunNumber: this.runNumber,
+          rawPermanentUpgrades: this.playerInitData.permanent_upgrades_parsed,
+          extractedPermanentUpgrades: this.permanentUpgrades,
+          rawWeaponLevels: {
+            melee: this.playerInitData.melee_level,
+            ranged: this.playerInitData.ranged_level
+          },
+          extractedWeaponLevels: this.weaponLevels
+        });
+
         // NEW v3.0: Auto-sync localStorage runId with database if inconsistent
         const localStorageRunId = parseInt(localStorage.getItem('currentRunId'));
         if (localStorageRunId !== this.runNumber) {
           console.warn(`Run ID sync issue detected! localStorage: ${localStorageRunId}, Database: ${this.runNumber}`);
           console.log('Auto-syncing localStorage with database run number...');
 
-          // Need to create/get the correct run for the current run number
+          // FIXED: Don't create new run - sync localStorage to match database
+          // The database is the source of truth for run numbers
           try {
-            const { createRun } = await import('../../utils/api.js');
-            const newRunResult = await createRun(userId);
-            if (newRunResult.success) {
-              localStorage.setItem('currentRunId', newRunResult.runId);
-              console.log(`localStorage synced: runId updated to ${newRunResult.runId} for run number ${this.runNumber}`);
+            // Check if there's an active run for the current run number
+            const { getCurrentRunInfo } = await import('../../utils/api.js');
+            const runInfo = await getCurrentRunInfo(userId);
+            
+            if (runInfo && runInfo.current_run_id && runInfo.current_run_id > 0) {
+              // Use the existing active run
+              localStorage.setItem('currentRunId', runInfo.current_run_id);
+              console.log(`localStorage synced: runId updated to ${runInfo.current_run_id} for run number ${this.runNumber}`);
+            } else {
+              // Create a new run only if no active run exists
+              const { createRun } = await import('../../utils/api.js');
+              const newRunResult = await createRun(userId);
+              if (newRunResult.success) {
+                localStorage.setItem('currentRunId', newRunResult.runId);
+                console.log(`New run created: runId ${newRunResult.runId} for run number ${this.runNumber}`);
+              }
             }
           } catch (error) {
             console.error('Failed to sync runId, using database run number as fallback:', error);
-            localStorage.setItem('currentRunId', this.runNumber); // Fallback
+            // As a last resort, create a placeholder runId based on run number
+            localStorage.setItem('currentRunId', this.runNumber.toString());
           }
         }
 
@@ -698,7 +751,16 @@ export class Game {
 
     // NEW v3.0: Apply permanent upgrades from initialization data BEFORE weapon sync
     if (this.permanentUpgrades && Object.keys(this.permanentUpgrades).length > 0) {
+      console.log('=== APPLYING PERMANENT UPGRADES ===');
+      console.log('Permanent upgrades data:', this.permanentUpgrades);
       console.log('Applying permanent upgrades from v3.0 initialization data:', this.permanentUpgrades);
+
+      // Log player base stats BEFORE applying upgrades
+      console.log('Player BASE stats before permanent upgrades:', {
+        baseHealth: this.player.maxHealth,
+        baseStamina: this.player.maxStamina,
+        baseSpeed: this.player.speedMultiplier || 1.0
+      });
 
       Object.entries(this.permanentUpgrades).forEach(([type, value]) => {
         console.log(`Applying v3.0 permanent upgrade: ${type} = ${value}`);
@@ -707,21 +769,33 @@ export class Game {
           case 'health_max':
             this.player.maxHealth = value;
             this.player.health = value; // Start with full health
-            console.log(`Health set from permanent upgrades: ${this.player.maxHealth}`);
+            console.log(`✅ Health set from permanent upgrades: ${this.player.maxHealth}`);
             break;
           case 'stamina_max':
             this.player.maxStamina = value;
             this.player.stamina = value; // Start with full stamina
-            console.log(`Stamina set from permanent upgrades: ${this.player.maxStamina}`);
+            console.log(`✅ Stamina set from permanent upgrades: ${this.player.maxStamina}`);
             break;
           case 'movement_speed':
             this.player.speedMultiplier = value;
-            console.log(`Movement speed set from permanent upgrades: ${(value * 100).toFixed(1)}%`);
+            console.log(`✅ Movement speed set from permanent upgrades: ${(value * 100).toFixed(1)}%`);
             break;
         }
       });
 
-      console.log('All v3.0 permanent upgrades applied during player initialization');
+      // Log player FINAL stats AFTER applying upgrades
+      console.log('Player FINAL stats after permanent upgrades:', {
+        finalHealth: `${this.player.health}/${this.player.maxHealth}`,
+        finalStamina: `${this.player.stamina}/${this.player.maxStamina}`,
+        finalSpeed: `${(this.player.speedMultiplier * 100).toFixed(1)}%`
+      });
+
+      console.log('✅ All v3.0 permanent upgrades applied during player initialization');
+      console.log('=== PERMANENT UPGRADES COMPLETE ===');
+    } else {
+      console.log('⚠️ No permanent upgrades found to apply');
+      console.log('Permanent upgrades data:', this.permanentUpgrades);
+      console.log('Available keys:', Object.keys(this.permanentUpgrades || {}));
     }
 
     // NEW: Critical weapon sync after player creation and save state loading
@@ -778,7 +852,8 @@ export class Game {
       speedMultiplier: this.player.speedMultiplier || 1.0,
       weaponLevels: this.weaponLevels,
       gold: this.player.gold,
-      hasSaveState: this.hasSaveState
+      hasSaveState: this.hasSaveState,
+      permanentUpgradesApplied: Object.keys(this.permanentUpgrades || {}).length
     });
   }
 
@@ -942,8 +1017,8 @@ export class Game {
     const barHeight = 20;
 
     // Draw Run/Floor/Room info in bottom-right corner
-    // NEW v3.0: Use run number from initialization data (more reliable)
-    const currentRun = this.runNumber || this.floorGenerator.getCurrentRun(); // Fallback to FloorGenerator
+    // FIXED v3.0: Use run number from initialization data with proper fallback
+    const currentRun = this.runNumber || this.floorGenerator.getCurrentRun() || 1; // Fallback to 1
     const currentFloor = this.floorGenerator.getCurrentFloor();
     const currentRoom = this.floorGenerator.getCurrentRoomIndex() + 1; // Convert to 1-based
     const totalRooms = this.floorGenerator.getTotalRooms();
@@ -1092,6 +1167,11 @@ export class Game {
       // Reset floor generator to beginning - FIXED: Use correct method name
       await this.floorGenerator.resetToInitialState();
 
+      // CRITICAL FIX: Re-initialize managers to load updated permanent upgrades
+      console.log("Re-initializing managers to load updated permanent upgrades...");
+      await this.initializeManagers();
+      console.log("Managers re-initialized with fresh data from database");
+
       // NEW v3.0: Sync frontend run number after death reset
       console.log("Syncing frontend run number after death...");
       this.runNumber = this.floorGenerator.getCurrentRun();
@@ -1103,19 +1183,17 @@ export class Game {
         if (newRunId) {
           console.log(`localStorage runId after death: ${newRunId}`);
 
-          // Update weaponUpgradeManager with new runId
-          const syncedRunId = parseInt(newRunId);
-          await weaponUpgradeManager.initialize(userId, syncedRunId);
-          console.log("WeaponUpgradeManager re-initialized with new runId after death");
+          // Update weaponUpgradeManager with new runId (already done in initializeManagers)
+          console.log("WeaponUpgradeManager already initialized with new runId");
         }
       } catch (error) {
         console.error("Failed to sync runId after death:", error);
       }
 
-      // Reinitialize objects
+      // Reinitialize objects - NOW with fresh permanent upgrades data
       this.initObjects();
 
-      console.log("Game reset completed successfully");
+      console.log("Game reset completed successfully with updated permanent upgrades");
     } catch (error) {
       console.error("Failed to reset game after death:", error);
 
@@ -1130,6 +1208,16 @@ export class Game {
       // NEW v3.0: Sync run number even in fallback
       this.runNumber = this.floorGenerator.getCurrentRun();
       console.log(`Fallback: Frontend run number updated to: ${this.runNumber}`);
+
+      // CRITICAL: Try to re-initialize managers even in fallback
+      try {
+        console.log("Attempting to re-initialize managers in fallback mode...");
+        await this.initializeManagers();
+        console.log("Managers re-initialized successfully in fallback");
+      } catch (managerError) {
+        console.error("Failed to re-initialize managers in fallback:", managerError);
+        console.log("Using existing permanent upgrades data as final fallback");
+      }
 
       this.initObjects();
       console.log("Game reset completed with local fallback");
@@ -1360,23 +1448,23 @@ export class Game {
    * Keeps transitions smooth without blocking render or showing overlays
    */
   startRoomTransition(direction) {
-    // Just set the transition flag, no visual feedback
-    this.isTransitioning = true;
+    // REMOVED: Don't set isTransitioning here - let handleRoomTransition handle it
+    // This was causing the flag to get stuck when errors occurred
 
-    console.log("Starting non-blocking room transition");
+    console.log("Starting room transition");
 
-    // Execute transition asynchronously without blocking render
+    // Execute transition with proper error handling
     this.handleRoomTransition(direction)
       .then(() => {
-        // No visual feedback, just log completion
         console.log("Room transition completed successfully");
       })
       .catch((error) => {
-        console.error("Error in non-blocking room transition:", error);
+        console.error("Error in room transition:", error);
 
-        // Emergency cleanup
+        // Emergency cleanup - ensure flag is cleared
         this.isTransitioning = false;
         this.transitionCooldown = 0;
+        console.log("EMERGENCY: Transition flag cleared after error");
       });
   }
 
@@ -1470,9 +1558,13 @@ export class Game {
     if (this.enemies !== roomEnemies) {
       const lengthDifference = currentEnemiesLength - roomEnemiesLength;
       const isNormalEnemyCleanup = lengthDifference > 0 && roomEnemiesLength >= 0;
+      
+      // NEW: Detect legitimate dynamic enemy spawning (boss summoning drones, etc.)
+      const isDynamicSpawning = lengthDifference < 0 && this.floorGenerator.isBossRoom();
+      const isLegitimateDesync = isNormalEnemyCleanup || isDynamicSpawning;
 
-      // Only show warning for unexpected desyncs (not normal enemy death cleanup)
-      if (!isNormalEnemyCleanup && (currentEnemiesLength !== roomEnemiesLength || this.needsEnemySync)) {
+      // Only show warning for unexpected desyncs (not normal enemy death cleanup or boss spawning)
+      if (!isLegitimateDesync && (currentEnemiesLength !== roomEnemiesLength || this.needsEnemySync)) {
         console.warn("UNEXPECTED ENEMIES ARRAY DESYNC - Auto-correcting");
         console.warn(`  this.enemies.length: ${currentEnemiesLength}`);
         console.warn(`  this.currentRoom.objects.enemies.length: ${roomEnemiesLength}`);
@@ -1483,9 +1575,11 @@ export class Game {
       // Always sync arrays (but only log for unexpected cases)
       this.enemies = roomEnemies;
 
-      // Debug log for normal enemy cleanup (only when length actually changed)
+      // Debug log for legitimate cases (only when length actually changed)
       if (isNormalEnemyCleanup && lengthDifference > 0) {
         console.log(`Synchronized after enemy cleanup: ${currentEnemiesLength} → ${roomEnemiesLength} enemies`);
+      } else if (isDynamicSpawning && lengthDifference < 0) {
+        console.log(`Synchronized after dynamic spawning: ${currentEnemiesLength} → ${roomEnemiesLength} enemies (boss room)`);
       }
     }
 
@@ -1607,9 +1701,9 @@ export class Game {
           noCooldown,
           canTransition,
           blockingReason: !isAtRightEdge ? 'Not at right edge' :
-            this.isTransitioning ? 'Currently transitioning' :
-              this.transitionCooldown > 0 ? `Cooldown: ${Math.round(this.transitionCooldown)}ms` :
-                !canTransition ? 'Room cannot transition' : 'Unknown'
+              this.isTransitioning ? 'Currently transitioning' :
+                this.transitionCooldown > 0 ? `Cooldown: ${Math.round(this.transitionCooldown)}ms` :
+                  !canTransition ? 'Room cannot transition' : 'Unknown'
         });
       }
     }
@@ -1973,8 +2067,8 @@ export class Game {
       statsContainer.innerHTML = '<div class="loading">Loading statistics...</div>';
 
       // Get current run stats (local)
-      // NEW v3.0: Use run number from initialization data (more reliable)
-      const currentRun = this.runNumber || this.floorGenerator.getCurrentRun(); // Fallback to FloorGenerator
+      // FIXED v3.0: Use run number from initialization data with proper fallback
+      const currentRun = this.runNumber || this.floorGenerator.getCurrentRun() || 1; // Fallback to 1
       const currentFloor = this.floorGenerator.getCurrentFloor();
       const currentRoom = this.floorGenerator.getCurrentRoomIndex() + 1;
       const totalRooms = this.floorGenerator.getTotalRooms();
@@ -2138,29 +2232,31 @@ export class Game {
       console.log('Saving state before logout...');
       await this.saveCurrentState();
 
-      // Import logout function dynamically
-      const { logoutUser } = await import('../../utils/api.js');
+      // Import enhanced logout function
+      const { enhancedLogout } = await import('../../utils/api.js');
 
       // Get session data
       const sessionToken = localStorage.getItem('sessionToken');
 
-      if (sessionToken) {
-        console.log('Logging out from game...');
-        await logoutUser(sessionToken);
+      // Use centralized enhanced logout
+      console.log('Using enhanced logout for complete session cleanup...');
+      const logoutSuccess = await enhancedLogout(sessionToken);
+      
+      if (!logoutSuccess) {
+        console.warn('Backend logout failed, but localStorage was cleared');
       }
-
-      // Clear session data
-      const sessionKeys = ['sessionToken', 'currentUserId', 'currentSessionId', 'currentRunId'];
-      sessionKeys.forEach(key => localStorage.removeItem(key));
 
       // Redirect to landing
       window.location.href = 'landing.html';
 
     } catch (error) {
       console.error('Logout error:', error);
-      // Force logout even if API fails
-      const sessionKeys = ['sessionToken', 'currentUserId', 'currentSessionId', 'currentRunId'];
-      sessionKeys.forEach(key => localStorage.removeItem(key));
+      
+      // Force logout even if save/logout API fails
+      console.log('Force logout with emergency localStorage cleanup...');
+      const { clearSessionLocalStorage } = await import('../../utils/api.js');
+      clearSessionLocalStorage();
+      
       window.location.href = 'landing.html';
     }
   }
@@ -2201,9 +2297,14 @@ export class Game {
     try {
       console.log('Starting game initialization...');
 
-      // Load saved state BEFORE initializing objects
+      // CRITICAL FIX: Wait for managers to initialize FIRST
+      await this.initializeManagers();
+      console.log('Managers initialization complete');
+
+      // THEN load saved state
       await this.loadSavedState().then(() => {
-        this.initObjects(); // Now this.player won't be overwritten
+        // FINALLY initialize objects with all data available
+        this.initObjects(); 
       }).catch(error => {
         console.error("Failed to load saved state, starting fresh:", error);
         this.initObjects(); // Fallback to fresh start

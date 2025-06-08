@@ -1,13 +1,10 @@
 -- ===================================================
--- SHATTERED TIMELINE - ENHANCED DATABASE VIEWS v3.0
+-- SHATTERED TIMELINE - DATABASE OBJECTS v3.0
 -- ===================================================
--- Version: 3.0 - NEW: Support for run persistence, permanent & temporary upgrades
--- Objective: Complete views for all missing functionalities
--- New Views for:
--- 1. Run progress and persistence
--- 2. Permanent upgrades with calculated values
--- 3. Temporary upgrades with active status
--- 4. Enhanced analytics with run numbers
+-- Version: 3.0 - Views, triggers, and procedures for enhanced functionality
+-- Focus: Database objects only (views, triggers, procedures, permissions)
+-- Objective: Complete database objects for run persistence, permanent & temporary upgrades
+-- Note: Execute this file AFTER dbshatteredtimeline3forperm.sql
 -- ===================================================
 
 USE dbshatteredtimeline;
@@ -39,7 +36,7 @@ SELECT
 FROM sessions;
 
 -- ===================================================
--- NEW: USER RUN PROGRESS VIEWS (CRITICAL FIX)
+-- USER RUN PROGRESS VIEWS (CRITICAL FIX)
 -- ===================================================
 
 -- NEW VIEW: User run progress (for run persistence)
@@ -414,7 +411,7 @@ WHERE rh.ended_at IS NULL
 ORDER BY rh.started_at;
 
 -- ===================================================
--- NEW: SPECIALIZED VIEWS FOR API INTEGRATION
+-- SPECIALIZED VIEWS FOR API INTEGRATION
 -- ===================================================
 
 -- NEW VIEW: Complete player initialization data
@@ -480,6 +477,144 @@ LEFT JOIN (
 ) best_run ON ps.user_id = best_run.user_id;
 
 -- ===================================================
+-- TRIGGERS AND PROCEDURES (ENHANCED FOR v3.0)
+-- ===================================================
+
+-- TRIGGER: Initialize user run progress for new users
+DELIMITER //
+CREATE TRIGGER tr_create_user_run_progress
+AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+    INSERT INTO user_run_progress (user_id) VALUES (NEW.user_id);
+    INSERT INTO player_settings (user_id) VALUES (NEW.user_id);
+    INSERT INTO player_stats (user_id) VALUES (NEW.user_id);
+END//
+DELIMITER ;
+
+-- TRIGGER: Update permanent upgrade calculated values on insert
+DELIMITER //
+CREATE TRIGGER tr_calculate_permanent_upgrade_values
+BEFORE INSERT ON permanent_player_upgrades
+FOR EACH ROW
+BEGIN
+    -- Calculate values based on upgrade type and level
+    CASE NEW.upgrade_type
+        WHEN 'health_max' THEN 
+            SET NEW.base_value = 100;
+            SET NEW.current_value = 100 + (NEW.level * 15);  -- +15 HP per level
+        WHEN 'stamina_max' THEN 
+            SET NEW.base_value = 100;
+            SET NEW.current_value = 100 + (NEW.level * 20);  -- +20 Stamina per level
+        WHEN 'movement_speed' THEN 
+            SET NEW.base_value = 1.0;
+            SET NEW.current_value = 1.0 + (NEW.level * 0.1); -- +10% speed per level
+    END CASE;
+END//
+DELIMITER ;
+
+-- TRIGGER: Update permanent upgrade calculated values on update
+DELIMITER //
+CREATE TRIGGER tr_update_permanent_upgrade_values
+BEFORE UPDATE ON permanent_player_upgrades
+FOR EACH ROW
+BEGIN
+    -- Recalculate values when level changes
+    IF NEW.level != OLD.level THEN
+        CASE NEW.upgrade_type
+            WHEN 'health_max' THEN 
+                SET NEW.base_value = 100;
+                SET NEW.current_value = 100 + (NEW.level * 15);
+            WHEN 'stamina_max' THEN 
+                SET NEW.base_value = 100;
+                SET NEW.current_value = 100 + (NEW.level * 20);
+            WHEN 'movement_speed' THEN 
+                SET NEW.base_value = 1.0;
+                SET NEW.current_value = 1.0 + (NEW.level * 0.1);
+        END CASE;
+    END IF;
+END//
+DELIMITER ;
+
+-- TRIGGER: Increment run number on new run creation (FIXED)
+DELIMITER //
+CREATE TRIGGER tr_increment_run_number
+BEFORE INSERT ON run_history
+FOR EACH ROW
+BEGIN
+    DECLARE current_run_num INT DEFAULT 1;
+    
+    -- Get current run number for the user
+    SELECT current_run_number INTO current_run_num 
+    FROM user_run_progress 
+    WHERE user_id = NEW.user_id;
+    
+    -- Set the run number for this run
+    SET NEW.run_number = current_run_num;
+    
+    -- FIXED: Only increment run counter AFTER the run is completed, not when created
+    -- The current_run_number should represent the active run number
+    -- Increment will happen in tr_update_player_stats_after_run when run ends
+END//
+DELIMITER ;
+
+-- TRIGGER: Update player_stats when run ends (ENHANCED)
+DELIMITER //
+CREATE TRIGGER tr_update_player_stats_after_run
+AFTER UPDATE ON run_history
+FOR EACH ROW
+BEGIN
+    IF NEW.ended_at IS NOT NULL AND OLD.ended_at IS NULL THEN
+        -- Update player stats
+        INSERT INTO player_stats (
+            user_id, total_runs, total_kills, total_deaths, 
+            total_gold_earned, total_gold_spent, total_bosses_killed, 
+            total_playtime_seconds, highest_floor_ever
+        )
+        VALUES (
+            NEW.user_id, 1, NEW.total_kills, 1, 
+            NEW.final_gold, NEW.gold_spent, NEW.bosses_killed, 
+            NEW.duration_seconds, NEW.final_floor
+        )
+        ON DUPLICATE KEY UPDATE 
+            total_runs = total_runs + 1,
+            total_kills = total_kills + NEW.total_kills,
+            total_deaths = total_deaths + 1,
+            total_gold_earned = total_gold_earned + NEW.final_gold,
+            total_gold_spent = total_gold_spent + NEW.gold_spent,
+            total_bosses_killed = total_bosses_killed + NEW.bosses_killed,
+            total_playtime_seconds = total_playtime_seconds + NEW.duration_seconds,
+            highest_floor_ever = GREATEST(highest_floor_ever, NEW.final_floor);
+            
+        -- Update user run progress
+        UPDATE user_run_progress 
+        SET highest_floor_reached = GREATEST(highest_floor_reached, NEW.final_floor),
+            total_completed_runs = total_completed_runs + 1,
+            current_run_number = current_run_number + 1,  -- FIXED: Increment ONLY when run completes
+            last_updated = NOW()
+        WHERE user_id = NEW.user_id;
+        
+        -- Mark weapon upgrades as inactive when run ends
+        UPDATE weapon_upgrades_temp 
+        SET is_active = FALSE 
+        WHERE user_id = NEW.user_id AND run_id = NEW.run_id;
+    END IF;
+END//
+DELIMITER ;
+
+-- TRIGGER: Update run gold_spent when weapon purchase occurs
+DELIMITER //
+CREATE TRIGGER tr_update_run_gold_spent
+AFTER INSERT ON weapon_upgrade_purchases
+FOR EACH ROW
+BEGIN
+    UPDATE run_history 
+    SET gold_spent = gold_spent + NEW.cost
+    WHERE run_id = NEW.run_id;
+END//
+DELIMITER ;
+
+-- ===================================================
 -- PERMISSIONS AND SECURITY
 -- ===================================================
 
@@ -522,23 +657,23 @@ GET /api/users/:userId/sessions → vw_user_sessions
 GET /api/users/:userId/save-state → vw_player_save
 GET /api/users/:userId/settings → vw_player_config
 
-NEW: RUN PERSISTENCE ENDPOINTS:
+RUN PERSISTENCE ENDPOINTS:
 GET /api/users/:userId/run-progress → vw_user_run_progress
 GET /api/users/:userId/current-run-info → vw_current_run_info
 
-NEW: PERMANENT UPGRADES ENDPOINTS:
+PERMANENT UPGRADES ENDPOINTS:
 GET /api/users/:userId/permanent-upgrades → vw_permanent_upgrades
 
-NEW: TEMPORARY UPGRADES ENDPOINTS:
+TEMPORARY UPGRADES ENDPOINTS:
 GET /api/users/:userId/active-weapon-upgrades → vw_active_weapon_upgrades
 GET /api/users/:userId/weapon-upgrades → vw_weapon_levels
 
-ENHANCED STATISTICS ENDPOINTS:
+STATISTICS ENDPOINTS:
 GET /api/users/:userId/stats → vw_player_metrics
 GET /api/users/:userId/complete-stats → vw_complete_player_stats
 GET /api/users/:userId/history → vw_game_history
 
-NEW: PLAYER INITIALIZATION ENDPOINT:
+PLAYER INITIALIZATION ENDPOINT:
 GET /api/users/:userId/initialization-data → vw_player_initialization
 
 ADMIN DASHBOARD ENDPOINTS:
@@ -553,7 +688,7 @@ GET /api/analytics/player-progression → vw_player_progression
 GET /api/status/active-players → vw_active_players
 GET /api/status/current-games → vw_current_games
 
-✅ NEW FUNCTIONALITIES v3.0:
+✅ FUNCTIONALITIES v3.0:
 
 #1 RUN PERSISTENCE:
 - vw_user_run_progress: Persistent run counter per user
@@ -575,6 +710,14 @@ GET /api/status/current-games → vw_current_games
 - JSON-like permanent upgrades string
 - All flags for frontend consumption
 
+TRIGGERS:
+- tr_create_user_run_progress: Auto-initialize new users
+- tr_calculate_permanent_upgrade_values: Auto-calculate upgrade values
+- tr_update_permanent_upgrade_values: Recalculate on level changes
+- tr_increment_run_number: Set run number (fixed to not increment on creation)
+- tr_update_player_stats_after_run: Update stats and increment run number on completion
+- tr_update_run_gold_spent: Track gold spending during runs
+
 BENEFITS:
 - Complete run persistence across sessions
 - Automatic permanent upgrade calculation
@@ -585,11 +728,14 @@ BENEFITS:
 */
 
 -- ===================================================
--- CREATED VIEWS VERIFICATION
+-- OBJECTS VERIFICATION
 -- ===================================================
 
 -- Show all created views
 SHOW FULL TABLES WHERE Table_type = 'VIEW';
+
+-- Show all triggers
+SHOW TRIGGERS;
 
 -- Example view usage with new functionality
 SELECT * FROM vw_user_run_progress LIMIT 5;
