@@ -167,24 +167,6 @@ h2 {
   width: 100%;
 }
 
-.divider {
-  margin: 10px 0;
-  border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  width: 100%;
-}
-
-.test-button {
-  background: #2c3e50;
-  color: #ecf0f1;
-  border: 1px dashed #95a5a6;
-  font-size: 0.9em;
-}
-
-.test-button:hover {
-  background: #34495e;
-}
-
 /* Message styles */
 #error-message {
   background: rgba(255, 82, 82, 0.15);

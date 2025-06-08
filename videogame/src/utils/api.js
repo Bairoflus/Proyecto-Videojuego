@@ -377,4 +377,107 @@ export async function getActivePlayers() {
 export async function getCurrentGames() {
     const response = await apiRequest('/status/current-games');
     return response.data; // Extract data from {success: true, data: [...]}
+}
+
+// ===================================================
+// NEW v3.0: RUN PROGRESS AND PERSISTENCE FUNCTIONS
+// ===================================================
+
+/**
+ * Get user run progress (persistent run counter and achievements)
+ * @param {string|number} userId - User ID
+ * @returns {Promise<Object>} Run progress data with current run number and achievements
+ */
+export async function getUserRunProgress(userId) {
+    const response = await apiRequest(`/users/${userId}/run-progress`);
+    return response.data; // Extract data from {success: true, data: {current_run: X, best_floor: Y, finished_runs: Z}}
+}
+
+/**
+ * Get current run information (combines run history + progress)
+ * @param {string|number} userId - User ID
+ * @returns {Promise<Object>} Current run information with status and stats
+ */
+export async function getCurrentRunInfo(userId) {
+    const response = await apiRequest(`/users/${userId}/current-run-info`);
+    return response.data; // Extract data from {success: true, data: {run_number: X, run_status: 'active'/'none', ...}}
+}
+
+/**
+ * Get complete player initialization data (one-query solution)
+ * @param {string|number} userId - User ID
+ * @returns {Promise<Object>} Complete initialization data including run number, permanent upgrades, weapon levels, save state, etc.
+ */
+export async function getPlayerInitializationData(userId) {
+    const response = await apiRequest(`/users/${userId}/initialization-data`);
+    return response.data; // Extract data with run_number, permanent_upgrades_parsed, melee_level, ranged_level, has_save_state, etc.
+}
+
+/**
+ * Get active weapon upgrades (only currently active upgrades for current run)
+ * @param {string|number} userId - User ID
+ * @returns {Promise<Object>} Active weapon upgrade levels
+ */
+export async function getActiveWeaponUpgrades(userId) {
+    const response = await apiRequest(`/users/${userId}/active-weapon-upgrades`);
+    return response.data; // Extract data from {success: true, data: {close_combat: X, distance_combat: Y, upgrade_status: true/false}}
+}
+
+// ===================================================
+// ENHANCED v3.0: PERMANENT UPGRADES (Already exists but enhanced in backend)
+// ===================================================
+
+/**
+ * Get permanent upgrades with calculated values (ENHANCED v3.0)
+ * Now returns calculated values ready for frontend use
+ * @param {string|number} userId - User ID
+ * @returns {Promise<Array>} Array of permanent upgrades with calculated values
+ */
+// getPermanentUpgrades function already exists above and will now return enhanced data
+
+// ===================================================
+// UTILITY FUNCTIONS FOR v3.0 FEATURES
+// ===================================================
+
+/**
+ * Initialize player with complete data from v3.0 backend
+ * This is a convenience function that fetches all initialization data in one call
+ * @param {string|number} userId - User ID
+ * @returns {Promise<Object>} Complete player initialization data
+ */
+export async function initializePlayerData(userId) {
+    try {
+        // Use the new one-query initialization endpoint
+        const initData = await getPlayerInitializationData(userId);
+        
+        console.log('Player initialization v3.0 data loaded successfully:', {
+            runNumber: initData.run_number,
+            hasActivePermanentUpgrades: initData.has_permanent_upgrades,
+            hasActiveWeaponUpgrades: initData.has_temp_upgrades,
+            hasSaveState: initData.has_save_state,
+            permanentUpgrades: Object.keys(initData.permanent_upgrades_parsed || {}).length
+        });
+        
+        // Return data directly (no wrapper) for easy access in Game.js
+        return initData;
+        
+    } catch (error) {
+        console.error('Failed to initialize player data v3.0:', error);
+        return null; // Return null on failure for easy checking
+    }
+}
+
+/**
+ * Check if user has active temporary upgrades that should be preserved
+ * @param {string|number} userId - User ID
+ * @returns {Promise<boolean>} True if user has active temporary upgrades
+ */
+export async function hasActiveTemporaryUpgrades(userId) {
+    try {
+        const upgrades = await getActiveWeaponUpgrades(userId);
+        return upgrades.upgrade_status === true;
+    } catch (error) {
+        console.error('Failed to check active temporary upgrades:', error);
+        return false;
+    }
 } 

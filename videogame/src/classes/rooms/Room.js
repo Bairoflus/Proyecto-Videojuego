@@ -298,6 +298,36 @@ export class Room {
     ) {
       console.log("ALL ENEMIES DEFEATED - Spawning chest");
       this.spawnChest();
+
+      // IMMEDIATE DIAGNOSTIC: Check transition state right after enemy cleanup
+      console.log("IMMEDIATE TRANSITION CHECK AFTER ENEMY CLEANUP:");
+      console.log(`  - Room type: ${this.roomType}, Combat room: ${this.isCombatRoom}`);
+      console.log(`  - Enemies remaining: ${this.objects.enemies.length}`);
+      console.log(`  - Alive enemies: ${this.objects.enemies.filter(e => e.state !== 'dead').length}`);
+      console.log(`  - Dead enemies removed: ${deadEnemies.length}`);
+      console.log(`  - Can transition: ${this.canTransition()}`);
+
+      // FORCE VERIFICATION: Double-check all enemies are actually dead
+      const stillAlive = this.objects.enemies.filter(e => e.state !== 'dead');
+      if (stillAlive.length > 0) {
+        console.error("ERROR: Enemies marked as alive after cleanup!");
+        stillAlive.forEach(enemy => {
+          console.error(`  - ALIVE: ${enemy.type} at (${Math.round(enemy.position.x)}, ${Math.round(enemy.position.y)}) - Health: ${enemy.health}, State: ${enemy.state}`);
+        });
+      } else {
+        console.log("VERIFICATION PASSED - All enemies confirmed dead/removed");
+
+        // FORCE NOTIFICATION to Game.js that room is now clear
+        if (window.game) {
+          console.log("NOTIFYING GAME: Combat room is now clear for transition");
+          window.game.roomJustCleared = true; // Set flag for immediate feedback
+
+          // If player is already at right edge, trigger transition check immediately
+          if (window.game.player && this.isPlayerAtRightEdge(window.game.player)) {
+            console.log("PLAYER AT RIGHT EDGE - Transition should be possible now!");
+          }
+        }
+      }
     }
 
     // Update shop interaction
@@ -383,6 +413,37 @@ export class Room {
     const isAtMiddleY =
       Math.abs(playerHitbox.y + playerHitbox.height / 2 - middleY) <
       playerHitbox.height;
+
+    // ENHANCED: Add debugging when player is close to transition
+    const debugThreshold = rightEdge - this.transitionZone * 1.5; // Slightly before transition zone
+    if (playerHitbox.x > debugThreshold) {
+      // Initialize debug counter if not exists
+      if (!this.rightEdgeDebugCounter) this.rightEdgeDebugCounter = 0;
+      this.rightEdgeDebugCounter++;
+
+      // Log every 30 frames when player is near transition area
+      if (this.rightEdgeDebugCounter % 30 === 0) {
+        const playerCenterY = playerHitbox.y + playerHitbox.height / 2;
+        const yDifference = Math.abs(playerCenterY - middleY);
+
+        console.log('🎯 RIGHT EDGE DEBUG - Player near transition zone:', {
+          playerX: Math.round(playerHitbox.x),
+          playerY: Math.round(playerHitbox.y),
+          playerCenterY: Math.round(playerCenterY),
+          rightEdge: Math.round(rightEdge),
+          transitionZone: this.transitionZone,
+          transitionThreshold: Math.round(rightEdge - this.transitionZone),
+          middleY: Math.round(middleY),
+          yDifference: Math.round(yDifference),
+          yTolerance: playerHitbox.height,
+          isAtRightEdge,
+          isAtMiddleY,
+          finalResult: isAtRightEdge && isAtMiddleY,
+          failureReason: !isAtRightEdge ? 'X position not in transition zone' :
+            !isAtMiddleY ? 'Y position not centered enough' : 'None'
+        });
+      }
+    }
 
     return isAtRightEdge && isAtMiddleY;
   }
@@ -595,20 +656,23 @@ export class Room {
       const bossDefeatedFlag = this.bossDefeated === true;
       const canTransition = allEnemiesDead || bossDefeatedFlag;
 
-      if (canTransition) {
-        if (bossDefeatedFlag && !allEnemiesDead) {
-          log.info(`⚡ Boss room transition activated via bossDefeated flag! (${deadEnemies}/${totalEnemies} dead)`);
-        } else if (allEnemiesDead) {
-          log.info(`🏆 Boss defeated! All enemies eliminated (${deadEnemies}/${totalEnemies} dead) — boss room unlocked.`);
-          // Ensure bossDefeated flag is set for consistency
-          this.bossDefeated = true;
+      // THROTTLE: Only log state changes, not every frame
+      if (canTransition !== this.lastBossCanTransition) {
+        this.lastBossCanTransition = canTransition;
+        if (canTransition) {
+          if (bossDefeatedFlag && !allEnemiesDead) {
+            log.info(`⚡ Boss room transition activated via bossDefeated flag! (${deadEnemies}/${totalEnemies} dead)`);
+          } else if (allEnemiesDead) {
+            log.info(`🏆 Boss defeated! All enemies eliminated (${deadEnemies}/${totalEnemies} dead) — boss room unlocked.`);
+            // Ensure bossDefeated flag is set for consistency
+            this.bossDefeated = true;
+          }
+          console.log(`BOSS ROOM TRANSITION ALLOWED - Player can advance to next floor`);
+        } else {
+          const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');
+          log.debug(`Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`);
+          console.log(`BOSS ROOM TRANSITION BLOCKED - Must defeat all enemies first`);
         }
-
-        console.log(`BOSS ROOM TRANSITION ALLOWED - Player can advance to next floor`);
-      } else {
-        const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');
-        log.debug(`Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`);
-        console.log(`BOSS ROOM TRANSITION BLOCKED - Must defeat all enemies first`);
       }
 
       return canTransition;
@@ -626,17 +690,21 @@ export class Room {
     const deadEnemies = totalEnemies - aliveEnemies.length;
     const canTransition = aliveEnemies.length === 0;
 
-    if (canTransition) {
-      log.info(
-        `Combat room cleared: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
-      );
-      console.log(`COMBAT ROOM TRANSITION ALLOWED - Player can advance`);
-    } else {
-      const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');
-      log.debug(
-        `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
-      );
-      console.log(`COMBAT ROOM TRANSITION BLOCKED - ${aliveEnemies.length} enemies remain`);
+    // THROTTLE: Only log state changes, not every frame
+    if (canTransition !== this.lastCombatCanTransition) {
+      this.lastCombatCanTransition = canTransition;
+      if (canTransition) {
+        log.info(
+          `Combat room cleared: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
+        );
+        console.log(`COMBAT ROOM TRANSITION ALLOWED - Player can advance`);
+      } else {
+        const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');
+        log.debug(
+          `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
+        );
+        console.log(`COMBAT ROOM TRANSITION BLOCKED - ${aliveEnemies.length} enemies remain`);
+      }
     }
 
     return canTransition;

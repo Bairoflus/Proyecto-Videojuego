@@ -18,15 +18,23 @@ export class FloorGenerator {
         this.currentFloor = [];
         this.currentRoomIndex = 0; // ALWAYS start at room 0
         this.floorCount = 1;
-        // FIXED: Always start at run 1 for new users, don't persist between sessions
-        this.runCount = FLOOR_CONSTANTS.INITIAL_RUN_COUNT;
+        // NEW v3.0: runCount will be loaded from database, default fallback to 1
+        this.runCount = 1; // Fallback value - will be updated by loadRunProgress()
         this.roomTypes = []; // Track room types: 'combat', 'shop', 'boss'
         this.roomStates = []; // Store room instances with enemy states for persistence
         this.visitedRooms = new Set(); // Track which rooms have been visited
         this.roomMappingInitialized = false; // Track room mapping initialization status
+        this.runProgressLoaded = false; // Track if run progress has been loaded
 
         // PREVENTIVE FIX: Force clean initialization for new runs
         this.ensureCleanInitialization();
+
+        // NEW v3.0: Initialize run progress (async, but don't block constructor)
+        this.initializeWithRunProgress().then(() => {
+            console.log('FloorGenerator v3.0 run progress loaded successfully');
+        }).catch(error => {
+            console.error('FloorGenerator v3.0 run progress load failed:', error);
+        });
 
         this.generateFloor();
         this.initializeRoomMapping(); // Initialize room mapping service
@@ -60,6 +68,53 @@ export class FloorGenerator {
             floorCount: this.floorCount,
             runCount: this.runCount
         });
+    }
+
+    /**
+     * NEW v3.0: Initialize FloorGenerator with persistent run progress from database
+     * This ensures run number continuity between sessions
+     */
+    async initializeWithRunProgress() {
+        try {
+            const userId = localStorage.getItem('currentUserId');
+            const testMode = localStorage.getItem('testMode') === 'true';
+
+            if (userId && !testMode) {
+                console.log('Loading persistent run progress v3.0 for user:', userId);
+
+                // Import the v3.0 API function
+                const { getUserRunProgress } = await import('../../utils/api.js');
+
+                const runProgress = await getUserRunProgress(parseInt(userId));
+
+                if (runProgress && runProgress.current_run) {
+                    this.runCount = runProgress.current_run;
+                    console.log(`Run progress loaded: Currently on run ${this.runCount}`);
+
+                    // Log additional progress info if available
+                    if (runProgress.best_floor) {
+                        console.log(`Player best achievement: Floor ${runProgress.best_floor}`);
+                    }
+                    if (runProgress.finished_runs) {
+                        console.log(`Completed runs: ${runProgress.finished_runs}`);
+                    }
+                } else {
+                    console.log('No run progress found, starting at run 1');
+                    this.runCount = 1;
+                }
+            } else {
+                console.log('Test mode or no user ID - using default run 1');
+                this.runCount = 1;
+            }
+
+            this.runProgressLoaded = true;
+            console.log(`FloorGenerator v3.0 initialized with run number: ${this.runCount}`);
+
+        } catch (error) {
+            console.error('Failed to load run progress v3.0, using default run 1:', error);
+            this.runCount = 1; // Fallback to run 1
+            this.runProgressLoaded = true; // Mark as loaded even on error
+        }
     }
 
     // Generates a new floor with random rooms
@@ -446,8 +501,28 @@ export class FloorGenerator {
                 console.error("Failed to complete run on victory:", error);
             }
 
-            // FIXED: Start new run - increment run, reset floor
+            // NEW v3.0: Increment run and create new run in database immediately
             this.runCount++;
+            console.log(`VICTORY: Starting run ${this.runCount}`);
+
+            // Create new run in backend immediately
+            try {
+                const userId = localStorage.getItem('currentUserId');
+                if (userId) {
+                    console.log("Creating new run for victory progression...");
+                    const newRunData = await createRun(parseInt(userId));
+                    localStorage.setItem('currentRunId', newRunData.runId);
+                    console.log("New run created for victory:", newRunData.runId);
+                } else {
+                    console.log("No userId available, enabling test mode");
+                    localStorage.setItem('testMode', 'true');
+                }
+            } catch (error) {
+                console.error("Failed to create new run during victory, enabling test mode:", error);
+                localStorage.setItem('testMode', 'true');
+            }
+
+            // Reset to floor 1
             this.floorCount = 1;
             console.log(`VICTORY: New run started - Run ${this.runCount}, Floor 1`);
 
