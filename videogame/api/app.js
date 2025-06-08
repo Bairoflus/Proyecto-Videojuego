@@ -55,11 +55,7 @@ app.get('/', (req, res) => {
         status: 'Server is running',
         database: 'dbshatteredtimeline',
         features: [
-            'Optimized database (60% fewer tables)',
-            'Frontend-first processing',
-            'Permanent upgrades system',
-            'Enhanced save states',
-            'Analytics ready'
+            'Optimized database',
         ]
     });
 });
@@ -1079,7 +1075,7 @@ app.listen(PORT, () => {
     console.log(`   Saves: GET/POST/DELETE /api/users/:id/save-state`);
     console.log(`   Analytics: GET /api/leaderboards/:type, /api/analytics/economy`);
     console.log(`   Status: GET /api/status/active-players, /api/status/current-games`);
-    console.log(`\nOptimized: 60% fewer endpoints, frontend-first processing`);
+    console.log(`\nOptimized`);
 });
 
 // ===================================================
