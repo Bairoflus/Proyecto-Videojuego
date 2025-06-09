@@ -1,13 +1,37 @@
+// ===================================================
+// SHATTERED TIMELINE API - OPTIMIZED VERSION
+// ===================================================
+// Database: dbshatteredtimeline
+// Version: 2.0 - Optimized API
+// ===================================================
+
 const express = require('express');
 const bcrypt = require('bcrypt');
-const createConnection = require('./db.js');
-const authMiddleware = require('./authMiddleware.js');
+const mysql = require('mysql2/promise');
 
 const app = express();
 const PORT = 3000;
 const SALT_ROUNDS = 10;
 
-// Middleware básico
+// ===================================================
+// DATABASE CONFIGURATION
+// ===================================================
+
+const dbConfig = {
+  host: 'localhost',
+  user: 'tc2005b',
+  password: 'qwer1234',
+  database: 'dbshatteredtimeline' // ← NUEVA BASE DE DATOS OPTIMIZADA
+};
+
+async function createConnection() {
+  return await mysql.createConnection(dbConfig);
+}
+
+// ===================================================
+// BASIC MIDDLEWARE
+// ===================================================
+
 app.use(express.json());
 
 // CORS simple para desarrollo
@@ -21,18 +45,24 @@ app.use((req, res, next) => {
     next();
 });
 
-// ================================================================
-// ENDPOINTS SIN AUTENTICACIÓN
-// ================================================================
+// ===================================================
+// ROOT ENDPOINT
+// ===================================================
 
-// Root route
 app.get('/', (req, res) => {
     res.json({
-        message: 'Project Shattered Timeline API',
+        message: 'Shattered Timeline API v2.0',
         status: 'Server is running',
-        version: '1.0.0'
+        database: 'dbshatteredtimeline',
+        features: [
+            'Optimized database',
+        ]
     });
 });
+
+// ===================================================
+// AUTHENTICATION
+// ===================================================
 
 // POST /api/auth/register
 app.post('/api/auth/register', async (req, res) => {
@@ -42,7 +72,7 @@ app.post('/api/auth/register', async (req, res) => {
         
         if (!username || !email || !password) {
             return res.status(400).json({ 
-                status: 'error',
+                success: false,
                 message: 'Faltan datos: username, email, password' 
             });
         }
@@ -52,35 +82,28 @@ app.post('/api/auth/register', async (req, res) => {
         // Hash password
         const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
         
-        // Insertar usuario
+        // Insertar usuario (trigger automático crea player_settings y player_stats)
         const [result] = await connection.execute(
             'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
             [username, email, passwordHash]
         );
         
-        // Crear configuraciones por defecto
-        try {
-            await connection.execute(
-                'INSERT INTO player_settings (user_id, music_volume, sfx_volume) VALUES (?, ?, ?)',
-                [result.insertId, 70, 80]
-            );
-        } catch (settingsErr) {
-            console.error('Error creating default settings:', settingsErr);
-        }
-        
         res.status(201).json({
+            success: true,
             userId: result.insertId,
             message: 'User registered successfully'
         });
         
     } catch (err) {
-        console.error(err);
+        console.error('Registration error:', err);
         if (err.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({ 
+                success: false,
                 message: 'Username or email already exists' 
             });
         }
         res.status(500).json({ 
+            success: false,
             message: 'Error registering user' 
         });
     } finally {
@@ -92,24 +115,26 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     let connection;
     try {
-        const { email, password } = req.body;
+        const { username, password } = req.body;
         
-        if (!email || !password) {
+        if (!username || !password) {
             return res.status(400).json({ 
-                message: 'Missing email or password' 
+                success: false,
+                message: 'Missing username or password' 
             });
         }
         
         connection = await createConnection();
         
-        // Buscar usuario
+        // Find user by username
         const [users] = await connection.execute(
-            'SELECT user_id, password_hash FROM users WHERE email = ?',
-            [email]
+            'SELECT user_id, password_hash FROM users WHERE username = ? AND is_active = TRUE',
+            [username]
         );
         
         if (users.length === 0) {
-            return res.status(404).json({ 
+            return res.status(401).json({ 
+                success: false,
                 message: 'Invalid credentials' 
             });
         }
@@ -118,32 +143,39 @@ app.post('/api/auth/login', async (req, res) => {
         const passwordMatch = await bcrypt.compare(password, user.password_hash);
         
         if (!passwordMatch) {
-            return res.status(404).json({ 
+            return res.status(401).json({ 
+                success: false,
                 message: 'Invalid credentials' 
             });
         }
         
-        // Crear nueva sesión
+        // Create new session
+        const sessionToken = require('crypto').randomUUID();
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        
         const [sessionResult] = await connection.execute(
-            'INSERT INTO sessions (user_id, session_token) VALUES (?, UUID())',
+            'INSERT INTO sessions (user_id, session_token, expires_at) VALUES (?, ?, ?)',
+            [user.user_id, sessionToken, expiresAt]
+        );
+        
+        // Update last_login
+        await connection.execute(
+            'UPDATE users SET last_login = NOW() WHERE user_id = ?',
             [user.user_id]
         );
         
-        // Obtener token generado
-        const [sessions] = await connection.execute(
-            'SELECT session_token FROM sessions WHERE session_id = ?',
-            [sessionResult.insertId]
-        );
-        
         res.status(200).json({
+            success: true,
             userId: user.user_id,
-            sessionToken: sessions[0].session_token,
-            sessionId: sessionResult.insertId
+            sessionToken: sessionToken,
+            sessionId: sessionResult.insertId,
+            expiresAt: expiresAt
         });
         
     } catch (err) {
-        console.error(err);
+        console.error('Login error:', err);
         res.status(500).json({ 
+            success: false,
             message: 'Database error' 
         });
     } finally {
@@ -159,6 +191,7 @@ app.post('/api/auth/logout', async (req, res) => {
         
         if (!sessionToken) {
             return res.status(400).json({ 
+                success: false,
                 message: 'Missing sessionToken' 
             });
         }
@@ -166,21 +199,26 @@ app.post('/api/auth/logout', async (req, res) => {
         connection = await createConnection();
         
         const [result] = await connection.execute(
-            'UPDATE sessions SET closed_at = NOW() WHERE session_token = ?',
+            'UPDATE sessions SET is_active = FALSE, logout_at = NOW() WHERE session_token = ?',
             [sessionToken]
         );
         
         if (result.affectedRows === 0) {
             return res.status(404).json({ 
+                success: false,
                 message: 'Session not found' 
             });
         }
 
-        res.status(204).send();
+        res.status(200).json({
+            success: true,
+            message: 'Logged out successfully'
+        });
         
     } catch (err) {
-        console.error(err);
+        console.error('Logout error:', err);
         res.status(500).json({ 
+            success: false,
             message: 'Database error' 
         });
     } finally {
@@ -188,156 +226,9 @@ app.post('/api/auth/logout', async (req, res) => {
     }
 });
 
-// ================================================================
-// ENDPOINTS DE DATOS DEL JUEGO (SIN AUTH - ACCESO PÚBLICO)
-// ================================================================
-
-// GET /api/rooms
-app.get('/api/rooms', async (req, res) => {
-    let connection;
-    try {
-        connection = await createConnection();
-        const [rows] = await connection.execute(
-            'SELECT room_id, floor, name, room_type, sequence_order FROM rooms ORDER BY floor, sequence_order'
-        );
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-// GET /api/enemies
-app.get('/api/enemies', async (req, res) => {
-    let connection;
-    try {
-        connection = await createConnection();
-        const [rows] = await connection.execute(
-            'SELECT enemy_id, name, floor, is_rare, base_hp, base_damage, movement_speed, attack_cooldown_seconds, attack_range, sprite_url FROM enemy_types'
-        );
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-// GET /api/bosses
-app.get('/api/bosses', async (req, res) => {
-    let connection;
-    try {
-        connection = await createConnection();
-        const [results] = await connection.execute(
-            'SELECT bd.enemy_id, et.name, bd.max_hp, bd.description, bm.move_id, bm.name as move_name, bm.description as move_description, bm.phase FROM boss_details bd INNER JOIN enemy_types et ON bd.enemy_id = et.enemy_id LEFT JOIN boss_moves bm ON bd.enemy_id = bm.enemy_id ORDER BY bd.enemy_id, bm.phase, bm.move_id'
-        );
-        
-        // Agrupar moves por boss
-        const bossesMap = new Map();
-        for (const row of results) {
-            if (!bossesMap.has(row.enemy_id)) {
-                bossesMap.set(row.enemy_id, {
-                    enemy_id: row.enemy_id,
-                    name: row.name,
-                    max_hp: row.max_hp,
-                    description: row.description,
-                    moves: []
-                });
-            }
-            if (row.move_id) {
-                bossesMap.get(row.enemy_id).moves.push({
-                    move_id: row.move_id,
-                    name: row.move_name,
-                    description: row.move_description,
-                    phase: row.phase
-                });
-            }
-        }
-        
-        res.json(Array.from(bossesMap.values()));
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-// GET /api/lookups
-app.get('/api/lookups', async (req, res) => {
-    let connection;
-    try {
-        connection = await createConnection();
-        
-        const [eventTypes] = await connection.execute('SELECT event_type as name FROM event_types');
-        const [weaponSlots] = await connection.execute('SELECT slot_type as name FROM weapon_slots');
-        const [upgradeTypes] = await connection.execute('SELECT upgrade_type as name FROM upgrade_types');
-        const [bossResults] = await connection.execute('SELECT result_code as name FROM boss_results');
-        const [roomTypes] = await connection.execute('SELECT room_type as name FROM room_types');
-        const [itemTypes] = await connection.execute('SELECT item_type as name FROM item_types');
-        
-        res.json({
-            eventTypes,
-            weaponSlots,
-            upgradeTypes,
-            bossResults,
-            roomTypes,
-            itemTypes
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-// GET /api/item-types
-app.get('/api/item-types', async (req, res) => {
-    let connection;
-    try {
-        connection = await createConnection();
-        const [rows] = await connection.execute('SELECT item_type AS name FROM item_types');
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-// ================================================================
-// ENDPOINTS CON AUTENTICACIÓN
-// ================================================================
-
-// GET /api/users/:userId/stats
-app.get('/api/users/:userId/stats', async (req, res) => {
-    let connection;
-    try {
-        const { userId } = req.params;
-        
-        connection = await createConnection();
-        const [rows] = await connection.execute(
-            'SELECT * FROM player_stats WHERE user_id = ?',
-            [userId]
-        );
-        
-        if (rows.length === 0) {
-            return res.status(404).json({ message: 'Stats not found' });
-        }
-        
-        res.json(rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
+// ===================================================
+// USER CONFIGURATIONS
+// ===================================================
 
 // GET /api/users/:userId/settings
 app.get('/api/users/:userId/settings', async (req, res) => {
@@ -347,29 +238,27 @@ app.get('/api/users/:userId/settings', async (req, res) => {
         
         connection = await createConnection();
         const [settings] = await connection.execute(
-            'SELECT user_id, music_volume, sfx_volume, last_updated FROM player_settings WHERE user_id = ?',
+            'SELECT * FROM vw_player_config WHERE player = ?',
             [userId]
         );
         
         if (settings.length === 0) {
-            // Crear configuraciones por defecto
-            await connection.execute(
-                'INSERT INTO player_settings (user_id, music_volume, sfx_volume) VALUES (?, ?, ?)',
-                [userId, 70, 80]
-            );
-            
-            return res.json({
-                user_id: parseInt(userId),
-                music_volume: 70,
-                sfx_volume: 80,
-                last_updated: new Date().toISOString()
+            return res.status(404).json({ 
+                success: false,
+                message: 'Settings not found' 
             });
         }
         
-        res.json(settings[0]);
+        res.json({
+            success: true,
+            data: settings[0]
+        });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
+        console.error('Get settings error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Database error' 
+        });
     } finally {
         if (connection) await connection.end();
     }
@@ -380,28 +269,11 @@ app.put('/api/users/:userId/settings', async (req, res) => {
     let connection;
     try {
         const { userId } = req.params;
-        const { musicVolume, sfxVolume } = req.body;
-        
-        if (musicVolume === undefined && sfxVolume === undefined) {
-            return res.status(400).json({ message: 'At least one setting must be provided' });
-        }
+        const { musicVolume, sfxVolume, showFps, autoSaveEnabled } = req.body;
         
         connection = await createConnection();
         
-        // Verificar si existen configuraciones
-        const [existing] = await connection.execute(
-            'SELECT user_id FROM player_settings WHERE user_id = ?',
-            [userId]
-        );
-        
-        if (existing.length === 0) {
-            // Insertar nuevas configuraciones
-            await connection.execute(
-                'INSERT INTO player_settings (user_id, music_volume, sfx_volume) VALUES (?, ?, ?)',
-                [userId, musicVolume || 70, sfxVolume || 80]
-            );
-        } else {
-            // Actualizar configuraciones existentes
+        // Construir query dinámica solo con campos proporcionados
             const updateFields = [];
             const updateValues = [];
             
@@ -413,34 +285,168 @@ app.put('/api/users/:userId/settings', async (req, res) => {
                 updateFields.push('sfx_volume = ?');
                 updateValues.push(sfxVolume);
             }
-            
-            updateFields.push('last_updated = NOW()');
+        if (showFps !== undefined) {
+            updateFields.push('show_fps = ?');
+            updateValues.push(showFps);
+            }
+        if (autoSaveEnabled !== undefined) {
+            updateFields.push('auto_save_enabled = ?');
+            updateValues.push(autoSaveEnabled);
+            }
+        
+        if (updateFields.length === 0) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'No valid settings provided' 
+            });
+        }
+        
             updateValues.push(userId);
             
             await connection.execute(
-                `UPDATE player_settings SET ${updateFields.join(', ')} WHERE user_id = ?`,
+            `UPDATE player_settings SET ${updateFields.join(', ')}, updated_at = NOW() WHERE user_id = ?`,
                 updateValues
-            );
-        }
-        
-        // Obtener configuraciones actualizadas
-        const [updated] = await connection.execute(
-            'SELECT user_id, music_volume, sfx_volume, last_updated FROM player_settings WHERE user_id = ?',
-            [userId]
         );
         
         res.json({
-            message: 'Settings updated successfully',
-            settings: updated[0]
+            success: true,
+            message: 'Settings updated successfully'
         });
         
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
+        console.error('Update settings error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Database error' 
+        });
     } finally {
         if (connection) await connection.end();
     }
 });
+
+// ===================================================
+// BASIC STATISTICS
+// ===================================================
+
+// GET /api/users/:userId/stats
+app.get('/api/users/:userId/stats', async (req, res) => {
+    let connection;
+    try {
+        const { userId } = req.params;
+        
+        connection = await createConnection();
+        const [stats] = await connection.execute(
+            'SELECT * FROM vw_player_metrics WHERE player = ?',
+            [userId]
+        );
+        
+        if (stats.length === 0) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Stats not found' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: stats[0]
+        });
+    } catch (err) {
+        console.error('Get stats error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Database error' 
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// NEW: GET /api/users/:userId/complete-stats (ENHANCED v3.0)
+app.get('/api/users/:userId/complete-stats', async (req, res) => {
+    let connection;
+    try {
+        const { userId } = req.params;
+        
+        connection = await createConnection();
+        
+        // Use enhanced v3.0 view with run tracking
+        const [playerStats] = await connection.execute(
+            'SELECT * FROM vw_complete_player_stats WHERE player_id = ?',
+            [userId]
+        );
+        
+        if (playerStats.length === 0) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Complete stats not found' 
+            });
+        }
+
+        res.json({
+            success: true,
+            data: playerStats[0]
+        });
+    } catch (err) {
+        console.error('Get complete stats error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Database error' 
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// NEW: GET /api/users/:userId/current-run
+app.get('/api/users/:userId/current-run', async (req, res) => {
+    let connection;
+    try {
+        const { userId } = req.params;
+        
+        connection = await createConnection();
+        
+        // Get current active run from run_history
+        const [runStats] = await connection.execute(
+            'SELECT * FROM run_history WHERE user_id = ? AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1',
+            [userId]
+        );
+        
+        if (runStats.length === 0) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'No current run found' 
+            });
+        }
+        
+        const currentRun = runStats[0];
+        
+        res.json({
+            success: true,
+            data: {
+                runId: currentRun.run_id,
+                startedAt: currentRun.started_at,
+                currentFloor: currentRun.final_floor,
+                totalKills: currentRun.total_kills,
+                bossesKilled: currentRun.bosses_killed,
+                goldEarned: currentRun.final_gold,
+                status: 'active'
+            }
+        });
+    } catch (err) {
+        console.error('Get current run error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Database error' 
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ===================================================
+// RUN MANAGEMENT
+// ===================================================
 
 // POST /api/runs
 app.post('/api/runs', async (req, res) => {
@@ -449,7 +455,10 @@ app.post('/api/runs', async (req, res) => {
         const { userId } = req.body;
         
         if (!userId) {
-            return res.status(400).json({ message: 'Missing userId' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'Missing userId' 
+            });
         }
         
         connection = await createConnection();
@@ -458,48 +467,18 @@ app.post('/api/runs', async (req, res) => {
             [userId]
         );
         
-        const [runs] = await connection.execute(
-            'SELECT run_id, started_at FROM run_history WHERE run_id = ?',
-            [result.insertId]
-        );
-        
         res.status(201).json({
-            runId: runs[0].run_id,
-            startedAt: runs[0].started_at
+            success: true,
+            runId: result.insertId,
+            message: 'Run created successfully'
         });
         
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-// POST /api/runs/:runId/save-state
-app.post('/api/runs/:runId/save-state', async (req, res) => {
-    let connection;
-    try {
-        const { runId } = req.params;
-        const { userId, sessionId, roomId, currentHp, currentStamina, gold } = req.body;
-        
-        if (!userId || !sessionId || roomId === undefined || currentHp === undefined || currentStamina === undefined || gold === undefined) {
-            return res.status(400).json({ message: 'Missing required fields' });
-        }
-        
-        connection = await createConnection();
-        const [result] = await connection.execute(
-            'INSERT INTO save_states (user_id, session_id, run_id, room_id, current_hp, current_stamina, gold) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [userId, sessionId, runId, roomId, currentHp, currentStamina, gold]
-        );
-        
-        res.status(201).json({
-            saveId: result.insertId
+        console.error('Create run error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Database error' 
         });
-        
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
     } finally {
         if (connection) await connection.end();
     }
@@ -510,284 +489,802 @@ app.put('/api/runs/:runId/complete', async (req, res) => {
     let connection;
     try {
         const { runId } = req.params;
-        const { goldCollected, goldSpent, totalKills, deathCause } = req.body;
+        const { finalFloor, finalGold, causeOfDeath, totalKills, bossesKilled, durationSeconds } = req.body;
         
         connection = await createConnection();
-        const isSuccessful = !deathCause || deathCause.trim() === '';
-        
         await connection.execute(
-            'UPDATE run_history SET ended_at = NOW(), completed = ?, gold_collected = ?, gold_spent = ?, total_kills = ?, death_cause = ? WHERE run_id = ?',
-            [isSuccessful ? 1 : 0, goldCollected || 0, goldSpent || 0, totalKills || 0, deathCause || null, runId]
+            `UPDATE run_history SET 
+                ended_at = NOW(), 
+                final_floor = ?, 
+                final_gold = ?, 
+                cause_of_death = ?, 
+                total_kills = ?, 
+                bosses_killed = ?, 
+                duration_seconds = ?
+             WHERE run_id = ?`,
+            [finalFloor || 1, finalGold || 0, causeOfDeath || 'active', totalKills || 0, bossesKilled || 0, durationSeconds || 0, runId]
         );
         
         res.json({
-            message: 'Run marked complete'
+            success: true,
+            message: 'Run completed successfully'
         });
         
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
+        console.error('Complete run error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Database error' 
+        });
     } finally {
         if (connection) await connection.end();
     }
 });
 
-// POST /api/runs/:runId/enemy-kill
-app.post('/api/runs/:runId/enemy-kill', async (req, res) => {
+// ===================================================
+// PERMANENT UPGRADES
+// ===================================================
+
+// GET /api/users/:userId/permanent-upgrades
+app.get('/api/users/:userId/permanent-upgrades', async (req, res) => {
     let connection;
     try {
-        const { runId } = req.params;
-        const { userId, enemyId, roomId } = req.body;
+        const { userId } = req.params;
         
         connection = await createConnection();
-        const [result] = await connection.execute(
-            'INSERT INTO enemy_kills (user_id, enemy_id, run_id, room_id) VALUES (?, ?, ?, ?)',
-            [userId, enemyId, runId, roomId]
+        const [upgrades] = await connection.execute(
+            'SELECT * FROM vw_permanent_upgrades WHERE player = ?',
+            [userId]
         );
         
-        res.status(201).json({
-            killId: result.insertId,
-            message: 'Enemy kill registered'
+        res.json({
+            success: true,
+            data: upgrades
         });
-        
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
+    } catch (error) {
+        console.error('Error getting permanent upgrades:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching permanent upgrades'
+        });
     } finally {
         if (connection) await connection.end();
     }
 });
 
-// POST /api/runs/:runId/chest-event
-app.post('/api/runs/:runId/chest-event', async (req, res) => {
+// POST /api/users/:userId/permanent-upgrade
+app.post('/api/users/:userId/permanent-upgrade', async (req, res) => {
     let connection;
     try {
-        const { runId } = req.params;
-        const { userId, roomId, goldReceived } = req.body;
+        const { userId } = req.params;
+        const { upgradeType } = req.body;
         
-        connection = await createConnection();
-        const [result] = await connection.execute(
-            'INSERT INTO chest_events (user_id, run_id, room_id, gold_received) VALUES (?, ?, ?, ?)',
-            [userId, runId, roomId, goldReceived]
-        );
-        
-        res.status(201).json({
-            eventId: result.insertId,
-            message: 'Chest event registered'
-        });
-        
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-// POST /api/runs/:runId/shop-purchase
-app.post('/api/runs/:runId/shop-purchase', async (req, res) => {
-    let connection;
-    try {
-        const { runId } = req.params;
-        const { userId, roomId, itemType, itemName, goldSpent } = req.body;
-        
-        connection = await createConnection();
-        const [result] = await connection.execute(
-            'INSERT INTO shop_purchases (user_id, run_id, room_id, item_type, item_name, gold_spent) VALUES (?, ?, ?, ?, ?, ?)',
-            [userId, runId, roomId, itemType, itemName, goldSpent]
-        );
-        
-        res.status(201).json({
-            purchaseId: result.insertId,
-            message: 'Shop purchase registered'
-        });
-        
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-// POST /api/runs/:runId/boss-encounter
-app.post('/api/runs/:runId/boss-encounter', async (req, res) => {
-    let connection;
-    try {
-        const { runId } = req.params;
-        const { userId, enemyId, damageDealt, damageTaken, resultCode } = req.body;
-        
-        connection = await createConnection();
-        const [result] = await connection.execute(
-            'INSERT INTO boss_encounters (user_id, enemy_id, run_id, damage_dealt, damage_taken, result_code) VALUES (?, ?, ?, ?, ?, ?)',
-            [userId, enemyId, runId, damageDealt, damageTaken, resultCode]
-        );
-        
-        res.status(201).json({
-            encounterId: result.insertId,
-            message: 'Boss encounter registered'
-        });
-        
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-// POST /api/runs/:runId/boss-kill
-app.post('/api/runs/:runId/boss-kill', async (req, res) => {
-    let connection;
-    try {
-        const { runId } = req.params;
-        const { userId, enemyId, roomId } = req.body;
-        
-        connection = await createConnection();
-        const [result] = await connection.execute(
-            'INSERT INTO boss_kills (user_id, enemy_id, run_id, room_id) VALUES (?, ?, ?, ?)',
-            [userId, enemyId, runId, roomId]
-        );
-        
-        res.status(201).json({
-            killId: result.insertId,
-            message: 'Boss kill registered'
-        });
-        
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
-
-// POST /api/runs/:runId/events
-app.post('/api/runs/:runId/events', async (req, res) => {
-    let connection;
-    try {
-        const { runId } = req.params;
-        const { userId, events } = req.body;
-        
-        if (!events || !Array.isArray(events)) {
-            return res.status(400).json({ message: 'Events must be an array' });
+        // Validate upgrade type
+        const validTypes = ['health_max', 'stamina_max', 'movement_speed'];
+        if (!validTypes.includes(upgradeType)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid upgrade type'
+            });
         }
         
         connection = await createConnection();
         
-        const insertPromises = events.map(event => {
-            return connection.execute(
-                'INSERT INTO player_events (run_id, user_id, room_id, event_type, value, weapon_type, context) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [runId, userId, event.roomId, event.eventType, event.value || null, event.weaponType || null, event.context || null]
-            );
+        // Increment permanent upgrade level (triggers will auto-calculate values)
+        await connection.execute(
+            `INSERT INTO permanent_player_upgrades (user_id, upgrade_type, level) 
+             VALUES (?, ?, 1) 
+             ON DUPLICATE KEY UPDATE level = level + 1`,
+            [userId, upgradeType]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Permanent upgrade applied successfully'
         });
-        
-        const results = await Promise.all(insertPromises);
-        const eventIds = results.map(([result]) => result.insertId);
-        
-        res.status(201).json({
-            message: `${events.length} event(s) logged successfully`,
-            eventsLogged: events.length,
-            eventIds: eventIds
+    } catch (error) {
+        console.error('Error applying permanent upgrade:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error applying permanent upgrade'
         });
-        
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
     } finally {
         if (connection) await connection.end();
     }
 });
 
-// POST /api/runs/:runId/upgrade-purchase
-app.post('/api/runs/:runId/upgrade-purchase', async (req, res) => {
+// ===================================================
+// TEMPORARY WEAPON UPGRADES
+// ===================================================
+
+// GET /api/users/:userId/weapon-upgrades/:runId
+app.get('/api/users/:userId/weapon-upgrades/:runId', async (req, res) => {
+    let connection;
+    try {
+        const { userId, runId } = req.params;
+        
+        connection = await createConnection();
+        const [upgrades] = await connection.execute(
+            'SELECT * FROM vw_weapon_levels WHERE player = ? AND session = ?',
+            [userId, runId]
+        );
+        
+        res.json({
+            success: true,
+            data: upgrades[0] || { close_combat: 1, distance_combat: 1 }
+        });
+    } catch (error) {
+        console.error('Error getting weapon upgrades:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching weapon upgrades'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// PUT /api/users/:userId/weapon-upgrades/:runId (ENHANCED v3.0)
+app.put('/api/users/:userId/weapon-upgrades/:runId', async (req, res) => {
+    let connection;
+    try {
+        const { userId, runId } = req.params;
+        const { meleeLevel, rangedLevel } = req.body;
+        
+        connection = await createConnection();
+        
+        // Get current run number for this user
+        const [runProgress] = await connection.execute(
+            'SELECT current_run_number FROM user_run_progress WHERE user_id = ?',
+            [userId]
+        );
+        
+        const currentRunNumber = runProgress.length > 0 ? runProgress[0].current_run_number - 1 : 1;
+        
+        // ENHANCED v3.0: Include run_number and is_active
+        await connection.execute(
+            `INSERT INTO weapon_upgrades_temp (user_id, run_id, run_number, melee_level, ranged_level, is_active) 
+             VALUES (?, ?, ?, ?, ?, TRUE) 
+             ON DUPLICATE KEY UPDATE 
+             melee_level = VALUES(melee_level), 
+             ranged_level = VALUES(ranged_level),
+             run_number = VALUES(run_number),
+             is_active = TRUE`,
+            [userId, runId, currentRunNumber, meleeLevel || 1, rangedLevel || 1]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Weapon upgrades updated successfully'
+        });
+    } catch (error) {
+        console.error('Error updating weapon upgrades:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error updating weapon upgrades'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// DELETE /api/users/:userId/weapon-upgrades/:runId - NEW: For weapon reset on death
+app.delete('/api/users/:userId/weapon-upgrades/:runId', async (req, res) => {
+    let connection;
+    try {
+        const { userId, runId } = req.params;
+        
+        connection = await createConnection();
+    
+        // Reset weapon upgrades to level 1 instead of deleting (better for data consistency)
+        await connection.execute(
+            `INSERT INTO weapon_upgrades_temp (user_id, run_id, melee_level, ranged_level) 
+             VALUES (?, ?, 1, 1) 
+             ON DUPLICATE KEY UPDATE 
+             melee_level = 1, 
+             ranged_level = 1`,
+            [userId, runId]
+        );
+        
+        console.log(`Weapon upgrades reset to level 1 for user ${userId}, run ${runId}`);
+        
+        res.json({
+            success: true,
+            message: 'Weapon upgrades reset successfully'
+        });
+    } catch (error) {
+        console.error('Error resetting weapon upgrades:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error resetting weapon upgrades'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ===================================================
+// IMPROVED SAVE STATES
+// ===================================================
+
+// GET /api/users/:userId/save-state
+app.get('/api/users/:userId/save-state', async (req, res) => {
+    let connection;
+    try {
+        const { userId } = req.params;
+        
+        connection = await createConnection();
+        const [saveStates] = await connection.execute(
+            'SELECT * FROM vw_player_save WHERE player = ?',
+            [userId]
+        );
+        
+        res.json({
+            success: true,
+            data: saveStates[0] || null
+        });
+    } catch (error) {
+        console.error('Error getting save state:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching save state'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// POST /api/users/:userId/save-state
+app.post('/api/users/:userId/save-state', async (req, res) => {
+    let connection;
+    try {
+        const { userId } = req.params;
+        const { sessionId, runId, floorId, roomId, currentHp, gold } = req.body;
+        
+        connection = await createConnection();
+        
+        // Get current run number for this user
+        const [runProgress] = await connection.execute(
+            'SELECT current_run_number FROM user_run_progress WHERE user_id = ?',
+            [userId]
+        );
+        
+        const currentRunNumber = runProgress.length > 0 ? runProgress[0].current_run_number - 1 : 1;
+        
+        // Mark previous save states as inactive
+        await connection.execute(
+            'UPDATE save_states SET is_active = FALSE WHERE user_id = ? AND is_active = TRUE',
+            [userId]
+        );
+        
+        // Create new active save state (ENHANCED: includes run_number)
+        await connection.execute(
+            `INSERT INTO save_states 
+             (user_id, session_id, run_id, run_number, floor_id, room_id, current_hp, gold, is_active) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
+            [userId, sessionId, runId, currentRunNumber, floorId || 1, roomId, currentHp, gold]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Game state saved successfully'
+        });
+    } catch (error) {
+        console.error('Error saving save state:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error saving game state'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// DELETE /api/users/:userId/save-state
+app.delete('/api/users/:userId/save-state', async (req, res) => {
+    let connection;
+    try {
+        const { userId } = req.params;
+        
+        connection = await createConnection();
+        
+        await connection.execute(
+            'UPDATE save_states SET is_active = FALSE WHERE user_id = ? AND is_active = TRUE',
+            [userId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Save state cleared successfully'
+        });
+    } catch (error) {
+        console.error('Error clearing save state:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error clearing save state'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ===================================================
+// ANALYTICS AND TRACKING (OPTIMIZED)
+// ===================================================
+
+// POST /api/runs/:runId/enemy-kill (ENHANCED v3.0)
+app.post('/api/runs/:runId/enemy-kill', async (req, res) => {
     let connection;
     try {
         const { runId } = req.params;
-        const { userId, upgradeType, levelBefore, levelAfter, goldSpent } = req.body;
+        const { userId, enemyType, roomId, floor } = req.body;
+        
+        // Validar enemyType
+        if (!['common', 'rare'].includes(enemyType)) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'Invalid enemy type' 
+            });
+        }
         
         connection = await createConnection();
-        const [result] = await connection.execute(
-            'INSERT INTO permanent_upgrade_purchases (user_id, run_id, upgrade_type, level_before, level_after, gold_spent) VALUES (?, ?, ?, ?, ?, ?)',
-            [userId, runId, upgradeType, levelBefore, levelAfter, goldSpent]
+        
+        // Get run_number for this run
+        const [runData] = await connection.execute(
+            'SELECT run_number FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        const runNumber = runData.length > 0 ? runData[0].run_number : 1;
+        
+        // ENHANCED v3.0: Include run_number
+        await connection.execute(
+            'INSERT INTO enemy_kills (user_id, run_id, run_number, enemy_type, room_id, floor) VALUES (?, ?, ?, ?, ?, ?)',
+            [userId, runId, runNumber, enemyType, roomId, floor]
         );
         
         res.status(201).json({
-            purchaseId: result.insertId,
-            message: 'Upgrade purchase registered'
+            success: true,
+            message: 'Enemy kill registered'
         });
         
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
+        console.error('Enemy kill error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Database error' 
+        });
     } finally {
         if (connection) await connection.end();
     }
 });
 
-// POST /api/runs/:runId/equip-weapon
-app.post('/api/runs/:runId/equip-weapon', async (req, res) => {
+// POST /api/runs/:runId/boss-kill (ENHANCED v3.0)
+app.post('/api/runs/:runId/boss-kill', async (req, res) => {
     let connection;
     try {
         const { runId } = req.params;
-        const { userId, slotType } = req.body;
+        const { userId, bossType, floor, fightDuration, playerHpRemaining } = req.body;
         
         connection = await createConnection();
-        const [result] = await connection.execute(
-            'INSERT INTO equipped_weapons (run_id, user_id, slot_type) VALUES (?, ?, ?)',
-            [runId, userId, slotType]
+        
+        // Get run_number for this run
+        const [runData] = await connection.execute(
+            'SELECT run_number FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        const runNumber = runData.length > 0 ? runData[0].run_number : 1;
+        
+        // ENHANCED v3.0: Include run_number
+        await connection.execute(
+            'INSERT INTO boss_kills (user_id, run_id, run_number, boss_type, floor, fight_duration_seconds, player_hp_remaining) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [userId, runId, runNumber, bossType || 'dragon', floor, fightDuration || 0, playerHpRemaining || 0]
         );
         
         res.status(201).json({
-            message: 'Weapon equipped for run'
+            success: true,
+            message: 'Boss kill registered'
         });
         
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
+        console.error('Boss kill error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Database error' 
+        });
     } finally {
         if (connection) await connection.end();
     }
 });
 
-// POST /api/runs/:runId/weapon-upgrade
-app.post('/api/runs/:runId/weapon-upgrade', async (req, res) => {
+// POST /api/runs/:runId/weapon-purchase (ENHANCED v3.0)
+app.post('/api/runs/:runId/weapon-purchase', async (req, res) => {
     let connection;
     try {
         const { runId } = req.params;
-        const { userId, slotType, level, damagePerUpgrade, goldCostPerUpgrade } = req.body;
+        const { userId, weaponType, upgradeLevel, cost } = req.body;
         
         connection = await createConnection();
-        const [result] = await connection.execute(
-            'INSERT INTO weapon_upgrades_temp (run_id, user_id, slot_type, level, damage_per_upgrade, gold_cost_per_upgrade) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE level = VALUES(level), damage_per_upgrade = VALUES(damage_per_upgrade), gold_cost_per_upgrade = VALUES(gold_cost_per_upgrade), timestamp = NOW()',
-            [runId, userId, slotType, level, damagePerUpgrade, goldCostPerUpgrade]
+        
+        // Get run_number for this run
+        const [runData] = await connection.execute(
+            'SELECT run_number FROM run_history WHERE run_id = ?',
+            [runId]
+        );
+        
+        const runNumber = runData.length > 0 ? runData[0].run_number : 1;
+        
+        // ENHANCED v3.0: Include run_number
+        await connection.execute(
+            'INSERT INTO weapon_upgrade_purchases (user_id, run_id, run_number, weapon_type, upgrade_level, cost) VALUES (?, ?, ?, ?, ?, ?)',
+            [userId, runId, runNumber, weaponType, upgradeLevel, cost]
         );
         
         res.status(201).json({
-            message: 'Weapon upgrade saved',
-            runId: parseInt(runId),
-            userId: parseInt(userId),
-            slotType: slotType
+            success: true,
+            message: 'Weapon purchase registered'
         });
         
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Database error' });
+        console.error('Weapon purchase error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Database error' 
+        });
     } finally {
         if (connection) await connection.end();
     }
 });
 
-// Start server
+// ===================================================
+// LEADERBOARDS AND ANALYTICS (NEW VIEWS)
+// ===================================================
+
+// GET /api/leaderboards/:type
+app.get('/api/leaderboards/:type', async (req, res) => {
+    let connection;
+    try {
+        const { type } = req.params;
+        const validTypes = ['floors', 'bosses', 'playtime'];
+        
+        if (!validTypes.includes(type)) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'Invalid leaderboard type'
+            });
+        }
+        
+        connection = await createConnection();
+        const viewName = `vw_leaderboard_${type}`;
+        
+        const [leaderboard] = await connection.execute(
+            `SELECT * FROM ${viewName}`
+        );
+        
+        res.json({
+            success: true,
+            data: leaderboard
+        });
+    } catch (error) {
+        console.error('Error getting leaderboard:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching leaderboard'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/analytics/economy
+app.get('/api/analytics/economy', async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [economy] = await connection.execute(
+            'SELECT * FROM vw_economy_stats'
+        );
+        
+        res.json({
+            success: true,
+            data: economy
+        });
+    } catch (error) {
+        console.error('Error getting economy analytics:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching economy analytics'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/analytics/player-progression
+app.get('/api/analytics/player-progression', async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [progression] = await connection.execute(
+            'SELECT * FROM vw_player_progression ORDER BY registration_date DESC LIMIT 50'
+        );
+        
+        res.json({
+            success: true,
+            data: progression
+        });
+    } catch (error) {
+        console.error('Error getting player progression:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching player progression'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/status/active-players
+app.get('/api/status/active-players', async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [players] = await connection.execute(
+            'SELECT * FROM vw_active_players'
+        );
+        
+        res.json({
+            success: true,
+            data: players
+        });
+    } catch (error) {
+        console.error('Error getting active players:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching active players'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/status/current-games
+app.get('/api/status/current-games', async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [games] = await connection.execute(
+            'SELECT * FROM vw_current_games'
+        );
+        
+        res.json({
+            success: true,
+            data: games
+        });
+    } catch (error) {
+        console.error('Error getting current games:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching current games'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ===================================================
+// NEW v3.0: RUN PROGRESS AND PERSISTENCE
+// ===================================================
+
+// NEW: GET /api/users/:userId/run-progress
+app.get('/api/users/:userId/run-progress', async (req, res) => {
+    let connection;
+    try {
+        const { userId } = req.params;
+        
+        connection = await createConnection();
+        const [progress] = await connection.execute(
+            'SELECT * FROM vw_user_run_progress WHERE player = ?',
+            [userId]
+        );
+        
+        if (progress.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User run progress not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: progress[0]
+        });
+    } catch (error) {
+        console.error('Error getting run progress:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching run progress'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// NEW: GET /api/users/:userId/current-run-info
+app.get('/api/users/:userId/current-run-info', async (req, res) => {
+    let connection;
+    try {
+        const { userId } = req.params;
+        
+        connection = await createConnection();
+        const [runInfo] = await connection.execute(
+            'SELECT * FROM vw_current_run_info WHERE player = ?',
+            [userId]
+        );
+        
+        if (runInfo.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Current run info not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: runInfo[0]
+        });
+    } catch (error) {
+        console.error('Error getting current run info:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching current run info'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// NEW: GET /api/users/:userId/initialization-data
+app.get('/api/users/:userId/initialization-data', async (req, res) => {
+    let connection;
+    try {
+        const { userId } = req.params;
+        
+        connection = await createConnection();
+        const [initData] = await connection.execute(
+            'SELECT * FROM vw_player_initialization WHERE player_id = ?',
+            [userId]
+        );
+        
+        if (initData.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Player initialization data not found'
+            });
+        }
+        
+        // Parse permanent upgrades string into object
+        const data = initData[0];
+        if (data.permanent_upgrades) {
+            const upgradesArray = data.permanent_upgrades.split(',');
+            data.permanent_upgrades_parsed = {};
+            upgradesArray.forEach(upgrade => {
+                const [type, value] = upgrade.split(':');
+                data.permanent_upgrades_parsed[type] = parseFloat(value);
+            });
+        } else {
+            data.permanent_upgrades_parsed = {};
+        }
+        
+        res.json({
+            success: true,
+            data: data
+        });
+    } catch (error) {
+        console.error('Error getting initialization data:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching initialization data'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ===================================================
+// ENHANCED v3.0: TEMPORARY WEAPON UPGRADES
+// ===================================================
+
+// NEW: GET /api/users/:userId/active-weapon-upgrades
+app.get('/api/users/:userId/active-weapon-upgrades', async (req, res) => {
+    let connection;
+    try {
+        const { userId } = req.params;
+        
+        connection = await createConnection();
+        const [upgrades] = await connection.execute(
+            'SELECT * FROM vw_active_weapon_upgrades WHERE player = ?',
+            [userId]
+        );
+        
+        // Return default levels if no active upgrades found
+        const result = upgrades.length > 0 ? upgrades[0] : {
+            close_combat: 1,
+            distance_combat: 1,
+            upgrade_status: false
+        };
+        
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('Error getting active weapon upgrades:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching active weapon upgrades'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ===================================================
+// SERVER START (ENHANCED v3.0 LOGGING)
+// ===================================================
+
 app.listen(PORT, () => {
-    console.log(` Shattered Timeline API running on port ${PORT}`);
-    console.log(` Base URL: http://localhost:${PORT}`);
-    console.log(` Available endpoints:`);
-    console.log(`   Auth: POST /api/auth/register, /api/auth/login, /api/auth/logout`);
-    console.log(`   Game: GET /api/rooms, /api/enemies, /api/bosses, /api/lookups, /api/item-types`);
-    console.log(`   User: GET/PUT /api/users/:id/settings, GET /api/users/:id/stats`);
-    console.log(`   Runs: POST /api/runs, POST /api/runs/:id/save-state, PUT /api/runs/:id/complete`);
-    console.log(`   Events: POST /api/runs/:id/enemy-kill, /api/runs/:id/chest-event, /api/runs/:id/shop-purchase`);
-    console.log(`   Combat: POST /api/runs/:id/boss-encounter, /api/runs/:id/boss-kill`);
-    console.log(`   Equipment: POST /api/runs/:id/equip-weapon, /api/runs/:id/weapon-upgrade`);
-}); 
+    console.log(`Shattered Timeline API v3.0 running on port ${PORT}`);
+    console.log(`Base URL: http://localhost:${PORT}`);
+    console.log(`Database: ${dbConfig.database}`);
+    console.log(`\nAvailable endpoints (v3.0 - Enhanced with run persistence):`);
+    console.log(`\nAuthentication:`);
+    console.log(`   POST /api/auth/register, /api/auth/login, /api/auth/logout`);
+    console.log(`\nUser Management:`);
+    console.log(`   GET/PUT /api/users/:id/settings`);
+    console.log(`   GET /api/users/:id/stats`);
+    console.log(`   GET /api/users/:id/complete-stats`);
+    console.log(`\nNEW v3.0: Run Progress & Persistence:`);
+    console.log(`   GET /api/users/:id/run-progress`);
+    console.log(`   GET /api/users/:id/current-run-info`);
+    console.log(`   GET /api/users/:id/initialization-data`);
+    console.log(`\nRun Management:`);
+    console.log(`   POST /api/runs, PUT /api/runs/:id/complete`);
+    console.log(`   GET /api/users/:id/current-run`);
+    console.log(`\nNEW v3.0: Enhanced Permanent Upgrades:`);
+    console.log(`   GET /api/users/:id/permanent-upgrades (with calculated values)`);
+    console.log(`   POST /api/users/:id/permanent-upgrade`);
+    console.log(`\nNEW v3.0: Enhanced Weapon Upgrades:`);
+    console.log(`   GET /api/users/:id/active-weapon-upgrades (active only)`);
+    console.log(`   GET/PUT/DELETE /api/users/:id/weapon-upgrades/:runId`);
+    console.log(`\nSave States:`);
+    console.log(`   GET/POST/DELETE /api/users/:id/save-state`);
+    console.log(`\nAnalytics & Tracking (Enhanced with run numbers):`);
+    console.log(`   POST /api/runs/:runId/enemy-kill`);
+    console.log(`   POST /api/runs/:runId/boss-kill`);
+    console.log(`   POST /api/runs/:runId/weapon-purchase`);
+    console.log(`\nLeaderboards:`);
+    console.log(`   GET /api/leaderboards/floors, /api/leaderboards/bosses, /api/leaderboards/playtime`);
+    console.log(`\nAdvanced Analytics:`);
+    console.log(`   GET /api/analytics/economy, /api/analytics/player-progression`);
+    console.log(`\nStatus Monitoring:`);
+    console.log(`   GET /api/status/active-players, /api/status/current-games`);
+    console.log(`\nNEW v3.0 FEATURES:`);
+    console.log(`   Run number persistence across logout/login`);
+    console.log(`   Permanent upgrades with auto-calculated values`);
+    console.log(`   Temporary upgrades persistence until run completion`);
+    console.log(`   One-query player initialization endpoint`);
+    console.log(`   Enhanced analytics with run number tracking`);
+    console.log(`\nDatabase: Fully optimized with triggers and calculated fields`);
+});
+
+// ===================================================
+// MODULE EXPORTS (for testing)
+// ===================================================
+
+module.exports = app; 

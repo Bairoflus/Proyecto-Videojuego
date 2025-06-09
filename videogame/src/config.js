@@ -34,22 +34,22 @@ const walkingFrames = {
 // Weapon-specific attack animations
 const attackFrames = {
   dagger: {
-    up: [0, 5], // slash.png, row 0, 6 frames
-    left: [6, 11], // slash.png, row 1, 6 frames
-    down: [12, 17], // slash.png, row 2, 6 frames
-    right: [18, 23], // slash.png, row 3, 6 frames
+    up: [0, 5], // videogame/assets/sprites/player/dagger/slash.png, row 0, 6 frames
+    left: [6, 11], // videogame/assets/sprites/player/dagger/slash.png, row 1, 6 frames
+    down: [12, 17], // videogame/assets/sprites/player/dagger/slash.png, row 2, 6 frames
+    right: [18, 23], // videogame/assets/sprites/player/dagger/slash.png, row 3, 6 frames
   },
   katana: {
-    up: [0, 5], // slash.png, row 0, 6 frames
-    left: [6, 11], // slash.png, row 1, 6 frames
-    down: [12, 17], // slash.png, row 2, 6 frames
-    right: [18, 23], // slash.png, row 3, 6 frames
+    up: [0, 5], // videogame/assets/sprites/player/katana/slash.png, row 0, 6 frames
+    left: [6, 11], // videogame/assets/sprites/player/katana/slash.png, row 1, 6 frames
+    down: [12, 17], // videogame/assets/sprites/player/katana/slash.png, row 2, 6 frames
+    right: [18, 23], // videogame/assets/sprites/player/katana/slash.png, row 3, 6 frames
   },
   lightsaber: {
-    up: [0, 5], // slash.png, row 0, 6 frames
-    left: [6, 11], // slash.png, row 1, 6 frames
-    down: [12, 17], // slash.png, row 2, 6 frames
-    right: [18, 23], // slash.png, row 3, 6 frames
+    up: [0, 5], // videogame/assets/sprites/player/lightsaber/slash.png, row 0, 6 frames
+    left: [6, 11], // videogame/assets/sprites/player/lightsaber/slash.png, row 1, 6 frames
+    down: [12, 17], // videogame/assets/sprites/player/lightsaber/slash.png, row 2, 6 frames
+    right: [18, 23], // videogame/assets/sprites/player/lightsaber/slash.png, row 3, 6 frames
   },
   slingshot: {
     up: [0, 12], // shoot.png, row 0, 13 frames (0-12)
@@ -64,10 +64,10 @@ const attackFrames = {
     right: [39, 51], // shoot.png, row 3, 13 frames (39-51)
   },
   crossbow: {
-    up: [0, 7], // shoot.png, row 0, 8 frames
-    left: [8, 15], // shoot.png, row 1, 8 frames
-    down: [16, 23], // shoot.png, row 2, 8 frames
-    right: [24, 31], // shoot.png, row 3, 8 frames
+    up: [0, 7], // videogame/assets/sprites/player/crossbow/shoot.png, row 0, 8 frames
+    left: [8, 15], // videogame/assets/sprites/player/crossbow/shoot.png, row 1, 8 frames
+    down: [16, 23], // videogame/assets/sprites/player/crossbow/shoot.png, row 2, 8 frames
+    right: [24, 31], // videogame/assets/sprites/player/crossbow/shoot.png, row 3, 8 frames
   },
 };
 

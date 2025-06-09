@@ -170,6 +170,38 @@ export class Enemy extends AnimatedObject {
         window.game.floorGenerator.updateRoomState(undefined, this.currentRoom);
         log.verbose("Room state updated due to enemy death");
       }
+
+      // FIX: Check if this was the last enemy in boss room to activate transition zone immediately
+      const aliveEnemies = this.currentRoom.objects.enemies.filter(
+        (e) => e.state !== "dead"
+      );
+      if (this.currentRoom.roomType === "boss" && aliveEnemies.length === 0) {
+        console.log("🏆 BOSS DEFEATED! Transition zone activated immediately");
+
+        // Mark room as immediately available for transition
+        this.currentRoom.bossDefeated = true;
+        console.log(`✅ Boss room marked as defeated (bossDefeated = true)`);
+
+        // Notify game that boss room is cleared
+        if (window.game) {
+          console.log(
+            "Boss room cleared - player can now transition to next floor"
+          );
+          // Set a flag that boss was just defeated for immediate feedback
+          window.game.bossJustDefeated = true;
+
+          // FIX: Show permanent upgrade popup immediately when boss is defeated (ONLY ONCE)
+          if (
+            window.game.permanentUpgradePopup &&
+            !window.game.bossUpgradeShown
+          ) {
+            console.log("Showing permanent upgrade popup after boss defeat");
+            window.game.permanentUpgradePopup.show();
+            window.game.gameState = "upgradeSelection";
+            window.game.bossUpgradeShown = true; // Mark as shown to prevent multiple displays
+          }
+        }
+      }
     }
 
     // TODO: Add death animation and effects
@@ -193,14 +225,16 @@ export class Enemy extends AnimatedObject {
           return false;
         } else {
           console.log(
-            "💀 Kill tracking: Requires active session (use gameSessionDebug.fix())"
+            "Kill tracking: Requires active session (use gameSessionDebug.fix())"
           );
           return false;
         }
       }
 
-      // Get current room ID from floor generator
+      // Get current room ID and floor from floor generator
       const roomId = window.game?.floorGenerator?.getCurrentRoomId();
+      const floor = window.game?.floorGenerator?.getCurrentFloor();
+
       if (!roomId) {
         console.warn(
           "Kill registration skipped: Could not determine current room ID"
@@ -217,17 +251,40 @@ export class Enemy extends AnimatedObject {
         return false;
       }
 
-      // Prepare kill data
+      // Map enemy types to backend format ('common' or 'rare')
+      let enemyType = "common"; // Default to common
+
+      // Map specific enemy types to backend categories
+      if (
+        this.enemyTypeName === "goblin_archer" ||
+        this.enemyTypeName === "GoblinArcher" ||
+        this.enemyTypeName.toLowerCase().includes("archer") ||
+        this.enemyTypeName.toLowerCase().includes("ranged")
+      ) {
+        enemyType = "rare";
+      } else if (
+        this.enemyTypeName === "goblin_dagger" ||
+        this.enemyTypeName === "GoblinDagger" ||
+        this.enemyTypeName === "goblin" ||
+        this.enemyTypeName.toLowerCase().includes("melee") ||
+        this.enemyTypeName.toLowerCase().includes("dagger")
+      ) {
+        enemyType = "common";
+      }
+
+      // Prepare kill data in the format the backend expects
       const killData = {
         userId: parseInt(userId),
-        enemyId: enemyId,
+        enemyType: enemyType, // Send 'common' or 'rare' instead of numeric ID
         roomId: roomId,
+        floor: floor || 1,
       };
 
       console.log(`Registering enemy kill:`, {
-        enemyType: this.enemyTypeName,
-        enemyId: enemyId,
+        enemyTypeName: this.enemyTypeName,
+        mappedTo: enemyType,
         roomId: roomId,
+        floor: floor,
         userId: parseInt(userId),
       });
 
@@ -238,7 +295,6 @@ export class Enemy extends AnimatedObject {
       return true;
     } catch (error) {
       console.error("Failed to register enemy kill:", error);
-      // Don't throw error to prevent game disruption
       return false;
     }
   }
@@ -295,7 +351,11 @@ export class Enemy extends AnimatedObject {
   }
 
   update(deltaTime) {
-    if (this.state === "dead") return;
+    if (this.state === "dead") {
+      // Even dead enemies need to update their projectiles
+      this.updateProjectiles(deltaTime, null);
+      return;
+    }
 
     if (this.attackCooldown > 0) {
       this.attackCooldown -= deltaTime;
@@ -355,5 +415,181 @@ export class Enemy extends AnimatedObject {
     ctx.strokeStyle = "white";
     ctx.lineWidth = 1;
     ctx.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+
+    // Draw projectiles if they exist
+    if (this.projectiles) {
+      this.projectiles.forEach((projectile) => {
+        if (projectile.isActive) {
+          // Draw projectile as a simple circle
+          ctx.fillStyle = "red";
+          ctx.beginPath();
+          ctx.arc(
+            projectile.position.x,
+            projectile.position.y,
+            projectile.radius,
+            0,
+            2 * Math.PI
+          );
+          ctx.fill();
+
+          // Add a white border
+          ctx.strokeStyle = "white";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      });
+    }
+  }
+
+  /**
+   * Initialize projectile system for ranged enemies
+   */
+  initializeProjectiles() {
+    if (!this.projectiles) {
+      this.projectiles = [];
+      this.projectileSpeed = this.projectileSpeed || 300;
+    }
+  }
+
+  /**
+   * Fire a projectile towards the target
+   * @param {Player} target - The target to fire at
+   */
+  fireProjectile(target) {
+    if (this.state === "dead" || !target) return;
+
+    // Initialize projectiles array if not exists
+    this.initializeProjectiles();
+
+    // Calculate target hitbox center position
+    const targetHitbox = target.getHitboxBounds();
+    const targetCenter = new Vec(
+      targetHitbox.x + targetHitbox.width / 2,
+      targetHitbox.y + targetHitbox.height / 2
+    );
+
+    // Calculate projectile starting position (center of enemy)
+    const startPosition = new Vec(
+      this.position.x + this.width / 2,
+      this.position.y + this.height / 2
+    );
+
+    // Calculate direction vector
+    const direction = targetCenter.minus(startPosition).normalize();
+
+    // Create projectile object
+    const projectile = {
+      position: new Vec(startPosition.x, startPosition.y),
+      velocity: direction.times(this.projectileSpeed),
+      damage: this.baseDamage,
+      radius: 5,
+      isActive: true,
+      lifetime: 5000, // 5 seconds max lifetime
+      timeAlive: 0,
+    };
+
+    this.projectiles.push(projectile);
+    console.log(`${this.type} fired projectile towards player`);
+  }
+
+  /**
+   * Update all projectiles - handles movement, collision, and cleanup
+   * @param {number} deltaTime - Time since last update
+   * @param {Player} player - Player object for collision detection
+   */
+  updateProjectiles(deltaTime, player) {
+    if (!this.projectiles) return;
+
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const projectile = this.projectiles[i];
+
+      if (!projectile.isActive) {
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // Update position
+      projectile.position = projectile.position.plus(
+        projectile.velocity.times(deltaTime / 1000)
+      );
+
+      // Update lifetime
+      projectile.timeAlive += deltaTime;
+      if (projectile.timeAlive >= projectile.lifetime) {
+        projectile.isActive = false;
+        continue;
+      }
+
+      // Check bounds
+      if (
+        projectile.position.x < 0 ||
+        projectile.position.x > variables.canvasWidth ||
+        projectile.position.y < 0 ||
+        projectile.position.y > variables.canvasHeight
+      ) {
+        projectile.isActive = false;
+        continue;
+      }
+
+      // Check wall collision
+      if (this.currentRoom) {
+        const tempProjectile = {
+          position: projectile.position,
+          width: projectile.radius * 2,
+          height: projectile.radius * 2,
+          getHitboxBounds: () => ({
+            x: projectile.position.x - projectile.radius,
+            y: projectile.position.y - projectile.radius,
+            width: projectile.radius * 2,
+            height: projectile.radius * 2,
+          }),
+        };
+
+        if (this.currentRoom.checkWallCollision(tempProjectile)) {
+          projectile.isActive = false;
+          continue;
+        }
+      }
+
+      // Check player collision
+      if (player && player.health > 0) {
+        const playerHitbox = player.getHitboxBounds();
+        const projectileHitbox = {
+          x: projectile.position.x - projectile.radius,
+          y: projectile.position.y - projectile.radius,
+          width: projectile.radius * 2,
+          height: projectile.radius * 2,
+        };
+
+        if (
+          this.checkProjectilePlayerCollision(projectileHitbox, playerHitbox)
+        ) {
+          // Hit player
+          player.takeDamage(projectile.damage);
+          projectile.isActive = false;
+          console.log(
+            `${this.type} projectile hit player for ${projectile.damage} damage`
+          );
+        }
+      }
+    }
+
+    // Clean up inactive projectiles
+    this.projectiles = this.projectiles.filter((p) => p.isActive);
+  }
+
+  /**
+   * Check collision between projectile and player
+   * @param {Object} projectileHitbox - Projectile hitbox bounds
+   * @param {Object} playerHitbox - Player hitbox bounds
+   * @returns {boolean} True if collision detected
+   */
+  checkProjectilePlayerCollision(projectileHitbox, playerHitbox) {
+    return (
+      projectileHitbox.x < playerHitbox.x + playerHitbox.width &&
+      projectileHitbox.x + projectileHitbox.width > playerHitbox.x &&
+      projectileHitbox.y < playerHitbox.y + playerHitbox.height &&
+      projectileHitbox.y + projectileHitbox.height > playerHitbox.y
+    );
   }
 }

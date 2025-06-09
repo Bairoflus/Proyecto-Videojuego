@@ -26,7 +26,7 @@ export class GoblinArcher extends RangedEnemy {
       "arrow", // projectile type - goblins use arrows
       config.attackRange || 200, // range - distance to begin shooting
       config.projectileRange || 300, // projectileRange - how far arrows can travel
-      250, // projectileSpeed - configurable speed for this enemy type
+      config.projectileSpeed || 250, // projectileSpeed - configurable speed for this enemy type
       "goblin_archer" // enemyTypeName for backend mapping
     );
 
@@ -323,8 +323,10 @@ export class GoblinArcher extends RangedEnemy {
 
   // Override draw method to handle sprite scaling for better visibility
   draw(ctx) {
-    // Draw projectiles first
-    this.projectiles.forEach((projectile) => projectile.draw(ctx));
+    // Draw projectiles first (with safety check)
+    if (this.projectiles && Array.isArray(this.projectiles)) {
+      this.projectiles.forEach((projectile) => projectile.draw(ctx));
+    }
 
     if (this.state === "dead") return;
 

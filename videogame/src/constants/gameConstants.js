@@ -6,7 +6,7 @@
 // Player constants
 export const PLAYER_CONSTANTS = {
   // Base stats
-  MAX_HEALTH: 2000,
+  MAX_HEALTH: 100,
   BASE_SPEED: 0.3,
   BASE_SIZE: { width: 64, height: 64 },
 
@@ -113,7 +113,7 @@ export const ENEMY_CONSTANTS = {
     speed: PLAYER_CONSTANTS.BASE_SPEED * 1.5, // Mobile archer that chases and retreats
     attackRange: 200,
     attackCooldown: 2000,
-    projectileSpeed: 300,
+    projectileSpeed: 200,
     retreatDistance: 80,
   },
 

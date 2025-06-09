@@ -10,7 +10,9 @@
 <body class="game-page">
   <header class="game-header">
     <span id="welcome-msg">Welcome, username</span>
-    <button id="logout-btn">Logout</button>
+    <div class="pause-indicator">
+      Press <kbd>P</kbd> to pause
+    </div>
   </header>
   <main>
     <div id="status">Loading game...</div>
@@ -21,7 +23,6 @@
     import { logoutUser, createRun } from '../../utils/api.js';
 
     const status = document.getElementById('status');
-    const logoutButton = document.getElementById('logout-btn');
 
     /**
      * Clear all session data for complete logout
@@ -85,10 +86,6 @@
       console.log('Starting logout process...');
 
       try {
-        // Update UI to show logout in progress
-        logoutButton.disabled = true;
-        logoutButton.textContent = 'Logging out...';
-
         // Get session data before clearing
         const sessionToken = localStorage.getItem('sessionToken');
         const userId = localStorage.getItem('currentUserId');
@@ -119,9 +116,6 @@
         // Always clear local session data
         clearAllSessionData();
 
-        // Update UI to show logout success
-        logoutButton.textContent = 'Logged out';
-
         console.log('Logout process complete, redirecting...');
 
         // Brief delay before redirect for user feedback
@@ -134,9 +128,6 @@
 
         // Even if logout fails, clear local data and redirect
         clearAllSessionData();
-
-        // Update UI to show there was an issue but we're proceeding
-        logoutButton.textContent = 'Logout (Error)';
 
         setTimeout(() => {
           window.location.href = 'landing.html';
@@ -174,17 +165,6 @@
 
     // Validate session before initializing game
     if (validateSession()) {
-      // Handle logout functionality
-      logoutButton.addEventListener('click', async () => {
-        // Confirm logout action
-        const confirmLogout = confirm('Are you sure you want to logout? Any unsaved progress may be lost.');
-        if (!confirmLogout) {
-          return;
-        }
-
-        await performLogout();
-      });
-
       // NEW: Initialize game with run data validation
       async function initializeGame() {
         try {
@@ -208,9 +188,6 @@
         } catch (error) {
           status.textContent = 'Error loading game: ' + error.message;
           console.error('Game initialization error:', error);
-
-          // If game fails to load, provide option to logout
-          logoutButton.style.display = 'block';
         }
       }
 

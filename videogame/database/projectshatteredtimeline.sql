@@ -16,7 +16,7 @@ CREATE TABLE `event_types` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Lookup table for event types';
 
 CREATE TABLE `weapon_slots` (
-  `slot_type` VARCHAR(50) NOT NULL COMMENT 'Type of weapon slot',
+  `slot_type` ENUM('melee', 'ranged') NOT NULL COMMENT 'Type of weapon slot',
   PRIMARY KEY (`slot_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Lookup table for weapon slot types';
 
@@ -34,11 +34,6 @@ CREATE TABLE `room_types` (
   `room_type` VARCHAR(50) NOT NULL COMMENT 'Type of room',
   PRIMARY KEY (`room_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Lookup table for room types';
-
-CREATE TABLE `item_types` (
-  `item_type` VARCHAR(50) NOT NULL COMMENT 'Type of item',
-  PRIMARY KEY (`item_type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Lookup table for item types';
 
 -- 4. Core user tables
 CREATE TABLE `users` (
@@ -78,7 +73,6 @@ CREATE TABLE `player_stats` (
   PRIMARY KEY (`user_id`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Player-visible statistics';
-
 
 CREATE TABLE `player_upgrades` (
   `user_id` INT NOT NULL COMMENT 'References users(user_id)',
@@ -155,7 +149,7 @@ CREATE TABLE `save_states` (
 CREATE TABLE `equipped_weapons` (
   `run_id` INT NOT NULL COMMENT 'References run_history(run_id)',
   `user_id` INT NOT NULL COMMENT 'References users(user_id)',
-  `slot_type` VARCHAR(50) NOT NULL COMMENT 'References weapon_slots(slot_type)',
+  `slot_type` ENUM('melee', 'ranged') NOT NULL COMMENT 'References weapon_slots(slot_type)',
   PRIMARY KEY (`run_id`,`user_id`,`slot_type`),
   FOREIGN KEY (`run_id`) REFERENCES `run_history`(`run_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -165,12 +159,13 @@ CREATE TABLE `equipped_weapons` (
 CREATE TABLE `weapon_upgrades_temp` (
   `run_id` INT NOT NULL COMMENT 'References run_history(run_id)',
   `user_id` INT NOT NULL COMMENT 'References users(user_id)',
-  `slot_type` VARCHAR(50) NOT NULL COMMENT 'References weapon_slots(slot_type)',
-  `level` SMALLINT COMMENT 'Upgrade level',
-  `damage_per_upgrade` SMALLINT COMMENT 'Damage per upgrade',
-  `gold_cost_per_upgrade` SMALLINT COMMENT 'Gold cost per upgrade',
+  `slot_type` ENUM('melee', 'ranged') NOT NULL COMMENT 'References weapon_slots(slot_type)',
+  `level` SMALLINT NOT NULL DEFAULT 0 COMMENT 'Upgrade level',
+  `damage_per_upgrade` SMALLINT NOT NULL DEFAULT 0 COMMENT 'Damage per upgrade',
+  `gold_cost_per_upgrade` SMALLINT NOT NULL DEFAULT 0 COMMENT 'Gold cost per upgrade',
   `timestamp` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Upgrade timestamp',
   PRIMARY KEY (`run_id`,`user_id`,`slot_type`),
+  INDEX `idx_weapon_upgrades_run_user` (`run_id`, `user_id`),
   FOREIGN KEY (`run_id`) REFERENCES `run_history`(`run_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`slot_type`) REFERENCES `weapon_slots`(`slot_type`) ON DELETE RESTRICT ON UPDATE CASCADE
@@ -254,22 +249,25 @@ CREATE TABLE `boss_kills` (
   FOREIGN KEY (`room_id`) REFERENCES `rooms`(`room_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='History of bosses killed by player';
 
--- 11. Economy events
-CREATE TABLE `shop_purchases` (
+-- 11. Economy events - NEW: Weapon upgrade purchases in shop
+CREATE TABLE `weapon_upgrade_purchases` (
   `purchase_id` INT NOT NULL AUTO_INCREMENT COMMENT 'Purchase ID',
   `user_id` INT NOT NULL COMMENT 'References users(user_id)',
   `run_id` INT NOT NULL COMMENT 'References run_history(run_id)',
   `room_id` INT NOT NULL COMMENT 'References rooms(room_id)',
-  `item_type` VARCHAR(50) NOT NULL COMMENT 'References item_types(item_type)',
-  `item_name` VARCHAR(50) COMMENT 'Item name',
-  `gold_spent` INT COMMENT 'Gold spent',
+  `upgrade_type` ENUM('melee', 'ranged', 'health') NOT NULL COMMENT 'Type of upgrade purchased',
+  `upgrade_level_before` SMALLINT NOT NULL DEFAULT 0 COMMENT 'Upgrade level before purchase',
+  `upgrade_level_after` SMALLINT NOT NULL COMMENT 'Upgrade level after purchase',
+  `gold_spent` INT NOT NULL COMMENT 'Gold spent on upgrade',
+  `damage_increase` SMALLINT NULL COMMENT 'Damage increase applied (null for health)',
   `timestamp` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Purchase timestamp',
   PRIMARY KEY (`purchase_id`),
+  INDEX `idx_weapon_purchases_run_user` (`run_id`, `user_id`),
+  INDEX `idx_weapon_purchases_type` (`upgrade_type`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`run_id`) REFERENCES `run_history`(`run_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  FOREIGN KEY (`room_id`) REFERENCES `rooms`(`room_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  FOREIGN KEY (`item_type`) REFERENCES `item_types`(`item_type`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='History of shop purchases';
+  FOREIGN KEY (`room_id`) REFERENCES `rooms`(`room_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Weapon upgrade purchases in shop';
 
 CREATE TABLE `chest_events` (
   `event_id` INT NOT NULL AUTO_INCREMENT COMMENT 'Event ID',
@@ -310,3 +308,6 @@ CREATE TABLE `player_events` (
   FOREIGN KEY (`room_id`) REFERENCES `rooms`(`room_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`event_type`) REFERENCES `event_types`(`event_type`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Player actions log';
+
+-- Final verification
+SELECT 'Database creation completed successfully!' AS message; 

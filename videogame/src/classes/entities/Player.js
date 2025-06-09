@@ -19,7 +19,8 @@ import {
   PHYSICS_CONSTANTS,
   SPRITE_SCALING_CONSTANTS,
 } from "../../constants/gameConstants.js";
-import { createRun, completeRun } from "../../utils/api.js";
+import { completeRun } from "../../utils/api.js";
+import { weaponUpgradeManager } from "../../utils/weaponUpgradeManager.js";
 
 // Constants for Player class
 const DASH_STAMINA_COST = PLAYER_CONSTANTS.DAGGER_STAMINA_COST; // Reuse for dash
@@ -54,7 +55,7 @@ export class Player extends AnimatedObject {
     this.hasCreatedProjectile = false;
     this.hasAppliedMeleeDamage = false;
 
-    // Weapon progression system
+    // NEW: Weapon progression using weaponUpgradeManager
     this.meleeLevel = 1;
     this.rangedLevel = 1;
     this.maxWeaponLevel = 15;
@@ -67,6 +68,9 @@ export class Player extends AnimatedObject {
     this.staminaRegenRate = PLAYER_CONSTANTS.STAMINA_REGEN_RATE;
     this.staminaRegenDelay = PLAYER_CONSTANTS.STAMINA_REGEN_DELAY;
     this.staminaRegenCooldown = 0;
+
+    // NEW v3.0: Movement speed multiplier for permanent upgrades
+    this.speedMultiplier = 1.0; // Default speed (no bonus)
 
     // Gold and shop system
     this.gold = 0;
@@ -120,6 +124,88 @@ export class Player extends AnimatedObject {
         animationSpeed: 0.18,
       },
     };
+
+    // NEW: Load current weapon levels from weaponUpgradeManager
+    this.loadCurrentWeaponLevels();
+  }
+
+  /**
+   * Load current weapon levels from weaponUpgradeManager
+   */
+  loadCurrentWeaponLevels() {
+    try {
+      // Check if weaponUpgradeManager exists and has the required method
+      if (
+        typeof window !== "undefined" &&
+        window.weaponUpgradeManager &&
+        typeof window.weaponUpgradeManager.getWeaponLevels === "function"
+      ) {
+        const currentLevels = window.weaponUpgradeManager.getWeaponLevels();
+        this.meleeLevel = currentLevels.melee || 1;
+        this.rangedLevel = currentLevels.ranged || 1;
+
+        // Always log weapon level loading for debugging persistence issues
+        console.log("Weapon levels loaded from manager:", {
+          melee: this.meleeLevel,
+          ranged: this.rangedLevel,
+          source: "weaponUpgradeManager",
+        });
+
+        // Update weapon sprite to match current level
+        this.updateWeaponSprite();
+      } else {
+        // Use default levels if manager not available
+        this.meleeLevel = 1;
+        this.rangedLevel = 1;
+        console.log("Using default weapon levels (manager not available):", {
+          melee: this.meleeLevel,
+          ranged: this.rangedLevel,
+          source: "default",
+        });
+      }
+    } catch (error) {
+      console.error("Error loading weapon levels from manager:", error);
+      // Silently fall back to defaults to prevent spam
+      this.meleeLevel = 1;
+      this.rangedLevel = 1;
+    }
+  }
+
+  /**
+   * NEW: Force reload weapon levels from weaponUpgradeManager
+   * This should be called after weaponUpgradeManager is initialized/loaded
+   */
+  forceReloadWeaponLevels() {
+    console.log("Force reloading weapon levels from manager...");
+    this.loadCurrentWeaponLevels();
+  }
+
+  /**
+   * Sync weapon levels with weaponUpgradeManager
+   */
+  syncWeaponLevels() {
+    try {
+      if (
+        typeof window !== "undefined" &&
+        window.weaponUpgradeManager &&
+        typeof window.weaponUpgradeManager.getWeaponLevels === "function"
+      ) {
+        const currentLevels = window.weaponUpgradeManager.getWeaponLevels();
+        this.meleeLevel = currentLevels.melee || 1;
+        this.rangedLevel = currentLevels.ranged || 1;
+
+        // Update sprite if weapon changed
+        this.updateWeaponSprite();
+
+        // Only log meaningful weapon upgrades
+        // console.log('Weapon levels synchronized:', {
+        //   melee: this.meleeLevel,
+        //   ranged: this.rangedLevel
+        // });
+      }
+    } catch (error) {
+      // Silently handle errors to prevent console spam
+    }
   }
 
   setCurrentRoom(room) {
@@ -133,6 +219,12 @@ export class Player extends AnimatedObject {
   }
 
   takeDamage(amount) {
+    // CRITICAL FIX: Prevent damage if player is already dead
+    if (this.state === "dead") {
+      console.log("Damage blocked - Player already dead");
+      return;
+    }
+
     if (this.isInvulnerable) return;
 
     this.health = Math.max(0, this.health - amount);
@@ -150,9 +242,16 @@ export class Player extends AnimatedObject {
   }
 
   async die() {
-    console.log("Player died! Completing current run...");
+    // CRITICAL FIX: Prevent multiple death processing
+    if (this.state === "dead") {
+      console.log("Death blocked - Player already processing death");
+      return;
+    }
 
-    // Complete the current run with death data
+    console.log("PLAYER DEATH - Processing...");
+    this.state = "dead";
+
+    // Complete current run in backend with death data
     try {
       const currentRunId = localStorage.getItem("currentRunId");
 
@@ -209,8 +308,13 @@ export class Player extends AnimatedObject {
     // Trigger complete game reset through the global game instance
     if (window.game && typeof window.game.resetGameAfterDeath === "function") {
       // Small delay to show death state before reset
-      setTimeout(() => {
-        window.game.resetGameAfterDeath();
+      setTimeout(async () => {
+        try {
+          await window.game.resetGameAfterDeath();
+          console.log("Game reset completed successfully");
+        } catch (error) {
+          console.error("Error during game reset:", error);
+        }
       }, 1000); // 1 second delay
     } else {
       console.error("Cannot reset game: Game instance not found");
@@ -249,6 +353,9 @@ export class Player extends AnimatedObject {
   // DEATH RESET: Restore player to initial state
   resetToInitialState(startPosition) {
     console.log("=== PLAYER RESET TO INITIAL STATE ===");
+
+    // CRITICAL FIX: Reset death state to allow damage again
+    this.state = "alive"; // or undefined, but not "dead"
 
     // Reset health and stamina
     this.health = this.maxHealth;
@@ -291,7 +398,9 @@ export class Player extends AnimatedObject {
     this.previousDirection = "down";
 
     console.log("Player reset complete:");
+    console.log(`  - State: ${this.state} (was dead, now alive)`);
     console.log(`  - Health: ${this.health}/${this.maxHealth}`);
+    console.log(`  - Invulnerable: ${this.isInvulnerable}`);
     console.log(
       `  - Position: (${Math.round(this.position.x)}, ${Math.round(
         this.position.y
@@ -434,14 +543,15 @@ export class Player extends AnimatedObject {
 
       // Check if this position collides with a wall
       if (this.currentRoom.checkWallCollision(testObject)) {
-        // ✅ FIX: Only log wall detection occasionally to reduce spam
-        if (currentDistance % 100 === 0) {
-          console.log(
-            `Wall detected at distance ${Math.round(
-              currentDistance
-            )} (direction: ${this.currentDirection})`
-          );
-        }
+        // Remove excessive wall detection logging to reduce console spam
+        // Only log wall detection in debug mode if needed
+        // if (currentDistance % 100 === 0) {
+        //   console.log(
+        //     `Wall detected at distance ${Math.round(
+        //       currentDistance
+        //     )} (direction: ${this.currentDirection})`
+        //   );
+        // }
         return currentDistance;
       }
 
@@ -452,7 +562,7 @@ export class Player extends AnimatedObject {
     return maxDistance;
   }
 
-  // ENHANCED ATTACK: Melee attack with line-of-sight wall detection
+  // ENHANCED ATTACK: Melee attack with line-of-sight wall detection (FIXED)
   attack() {
     const weaponInfo = this.getWeaponInfo();
     const staminaCost = weaponInfo.staminaCost;
@@ -592,32 +702,44 @@ export class Player extends AnimatedObject {
     if (this.dashCooldownTime > 0) this.dashCooldownTime -= deltaTime;
 
     if (this.dashTime > 0) {
-      // Durante dash: intentar movimiento en X e Y por separado
+      // During dash: try movement in X and Y separately
       const dashVelocity = this.dashDirection.times(this.dashSpeed * deltaTime);
 
-      // Try movement in X direction
+      // Try movement in X direction using simple collision test
       const newPositionX = this.position.plus(new Vec(dashVelocity.x, 0));
-      const tempPlayerX = new Player(
-        newPositionX,
-        this.width,
-        this.height,
-        this.color,
-        this.sheetCols
-      );
+      const tempCollisionTestX = {
+        position: newPositionX,
+        width: this.width,
+        height: this.height,
+        getHitboxBounds: () => ({
+          x: newPositionX.x + this.hitbox.offsetX,
+          y: this.position.y + this.hitbox.offsetY,
+          width: this.hitbox.width,
+          height: this.hitbox.height,
+        }),
+      };
 
-      // Try movement in Y direction
+      // Try movement in Y direction using simple collision test
       const newPositionY = this.position.plus(new Vec(0, dashVelocity.y));
-      const tempPlayerY = new Player(
-        newPositionY,
-        this.width,
-        this.height,
-        this.color,
-        this.sheetCols
-      );
+      const tempCollisionTestY = {
+        position: newPositionY,
+        width: this.width,
+        height: this.height,
+        getHitboxBounds: () => ({
+          x: this.position.x + this.hitbox.offsetX,
+          y: newPositionY.y + this.hitbox.offsetY,
+          width: this.hitbox.width,
+          height: this.hitbox.height,
+        }),
+      };
 
       // Check collisions separately
-      const canMoveX = !this.currentRoom?.checkWallCollision(tempPlayerX) && !this.checkEnemyCollision(tempPlayerX);
-      const canMoveY = !this.currentRoom?.checkWallCollision(tempPlayerY) && !this.checkEnemyCollision(tempPlayerY);
+      const canMoveX =
+        !this.currentRoom?.checkWallCollision(tempCollisionTestX) &&
+        !this.checkEnemyCollision(tempCollisionTestX);
+      const canMoveY =
+        !this.currentRoom?.checkWallCollision(tempCollisionTestY) &&
+        !this.checkEnemyCollision(tempCollisionTestY);
 
       // Apply movement based on collisions
       if (canMoveX) {
@@ -756,29 +878,41 @@ export class Player extends AnimatedObject {
       const newPositionX = this.position.plus(
         new Vec(this.velocity.x * deltaTime, 0)
       );
-      const tempPlayerX = new Player(
-        newPositionX,
-        this.width,
-        this.height,
-        this.color,
-        this.sheetCols
-      );
+      const tempCollisionTestX = {
+        position: newPositionX,
+        width: this.width,
+        height: this.height,
+        getHitboxBounds: () => ({
+          x: newPositionX.x + this.hitbox.offsetX,
+          y: this.position.y + this.hitbox.offsetY,
+          width: this.hitbox.width,
+          height: this.hitbox.height,
+        }),
+      };
 
       // Try movement in Y direction
       const newPositionY = this.position.plus(
         new Vec(0, this.velocity.y * deltaTime)
       );
-      const tempPlayerY = new Player(
-        newPositionY,
-        this.width,
-        this.height,
-        this.color,
-        this.sheetCols
-      );
+      const tempCollisionTestY = {
+        position: newPositionY,
+        width: this.width,
+        height: this.height,
+        getHitboxBounds: () => ({
+          x: this.position.x + this.hitbox.offsetX,
+          y: newPositionY.y + this.hitbox.offsetY,
+          width: this.hitbox.width,
+          height: this.hitbox.height,
+        }),
+      };
 
       // Check collisions separately
-      const canMoveX = !this.currentRoom?.checkWallCollision(tempPlayerX) && !this.checkEnemyCollision(tempPlayerX);
-      const canMoveY = !this.currentRoom?.checkWallCollision(tempPlayerY) && !this.checkEnemyCollision(tempPlayerY);
+      const canMoveX =
+        !this.currentRoom?.checkWallCollision(tempCollisionTestX) &&
+        !this.checkEnemyCollision(tempCollisionTestX);
+      const canMoveY =
+        !this.currentRoom?.checkWallCollision(tempCollisionTestY) &&
+        !this.checkEnemyCollision(tempCollisionTestY);
 
       // Apply movement based on collisions
       if (canMoveX) {
@@ -1160,7 +1294,12 @@ export class Player extends AnimatedObject {
         this.velocity[move.axis] += move.direction;
       }
     }
-    this.velocity = this.velocity.normalize().times(variables.playerSpeed);
+
+    // NEW v3.0: Apply movement speed multiplier from permanent upgrades
+    const baseSpeed = variables.playerSpeed;
+    const finalSpeed = baseSpeed * (this.speedMultiplier || 1.0);
+
+    this.velocity = this.velocity.normalize().times(finalSpeed);
   }
 
   setMovementAnimation() {
@@ -1223,11 +1362,12 @@ export class Player extends AnimatedObject {
       const enemyHitbox = enemy.getHitboxBounds();
 
       // Determine if this is a melee enemy - be more permissive with melee enemies
-      const isMeleeEnemy = enemy.constructor.name.includes('Dagger') || 
-                          enemy.constructor.name.includes('Sword') || 
-                          enemy.type === 'goblin_dagger' || 
-                          enemy.type === 'sword_goblin' ||
-                          (enemy.constructor.name === 'MeleeEnemy');
+      const isMeleeEnemy =
+        enemy.constructor.name.includes("Dagger") ||
+        enemy.constructor.name.includes("Sword") ||
+        enemy.type === "goblin_dagger" ||
+        enemy.type === "sword_goblin" ||
+        enemy.constructor.name === "MeleeEnemy";
 
       // Use higher tolerance for melee enemies, especially when they're attacking
       let overlapTolerance = baseOverlapTolerance;
@@ -1237,48 +1377,72 @@ export class Player extends AnimatedObject {
       }
 
       // Calculate current overlap with this enemy
-      const currentXOverlap = Math.max(0, 
-        Math.min(currentPlayerHitbox.x + currentPlayerHitbox.width, enemyHitbox.x + enemyHitbox.width) - 
-        Math.max(currentPlayerHitbox.x, enemyHitbox.x)
+      const currentXOverlap = Math.max(
+        0,
+        Math.min(
+          currentPlayerHitbox.x + currentPlayerHitbox.width,
+          enemyHitbox.x + enemyHitbox.width
+        ) - Math.max(currentPlayerHitbox.x, enemyHitbox.x)
       );
-      const currentYOverlap = Math.max(0,
-        Math.min(currentPlayerHitbox.y + currentPlayerHitbox.height, enemyHitbox.y + enemyHitbox.height) - 
-        Math.max(currentPlayerHitbox.y, enemyHitbox.y)
+      const currentYOverlap = Math.max(
+        0,
+        Math.min(
+          currentPlayerHitbox.y + currentPlayerHitbox.height,
+          enemyHitbox.y + enemyHitbox.height
+        ) - Math.max(currentPlayerHitbox.y, enemyHitbox.y)
       );
 
       // Calculate new overlap after proposed movement
-      const newXOverlap = Math.max(0, 
-        Math.min(playerHitbox.x + playerHitbox.width, enemyHitbox.x + enemyHitbox.width) - 
-        Math.max(playerHitbox.x, enemyHitbox.x)
+      const newXOverlap = Math.max(
+        0,
+        Math.min(
+          playerHitbox.x + playerHitbox.width,
+          enemyHitbox.x + enemyHitbox.width
+        ) - Math.max(playerHitbox.x, enemyHitbox.x)
       );
-      const newYOverlap = Math.max(0,
-        Math.min(playerHitbox.y + playerHitbox.height, enemyHitbox.y + enemyHitbox.height) - 
-        Math.max(playerHitbox.y, enemyHitbox.y)
+      const newYOverlap = Math.max(
+        0,
+        Math.min(
+          playerHitbox.y + playerHitbox.height,
+          enemyHitbox.y + enemyHitbox.height
+        ) - Math.max(playerHitbox.y, enemyHitbox.y)
       );
 
       // Check if overlapping at all after movement
       if (newXOverlap > 0 && newYOverlap > 0) {
         // Calculate overlap percentages for new position
-        const newXOverlapPercent = newXOverlap / Math.min(playerHitbox.width, enemyHitbox.width);
-        const newYOverlapPercent = newYOverlap / Math.min(playerHitbox.height, enemyHitbox.height);
+        const newXOverlapPercent =
+          newXOverlap / Math.min(playerHitbox.width, enemyHitbox.width);
+        const newYOverlapPercent =
+          newYOverlap / Math.min(playerHitbox.height, enemyHitbox.height);
 
         // If currently overlapping, always allow movement that reduces overlap (escape movement)
-        const isCurrentlyOverlapping = currentXOverlap > 0 && currentYOverlap > 0;
+        const isCurrentlyOverlapping =
+          currentXOverlap > 0 && currentYOverlap > 0;
         if (isCurrentlyOverlapping) {
-          const currentXOverlapPercent = currentXOverlap / Math.min(currentPlayerHitbox.width, enemyHitbox.width);
-          const currentYOverlapPercent = currentYOverlap / Math.min(currentPlayerHitbox.height, enemyHitbox.height);
-          
+          const currentXOverlapPercent =
+            currentXOverlap /
+            Math.min(currentPlayerHitbox.width, enemyHitbox.width);
+          const currentYOverlapPercent =
+            currentYOverlap /
+            Math.min(currentPlayerHitbox.height, enemyHitbox.height);
+
           // Allow movement if it reduces overall overlap OR if it's a melee enemy in attacking state
-          const overlapReduced = (newXOverlapPercent + newYOverlapPercent) < (currentXOverlapPercent + currentYOverlapPercent);
+          const overlapReduced =
+            newXOverlapPercent + newYOverlapPercent <
+            currentXOverlapPercent + currentYOverlapPercent;
           const isMeleeAttacking = isMeleeEnemy && enemy.state === "attacking";
-          
+
           if (overlapReduced || isMeleeAttacking) {
             continue; // Allow this movement
           }
         }
 
         // Block movement if overlap exceeds tolerance in either direction
-        if (newXOverlapPercent > overlapTolerance || newYOverlapPercent > overlapTolerance) {
+        if (
+          newXOverlapPercent > overlapTolerance ||
+          newYOverlapPercent > overlapTolerance
+        ) {
           return true;
         }
       }
@@ -1440,45 +1604,63 @@ export class Player extends AnimatedObject {
   }
 
   /**
-   * Upgrade melee weapon level and update sprite if currently using melee
+   * NEW: Upgrade melee weapon level using weaponUpgradeManager
    */
-  upgradeMeleeWeapon() {
-    if (this.meleeLevel < this.maxWeaponLevel) {
-      const oldWeapon = this.getCurrentMeleeWeapon();
-      this.meleeLevel++;
-      const newWeapon = this.getCurrentMeleeWeapon();
+  async upgradeMeleeWeapon() {
+    try {
+      const result = await weaponUpgradeManager.upgradeWeapon("melee");
 
-      // Weapon upgrade debugging removed to reduce console spam
+      if (result.success) {
+        const oldWeapon = this.getCurrentMeleeWeapon();
+        this.meleeLevel = result.newLevel;
+        const newWeapon = this.getCurrentMeleeWeapon();
 
-      // If currently using melee weapon, update sprite
-      if (this.weaponType === "melee") {
-        this.updateWeaponSprite();
+        // Weapon upgrade debugging removed to reduce console spam
+
+        // If currently using melee weapon, update sprite
+        if (this.weaponType === "melee") {
+          this.updateWeaponSprite();
+        }
+
+        return true;
+      } else {
+        console.log(`Cannot upgrade melee weapon: ${result.message}`);
+        return false;
       }
-
-      return true;
+    } catch (error) {
+      console.error("Failed to upgrade melee weapon:", error);
+      return false;
     }
-    return false;
   }
 
   /**
-   * Upgrade ranged weapon level and update sprite if currently using ranged
+   * NEW: Upgrade ranged weapon level using weaponUpgradeManager
    */
-  upgradeRangedWeapon() {
-    if (this.rangedLevel < this.maxWeaponLevel) {
-      const oldWeapon = this.getCurrentRangedWeapon();
-      this.rangedLevel++;
-      const newWeapon = this.getCurrentRangedWeapon();
+  async upgradeRangedWeapon() {
+    try {
+      const result = await weaponUpgradeManager.upgradeWeapon("ranged");
 
-      // Weapon upgrade debugging removed to reduce console spam
+      if (result.success) {
+        const oldWeapon = this.getCurrentRangedWeapon();
+        this.rangedLevel = result.newLevel;
+        const newWeapon = this.getCurrentRangedWeapon();
 
-      // If currently using ranged weapon, update sprite
-      if (this.weaponType === "ranged") {
-        this.updateWeaponSprite();
+        // Weapon upgrade debugging removed to reduce console spam
+
+        // If currently using ranged weapon, update sprite
+        if (this.weaponType === "ranged") {
+          this.updateWeaponSprite();
+        }
+
+        return true;
+      } else {
+        console.log(`Cannot upgrade ranged weapon: ${result.message}`);
+        return false;
       }
-
-      return true;
+    } catch (error) {
+      console.error("Failed to upgrade ranged weapon:", error);
+      return false;
     }
-    return false;
   }
 
   /**
@@ -1566,5 +1748,69 @@ export class Player extends AnimatedObject {
    */
   switchToRangedWeapon() {
     this.setWeapon("ranged");
+  }
+
+  /**
+   * NEW: Apply permanent upgrade to player
+   * @param {Object} upgrade - Upgrade data from database
+   * @param {string} upgrade.upgrade_type - Type of upgrade
+   * @param {number} upgrade.level - Level of the upgrade
+   */
+  applyUpgrade(upgrade) {
+    const { upgrade_type, level } = upgrade;
+
+    // Get upgrade values from constants
+    const PERMANENT_UPGRADES = {
+      health_max: { value: 15 },
+      stamina_max: { value: 20 },
+      movement_speed: { value: 0.1 },
+    };
+
+    const upgradeInfo = PERMANENT_UPGRADES[upgrade_type];
+    if (!upgradeInfo) {
+      console.warn(`Unknown permanent upgrade type: ${upgrade_type}`);
+      return;
+    }
+
+    const totalBonus = upgradeInfo.value * level;
+
+    switch (upgrade_type) {
+      case "health_max":
+        const oldMaxHealth = this.maxHealth;
+        this.maxHealth += totalBonus;
+        // Increase current health to maintain health percentage
+        const healthPercentage = this.health / oldMaxHealth;
+        this.health = Math.floor(this.maxHealth * healthPercentage);
+        console.log(
+          `Permanent health upgrade applied: +${totalBonus} (level ${level}). New max health: ${this.maxHealth}`
+        );
+        break;
+
+      case "stamina_max":
+        const oldMaxStamina = this.maxStamina;
+        this.maxStamina += totalBonus;
+        // Increase current stamina to maintain stamina percentage
+        const staminaPercentage = this.stamina / oldMaxStamina;
+        this.stamina = Math.floor(this.maxStamina * staminaPercentage);
+        console.log(
+          `Permanent stamina upgrade applied: +${totalBonus} (level ${level}). New max stamina: ${this.maxStamina}`
+        );
+        break;
+
+      case "movement_speed":
+        // Apply movement speed boost (multiplicative)
+        const speedMultiplier = 1 + upgradeInfo.value * level;
+        // Note: This would need to be applied to the movement logic in setVelocity()
+        console.log(
+          `Permanent movement speed upgrade applied: +${
+            upgradeInfo.value * level * 100
+          }% (level ${level})`
+        );
+        // TODO: Implement movement speed boost in setVelocity method
+        break;
+
+      default:
+        console.warn(`Unhandled permanent upgrade type: ${upgrade_type}`);
+    }
   }
 }

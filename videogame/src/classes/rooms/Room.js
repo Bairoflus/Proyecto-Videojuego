@@ -42,6 +42,10 @@ export class Room {
     this.shopActivationArea = null; // Shop activation area
     this.playerInShopArea = false; // Track if player is in shop activation area
     this.shopCanBeOpened = true; // Prevent reopening until player leaves area
+
+    // FIX: Add boss defeated flag for immediate transition activation
+    this.bossDefeated = false; // Track if boss has been defeated for immediate transition
+
     this.parseLayout();
 
     // Create shop instance for shop rooms
@@ -56,13 +60,13 @@ export class Room {
       log.info("Shop instance created in constructor for shop room");
     }
 
-    // ✅ FIXED: Don't auto-generate enemies in constructor
+    // FIXED: Don't auto-generate enemies in constructor
     // Enemy generation will be handled by initializeEnemies() for new rooms only
   }
 
-  // ✅ NEW METHOD: Initialize enemies for NEW combat rooms only
+  // NEW METHOD: Initialize enemies for NEW combat rooms only
   initializeEnemies() {
-    console.log(`🎮 ROOM.initializeEnemies() called:`, {
+    console.log(`ROOM.initializeEnemies() called:`, {
       isCombatRoom: this.isCombatRoom,
       currentEnemyCount: this.objects.enemies.length,
       roomType: this.roomType,
@@ -247,14 +251,16 @@ export class Room {
         // Set player as target for enemy AI
         if (window.game && window.game.player) {
           enemy.target = window.game.player;
-          
+
           // Check if enemy is a melee type (has MeleeEnemy in its constructor chain)
           // Melee enemies need the full player object for hitbox overlap detection
           // Ranged enemies need the player center position as a Vec
-          if (enemy.constructor.name.includes('Dagger') || 
-              enemy.constructor.name.includes('Sword') || 
-              enemy.type === 'goblin_dagger' || 
-              enemy.type === 'sword_goblin') {
+          if (
+            enemy.constructor.name.includes("Dagger") ||
+            enemy.constructor.name.includes("Sword") ||
+            enemy.type === "goblin_dagger" ||
+            enemy.type === "sword_goblin"
+          ) {
             // Melee enemies - pass full player object
             enemy.moveTo(window.game.player);
           } else {
@@ -281,10 +287,36 @@ export class Room {
 
     // Remove dead enemies from the array
     const previousEnemyCount = this.objects.enemies.length;
+
+    // ENHANCED: Better logging for enemy removal
+    const deadEnemies = this.objects.enemies.filter(
+      (enemy) => enemy.state === "dead"
+    );
+    const aliveEnemiesBefore = this.objects.enemies.filter(
+      (enemy) => enemy.state !== "dead"
+    );
+
     this.objects.enemies = this.objects.enemies.filter(
       (enemy) => enemy.state !== "dead"
     );
     const currentEnemyCount = this.objects.enemies.length;
+
+    // ENHANCED: Diagnostic logging for enemy state changes
+    if (deadEnemies.length > 0) {
+      console.log(`Removing ${deadEnemies.length} dead enemies from room`);
+      console.log(
+        `  Dead enemies:`,
+        deadEnemies.map((e) => ({
+          type: e.type,
+          position: `(${Math.round(e.position.x)}, ${Math.round(
+            e.position.y
+          )})`,
+        }))
+      );
+      console.log(
+        `  Enemy count: ${previousEnemyCount} → ${currentEnemyCount}`
+      );
+    }
 
     // Check if all enemies were just defeated in a combat room
     if (
@@ -293,7 +325,57 @@ export class Room {
       previousEnemyCount > 0 &&
       currentEnemyCount === 0
     ) {
+      console.log("ALL ENEMIES DEFEATED - Spawning chest");
       this.spawnChest();
+
+      // IMMEDIATE DIAGNOSTIC: Check transition state right after enemy cleanup
+      console.log("IMMEDIATE TRANSITION CHECK AFTER ENEMY CLEANUP:");
+      console.log(
+        `  - Room type: ${this.roomType}, Combat room: ${this.isCombatRoom}`
+      );
+      console.log(`  - Enemies remaining: ${this.objects.enemies.length}`);
+      console.log(
+        `  - Alive enemies: ${
+          this.objects.enemies.filter((e) => e.state !== "dead").length
+        }`
+      );
+      console.log(`  - Dead enemies removed: ${deadEnemies.length}`);
+      console.log(`  - Can transition: ${this.canTransition()}`);
+
+      // FORCE VERIFICATION: Double-check all enemies are actually dead
+      const stillAlive = this.objects.enemies.filter((e) => e.state !== "dead");
+      if (stillAlive.length > 0) {
+        console.error("ERROR: Enemies marked as alive after cleanup!");
+        stillAlive.forEach((enemy) => {
+          console.error(
+            `  - ALIVE: ${enemy.type} at (${Math.round(
+              enemy.position.x
+            )}, ${Math.round(enemy.position.y)}) - Health: ${
+              enemy.health
+            }, State: ${enemy.state}`
+          );
+        });
+      } else {
+        console.log("VERIFICATION PASSED - All enemies confirmed dead/removed");
+
+        // FORCE NOTIFICATION to Game.js that room is now clear
+        if (window.game) {
+          console.log(
+            "NOTIFYING GAME: Combat room is now clear for transition"
+          );
+          window.game.roomJustCleared = true; // Set flag for immediate feedback
+
+          // If player is already at right edge, trigger transition check immediately
+          if (
+            window.game.player &&
+            this.isPlayerAtRightEdge(window.game.player)
+          ) {
+            console.log(
+              "PLAYER AT RIGHT EDGE - Transition should be possible now!"
+            );
+          }
+        }
+      }
     }
 
     // Update shop interaction
@@ -315,7 +397,17 @@ export class Room {
         // Player just entered the area
         this.playerInShopArea = true;
         if (this.shopCanBeOpened && !this.objects.shop.isOpen) {
-          this.objects.shop.open();
+          // NEW: Prepare shop data for opening
+          const shopData = {
+            userId: parseInt(localStorage.getItem("currentUserId")),
+            runId: parseInt(localStorage.getItem("currentRunId")),
+            roomId: window.game?.floorGenerator?.getCurrentRoomId() || 1,
+          };
+
+          // Open shop with proper data
+          this.objects.shop.open(shopData, () => {
+            this.shopCanBeOpened = false;
+          });
         }
       } else if (this.playerInShopArea && !isInArea) {
         // Player just left the area
@@ -371,6 +463,40 @@ export class Room {
     const isAtMiddleY =
       Math.abs(playerHitbox.y + playerHitbox.height / 2 - middleY) <
       playerHitbox.height;
+
+    // ENHANCED: Add debugging when player is close to transition
+    const debugThreshold = rightEdge - this.transitionZone * 1.5; // Slightly before transition zone
+    if (playerHitbox.x > debugThreshold) {
+      // Initialize debug counter if not exists
+      if (!this.rightEdgeDebugCounter) this.rightEdgeDebugCounter = 0;
+      this.rightEdgeDebugCounter++;
+
+      // Log every 30 frames when player is near transition area
+      if (this.rightEdgeDebugCounter % 30 === 0) {
+        const playerCenterY = playerHitbox.y + playerHitbox.height / 2;
+        const yDifference = Math.abs(playerCenterY - middleY);
+
+        console.log("🎯 RIGHT EDGE DEBUG - Player near transition zone:", {
+          playerX: Math.round(playerHitbox.x),
+          playerY: Math.round(playerHitbox.y),
+          playerCenterY: Math.round(playerCenterY),
+          rightEdge: Math.round(rightEdge),
+          transitionZone: this.transitionZone,
+          transitionThreshold: Math.round(rightEdge - this.transitionZone),
+          middleY: Math.round(middleY),
+          yDifference: Math.round(yDifference),
+          yTolerance: playerHitbox.height,
+          isAtRightEdge,
+          isAtMiddleY,
+          finalResult: isAtRightEdge && isAtMiddleY,
+          failureReason: !isAtRightEdge
+            ? "X position not in transition zone"
+            : !isAtMiddleY
+            ? "Y position not centered enough"
+            : "None",
+        });
+      }
+    }
 
     return isAtRightEdge && isAtMiddleY;
   }
@@ -682,29 +808,29 @@ export class Room {
   isValidEnemyPosition(position) {
     // Create a temporary enemy to test collision
     const tempEnemy = new GoblinDagger(position);
-    
+
     // Check wall collision
     if (this.checkWallCollision(tempEnemy)) {
       return false;
     }
-    
+
     // Check collision with existing enemies
     const tempHitbox = tempEnemy.getHitboxBounds();
     for (const existingEnemy of this.objects.enemies) {
       if (existingEnemy.state === "dead") continue;
-      
+
       const existingHitbox = existingEnemy.getHitboxBounds();
-      
+
       // Check if hitboxes overlap
       if (this.checkRectangleCollision(tempHitbox, existingHitbox)) {
         return false;
       }
     }
-    
+
     return true;
   }
 
-  // Checks if the room can transition (no enemies alive)
+  // ENHANCED: Checks if the room can transition with better logging and boss room handling
   canTransition() {
     // Boss room: locked until boss (and any adds) are dead
     if (this.roomType === "boss") {
@@ -713,17 +839,41 @@ export class Room {
         (e) => e.state !== "dead"
       );
       const deadEnemies = totalEnemies - aliveEnemies.length;
-      const canTransition = aliveEnemies.length === 0;
 
-      if (canTransition) {
-        log.info(
-          `Boss defeated! (${deadEnemies}/${totalEnemies} dead) — boss room unlocked.`
-        );
-      } else {
-        const aliveTypes = aliveEnemies.map((e) => e.type).join(", ");
-        log.debug(
-          `Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`
-        );
+      // ENHANCED: More robust boss room transition logic
+      const allEnemiesDead = aliveEnemies.length === 0;
+      const bossDefeatedFlag = this.bossDefeated === true;
+      const canTransition = allEnemiesDead || bossDefeatedFlag;
+
+      // THROTTLE: Only log state changes, not every frame
+      if (canTransition !== this.lastBossCanTransition) {
+        this.lastBossCanTransition = canTransition;
+        if (canTransition) {
+          if (bossDefeatedFlag && !allEnemiesDead) {
+            log.info(
+              `⚡ Boss room transition activated via bossDefeated flag! (${deadEnemies}/${totalEnemies} dead)`
+            );
+          } else if (allEnemiesDead) {
+            log.info(
+              `🏆 Boss defeated! All enemies eliminated (${deadEnemies}/${totalEnemies} dead) — boss room unlocked.`
+            );
+            // Ensure bossDefeated flag is set for consistency
+            this.bossDefeated = true;
+          }
+          console.log(
+            `BOSS ROOM TRANSITION ALLOWED - Player can advance to next floor`
+          );
+        } else {
+          const aliveTypes = aliveEnemies
+            .map((e) => e.type || "unknown")
+            .join(", ");
+          log.debug(
+            `Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`
+          );
+          console.log(
+            `BOSS ROOM TRANSITION BLOCKED - Must defeat all enemies first`
+          );
+        }
       }
 
       return canTransition;
@@ -741,18 +891,46 @@ export class Room {
     const deadEnemies = totalEnemies - aliveEnemies.length;
     const canTransition = aliveEnemies.length === 0;
 
-    if (canTransition) {
-      log.info(
-        `Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
-      );
-    } else {
-      const aliveTypes = aliveEnemies.map((e) => e.type).join(", ");
-      log.debug(
-        `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
-      );
+    // THROTTLE: Only log state changes, not every frame
+    if (canTransition !== this.lastCombatCanTransition) {
+      this.lastCombatCanTransition = canTransition;
+      if (canTransition) {
+        log.info(
+          `Combat room cleared: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
+        );
+        console.log(`COMBAT ROOM TRANSITION ALLOWED - Player can advance`);
+      } else {
+        const aliveTypes = aliveEnemies
+          .map((e) => e.type || "unknown")
+          .join(", ");
+        log.debug(
+          `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
+        );
+        console.log(
+          `COMBAT ROOM TRANSITION BLOCKED - ${aliveEnemies.length} enemies remain`
+        );
+      }
     }
 
     return canTransition;
+  }
+
+  // NEW: Reset boss room state when entering a new boss room
+  resetBossState() {
+    if (this.roomType === "boss") {
+      this.bossDefeated = false;
+      console.log(`Boss room state reset - ready for new boss encounter`);
+    }
+  }
+
+  // NEW: Force boss room transition (for debugging/testing)
+  forceBossTransition() {
+    if (this.roomType === "boss") {
+      this.bossDefeated = true;
+      console.log(`Boss room transition manually enabled`);
+      return true;
+    }
+    return false;
   }
 
   /**

@@ -27,6 +27,17 @@ const mimeTypes = {
 const server = http.createServer((req, res) => {
   console.log(`${req.method} ${req.url}`);
 
+  // Add CORS headers for ES6 module loading
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    return res.end();
+  }
+
   // Handle root path
   if (req.url === '/' || req.url === '/index.html') {
     res.writeHead(302, {

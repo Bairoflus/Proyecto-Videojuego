@@ -3,8 +3,6 @@
  * Central location for all game constants and configuration options
  */
 
-import { getBosses } from '../../utils/api.js';
-
 export const gameConfig = {
     // Logging configuration
     logging: {
@@ -67,13 +65,35 @@ export const gameConfig = {
         }
     },
 
-    // Boss configuration - loaded from API
+    // Boss configuration - hardcoded (no longer loaded from API)
     bosses: {
-        // Boss data will be populated from API
-        data: [],
-        // Loading state
-        loaded: false,
-        // Error state
+        // Boss data hardcoded for better performance
+        data: [
+            {
+                enemy_id: 101,
+                name: 'Dragon Boss',
+                max_hp: 500,
+                description: 'A powerful dragon that guards the treasure',
+                moves: [
+                    {
+                        name: 'Fire Breath',
+                        description: 'Breathes fire in a cone',
+                        phase: 1
+                    },
+                    {
+                        name: 'Claw Strike', 
+                        description: 'Powerful melee attack',
+                        phase: 1
+                    },
+                    {
+                        name: 'Wing Slam',
+                        description: 'Area damage attack',
+                        phase: 2
+                    }
+                ]
+            }
+        ],
+        loaded: true,
         error: null
     }
 };
@@ -95,29 +115,6 @@ export function updateConfig(path, value) {
 }
 
 /**
- * Load boss data from the API and cache it in game config
- * @returns {Promise<Array>} Array of boss data
- */
-export async function loadBossData() {
-    try {
-        console.log('Loading boss data from API...');
-        const bossData = await getBosses();
-        
-        gameConfig.bosses.data = bossData;
-        gameConfig.bosses.loaded = true;
-        gameConfig.bosses.error = null;
-        
-        console.log(`Loaded ${bossData.length} bosses from API`);
-        return bossData;
-    } catch (error) {
-        console.error('Failed to load boss data from API:', error);
-        gameConfig.bosses.error = error.message;
-        gameConfig.bosses.loaded = false;
-        return [];
-    }
-}
-
-/**
  * Get boss data by enemy_id
  * @param {number} enemyId - The enemy ID to search for
  * @returns {Object|null} Boss data or null if not found
@@ -127,8 +124,8 @@ export function getBossById(enemyId) {
 }
 
 /**
- * Convert API boss data to format expected by Boss class
- * @param {Object} bossData - Boss data from API
+ * Convert boss data to format expected by Boss class
+ * @param {Object} bossData - Boss data from config
  * @returns {Object} Formatted boss data for game engine
  */
 export function formatBossDataForGame(bossData) {
@@ -141,7 +138,7 @@ export function formatBossDataForGame(bossData) {
             name: move.name,
             description: move.description,
             phase: move.phase,
-            cooldown: 3000, // Default cooldown, could be added to API later
+            cooldown: 3000, // Default cooldown
             execute: (self) => {
                 console.log(`${bossData.name} uses ${move.name}!`);
                 // Default attack logic - can be customized per boss
