@@ -342,12 +342,11 @@ ADD CONSTRAINT fk_player_settings_user
     ON DELETE CASCADE;
 
 -- ===================================================
--- INITIAL DATA FOR TESTING AND ADMIN
+-- INITIAL DATA FOR TESTING
 -- ===================================================
 
--- Admin user (password: 123456)
-INSERT INTO users (username, email, password_hash, role) VALUES 
-('admin', 'admin@shatteredtimeline.com', '$2b$10$N9qo8uLOickgx2ZMRjOYNe.5YSaGdm3JPcOF5Pb.G8HAwLYn4Yz6W', 'admin');
+-- NOTE: Admin users are now created via admin_user_setup.sql
+-- Execute admin_user_setup.sql after objects3.sql for admin access
 
 -- Test user
 INSERT INTO users (username, email, password_hash) VALUES 
@@ -415,10 +414,7 @@ STRUCTURE FEATURES v3.0:
 
 NEXT STEP: Execute objects3.sql for views, triggers, and procedures
 
-ADMIN CREDENTIALS:
-- Username: admin
-- Password: 123456
-- Email: admin@shatteredtimeline.com
+ADMIN SETUP: Execute admin_user_setup.sql after objects3.sql for admin dashboard access
 
 RESULT: Complete database structure with ALL required functionalities
 ENGINE: InnoDB for all tables

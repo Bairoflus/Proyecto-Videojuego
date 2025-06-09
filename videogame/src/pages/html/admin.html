@@ -6,131 +6,203 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Dashboard - Shattered Timeline</title>
     <link rel="stylesheet" href="../css/admin.css" />
+    <!-- Chart.js for beautiful graphs - TEMPORARILY DISABLED -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
 </head>
 
 <body class="admin-page">
-    <header class="admin-header">
-        <div class="header-content">
-            <h1>🛡️ Admin Dashboard - Shattered Timeline</h1>
-            <div class="header-actions">
-                <span id="admin-user"></span>
-                <button id="logout-btn" class="logout-btn">Logout</button>
-            </div>
+    <!-- Admin Login Form (Initially shown) -->
+    <div id="admin-login" class="admin-login-container">
+        <div class="login-card">
+            <h1>Admin Access</h1>
+            <h2>Shattered Timeline</h2>
+            
+            <form id="admin-login-form">
+                <div class="form-group">
+                    <label for="admin-username">Admin Username:</label>
+                    <input type="text" id="admin-username" name="username" required />
+                </div>
+                
+                <div class="form-group">
+                    <label for="admin-password">Admin Password:</label>
+                    <input type="password" id="admin-password" name="password" required />
+                </div>
+                
+                <button type="submit" class="login-btn">Access Admin Dashboard</button>
+            </form>
+            
+            <div id="admin-login-error" class="login-error" style="display: none;"></div>
         </div>
-    </header>
+    </div>
 
-    <nav class="admin-nav">
-        <button class="nav-btn active" data-section="dashboard">📊 Dashboard</button>
-        <button class="nav-btn" data-section="leaderboards">🏆 Leaderboards</button>
-        <button class="nav-btn" data-section="analytics">📈 Analytics</button>
-        <button class="nav-btn" data-section="players">👥 Players</button>
-    </nav>
-
-    <main class="admin-main">
-        <!-- Dashboard Section -->
-        <section id="dashboard" class="admin-section active">
-            <h2>Game Overview</h2>
-            
-            <div class="dashboard-cards">
-                <div class="metric-card">
-                    <div class="metric-value" id="total-players">-</div>
-                    <div class="metric-label">Total Players</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="active-players">-</div>
-                    <div class="metric-label">Active Players</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="total-runs">-</div>
-                    <div class="metric-label">Total Runs</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="total-kills">-</div>
-                    <div class="metric-label">Total Kills</div>
+    <!-- Admin Dashboard (Initially hidden) -->
+    <div id="admin-dashboard" class="admin-dashboard-container" style="display: none;">
+        <header class="admin-header">
+            <div class="header-content">
+                <h1>Admin Dashboard - Shattered Timeline</h1>
+                <div class="header-actions">
+                    <span id="admin-user"></span>
+                    <button id="logout-btn" class="logout-btn">Logout</button>
                 </div>
             </div>
+        </header>
 
-            <div class="dashboard-content">
-                <div class="content-row">
-                    <div class="chart-container">
-                        <h3>Current Games</h3>
-                        <div id="current-games-table" class="table-container">
-                            <div class="loading">Loading current games...</div>
+        <!-- Optimized Navigation (removed unnecessary tabs) -->
+        <nav class="admin-nav">
+            <button class="nav-btn active" data-section="dashboard">Dashboard</button>
+            <button class="nav-btn" data-section="analytics">Analytics</button>
+            <button class="nav-btn" data-section="players">Players</button>
+            <!-- <button class="nav-btn" data-section="charts">Charts</button> -->
+        </nav>
+
+        <main class="admin-main">
+            <!-- Enhanced Dashboard Section -->
+            <section id="dashboard" class="admin-section active">
+                <h2>Game Overview</h2>
+                
+                <!-- Optimized Metrics (useful data only) -->
+                <div class="dashboard-cards">
+                    <div class="metric-card">
+                        <div class="metric-value" id="total-players">-</div>
+                        <div class="metric-label">Total Players</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="active-today">-</div>
+                        <div class="metric-label">Active Today</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="current-games">-</div>
+                        <div class="metric-label">Live Games</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="first-run-masters">-</div>
+                        <div class="metric-label">First Run Masters</div>
+                        <div class="metric-description">Players who beat all 3 bosses in their first run</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-content">
+                    <div class="content-row">
+                        <div class="chart-container">
+                            <h3>Current Live Games</h3>
+                            <div id="current-games-table" class="table-container">
+                                <div class="loading">Loading current games...</div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Playtime Leaderboard</h3>
+                            <div id="playtime-leaderboard" class="table-container">
+                                <div class="loading">Loading playtime leaders...</div>
+                            </div>
                         </div>
                     </div>
-                    <div class="chart-container">
-                        <h3>Recent Activity</h3>
-                        <div id="recent-activity" class="activity-feed">
-                            <div class="loading">Loading activity...</div>
-                        </div>
+                </div>
+            </section>
+
+            <!-- Optimized Analytics Section -->
+            <section id="analytics" class="admin-section">
+                <h2>Useful Analytics</h2>
+                
+                <!-- New useful analytics tabs -->
+                <div class="analytics-tabs">
+                    <button class="tab-btn active" data-analytics="first-run-masters">First Run Masters</button>
+                    <button class="tab-btn" data-analytics="upgrade-adoption">Upgrade Adoption</button>
+                    <button class="tab-btn" data-analytics="player-progression">Player Progression</button>
+                </div>
+
+                <div class="analytics-content">
+                    <!-- First Run Masters Analysis -->
+                    <div id="analytics-first-run-masters" class="analytics-table active">
+                        <h4>Exceptional Players - Defeated All 3 Bosses in First Run</h4>
+                        <div class="loading">Loading first run masters...</div>
+                    </div>
+                    
+                    <!-- Permanent Upgrade Adoption -->
+                    <div id="analytics-upgrade-adoption" class="analytics-table">
+                        <h4>Permanent Upgrade Adoption Analysis</h4>
+                        <div class="loading">Loading upgrade adoption data...</div>
+                    </div>
+                    
+                    <!-- Simplified Player Progression -->
+                    <div id="analytics-player-progression" class="analytics-table">
+                        <h4>Player Progression (Experience Tiers Only)</h4>
+                        <div class="loading">Loading player progression...</div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- Leaderboards Section -->
-        <section id="leaderboards" class="admin-section">
-            <h2>Leaderboards</h2>
-            
-            <div class="leaderboard-tabs">
-                <button class="tab-btn active" data-leaderboard="floors">🏢 Top Floors</button>
-                <button class="tab-btn" data-leaderboard="bosses">🐉 Boss Killers</button>
-                <button class="tab-btn" data-leaderboard="playtime">⏱️ Playtime</button>
-            </div>
-
-            <div class="leaderboard-content">
-                <div id="leaderboard-floors" class="leaderboard-table active">
-                    <div class="loading">Loading floors leaderboard...</div>
+            <!-- Enhanced Players Section -->
+            <section id="players" class="admin-section">
+                <h2>Active Players Status</h2>
+                
+                <div class="player-controls">
+                    <input type="text" id="player-search" placeholder="Search players..." />
+                    <button id="refresh-players">Refresh</button>
+                    <div class="filter-controls">
+                        <select id="activity-filter">
+                            <option value="all">All Players</option>
+                            <option value="Active">Active (Last 24h)</option>
+                            <option value="Recent">Recent (Last 7 days)</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
                 </div>
-                <div id="leaderboard-bosses" class="leaderboard-table">
-                    <div class="loading">Loading bosses leaderboard...</div>
-                </div>
-                <div id="leaderboard-playtime" class="leaderboard-table">
-                    <div class="loading">Loading playtime leaderboard...</div>
-                </div>
-            </div>
-        </section>
 
-        <!-- Analytics Section -->
-        <section id="analytics" class="admin-section">
-            <h2>Game Analytics</h2>
-            
-            <div class="analytics-tabs">
-                <button class="tab-btn active" data-analytics="economy">💰 Economy</button>
-                <button class="tab-btn" data-analytics="combat">⚔️ Combat</button>
-                <button class="tab-btn" data-analytics="progression">📈 Progression</button>
-            </div>
-
-            <div class="analytics-content">
-                <div id="analytics-economy" class="analytics-table active">
-                    <div class="loading">Loading economy analytics...</div>
+                <div id="players-table" class="table-container">
+                    <div class="loading">Loading active players...</div>
                 </div>
-                <div id="analytics-combat" class="analytics-table">
-                    <div class="loading">Loading combat analytics...</div>
+            </section>
+
+            <!-- NEW: Charts Section (Beautiful Visualizations) -->
+            <!-- TEMPORARILY DISABLED: Charts Section
+            <section id="charts" class="admin-section">
+                <h2>Data Visualizations</h2>
+                
+                <div class="charts-grid">
+                    <!-- Activity Trends Chart -->
+                    <div class="chart-container">
+                        <h3>Player Activity Trends (Last 30 Days)</h3>
+                        <canvas id="activity-trends-chart"></canvas>
+                    </div>
+                    
+                    <!-- Playtime Distribution Chart -->
+                    <div class="chart-container">
+                        <h3>Playtime Distribution</h3>
+                        <canvas id="playtime-distribution-chart"></canvas>
+                    </div>
+                    
+                    <!-- Run Experience Distribution Chart -->
+                    <div class="chart-container">
+                        <h3>Player Experience by Run Count</h3>
+                        <canvas id="run-experience-chart"></canvas>
+                    </div>
+                    
+                    <!-- Permanent Upgrades Adoption Chart -->
+                    <div class="chart-container">
+                        <h3>Permanent Upgrade Adoption Rates</h3>
+                        <canvas id="upgrade-adoption-chart"></canvas>
+                    </div>
+                    
+                    <!-- Session Duration Chart -->
+                    <div class="chart-container">
+                        <h3>Live Session Duration Distribution</h3>
+                        <canvas id="session-duration-chart"></canvas>
+                    </div>
                 </div>
-                <div id="analytics-progression" class="analytics-table">
-                    <div class="loading">Loading progression analytics...</div>
-                </div>
-            </div>
-        </section>
+            </section>
+            -->
+        </main>
+    </div>
 
-        <!-- Players Section -->
-        <section id="players" class="admin-section">
-            <h2>Player Management</h2>
-            
-            <div class="player-controls">
-                <input type="text" id="player-search" placeholder="Search players..." />
-                <button id="refresh-players">🔄 Refresh</button>
-            </div>
-
-            <div id="players-table" class="table-container">
-                <div class="loading">Loading players...</div>
-            </div>
-        </section>
-    </main>
-
+    <!-- Messages -->
     <div id="error-message" class="message error" style="display: none;"></div>
     <div id="success-message" class="message success" style="display: none;"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading...</div>
+    </div>
 
     <script type="module" src="../js/admin.js"></script>
 </body>

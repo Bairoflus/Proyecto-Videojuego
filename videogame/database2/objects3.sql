@@ -240,44 +240,13 @@ SELECT
 FROM player_settings;
 
 -- ===================================================
--- ADMIN DASHBOARD VIEWS (ENHANCED FOR v3.0)
+-- ADMIN DASHBOARD VIEWS (OPTIMIZED PER USER REQUIREMENTS)
 -- ===================================================
 
--- View: Top players by floors reached (ENHANCED with run tracking)
-CREATE VIEW vw_leaderboard_floors AS
-SELECT 
-    u.username as champion,
-    ps.highest_floor_ever as max_level,  -- NEW: Use highest_floor_ever
-    urp.current_run_number as current_run,  -- NEW: Current run number
-    ps.total_runs as total_attempts,
-    ps.total_kills as total_eliminations,
-    ps.total_gold_spent as gold_invested,
-    ps.last_updated as last_achievement
-FROM player_stats ps
-INNER JOIN users u ON ps.user_id = u.user_id
-INNER JOIN user_run_progress urp ON u.user_id = urp.user_id
-WHERE u.is_active = TRUE
-ORDER BY ps.highest_floor_ever DESC, ps.total_kills DESC
-LIMIT 20;
+-- REMOVED: vw_leaderboard_floors (only 3 floors, not useful for developers)
+-- REMOVED: vw_leaderboard_bosses 
 
--- View: Top players by bosses defeated (ENHANCED)
-CREATE VIEW vw_leaderboard_bosses AS
-SELECT 
-    u.username as boss_slayer,
-    ps.total_bosses_killed as bosses_defeated,
-    ps.highest_floor_ever as progression,  -- NEW: Use highest_floor_ever
-    urp.current_run_number as current_run,  -- NEW: Current run number
-    ps.total_runs as attempts,
-    ps.total_gold_spent as gold_invested,
-    ps.last_updated as last_victory
-FROM player_stats ps
-INNER JOIN users u ON ps.user_id = u.user_id
-INNER JOIN user_run_progress urp ON u.user_id = urp.user_id
-WHERE u.is_active = TRUE AND ps.total_bosses_killed > 0
-ORDER BY ps.total_bosses_killed DESC, ps.highest_floor_ever DESC
-LIMIT 20;
-
--- View: Top players by playtime (ENHANCED)
+-- View: Top players by playtime (KEPT - Useful for 3-floor game)
 CREATE VIEW vw_leaderboard_playtime AS
 SELECT 
     u.username as dedicated_player,
@@ -295,75 +264,213 @@ ORDER BY ps.total_playtime_seconds DESC
 LIMIT 20;
 
 -- ===================================================
--- ADVANCED ANALYTICS VIEWS (ENHANCED FOR v3.0)
+-- OPTIMIZED ANALYTICS VIEWS (FOCUSED ON USEFUL METRICS)
 -- ===================================================
 
--- View: Game economy statistics (ENHANCED with run numbers)
-CREATE VIEW vw_economy_stats AS
-SELECT 
-    weapon_type as item_category,
-    upgrade_level as tier,
-    COUNT(*) as purchase_count,
-    AVG(cost) as avg_price,
-    SUM(cost) as total_revenue,
-    MIN(purchased_at) as first_purchase,
-    MAX(purchased_at) as last_purchase,
-    COUNT(DISTINCT user_id) as unique_buyers,
-    COUNT(DISTINCT run_number) as unique_runs  -- NEW: Run number tracking
-FROM weapon_upgrade_purchases
-GROUP BY weapon_type, upgrade_level
-ORDER BY weapon_type, upgrade_level;
-
--- View: Combat behavior analysis (ENHANCED with run numbers)
-CREATE VIEW vw_combat_analytics AS
-SELECT 
-    enemy_type as creature_type,
-    floor as encounter_level,
-    room_id as battle_zone,
-    COUNT(*) as elimination_count,
-    COUNT(DISTINCT user_id) as hunters_involved,
-    COUNT(DISTINCT run_number) as unique_runs,  -- NEW: Run number tracking
-    MIN(killed_at) as first_encounter,
-    MAX(killed_at) as latest_encounter
-FROM enemy_kills
-GROUP BY enemy_type, floor, room_id
-ORDER BY floor, room_id, enemy_type;
-
--- View: Player progression analysis (ENHANCED with run tracking)
+-- View: Player progression analysis (SIMPLIFIED - Only experience tier)
 CREATE VIEW vw_player_progression AS
 SELECT 
     u.user_id as player_id,
     u.username as player_name,
     u.created_at as registration_date,
-    urp.current_run_number as current_run,  -- NEW: Current run number
+    urp.current_run_number as current_run,
     ps.total_runs as sessions_played,
-    ps.highest_floor_ever as best_progress,  -- NEW: Use highest_floor_ever
-    urp.total_completed_runs as completed_runs,  -- NEW: Completed runs
+    ps.highest_floor_ever as best_progress,
+    urp.total_completed_runs as completed_runs,
     ps.total_kills as combat_experience,
-    CASE 
-        WHEN ps.total_runs = 0 THEN 'New'
-        WHEN ps.highest_floor_ever <= 1 THEN 'Beginner'
-        WHEN ps.highest_floor_ever <= 2 THEN 'Intermediate'
-        WHEN ps.highest_floor_ever <= 3 THEN 'Advanced'
-        ELSE 'Expert'
-    END as skill_tier,
-    CASE 
-        WHEN ps.total_gold_spent = 0 THEN 'Free Player'
-        WHEN ps.total_gold_spent <= 100 THEN 'Light Spender'
-        WHEN ps.total_gold_spent <= 500 THEN 'Regular Spender'
-        ELSE 'Heavy Spender'
-    END as spending_tier,
+    ps.total_gold_spent as total_spent,
+    ps.total_playtime_seconds as total_time_seconds,
+    -- Keep only experience_tier based on run count (useful)
     CASE 
         WHEN urp.current_run_number <= 5 THEN 'Newcomer'
         WHEN urp.current_run_number <= 20 THEN 'Regular'
         WHEN urp.current_run_number <= 50 THEN 'Experienced'
         ELSE 'Veteran'
-    END as run_tier  -- NEW: Run-based progression tier
+    END as experience_tier
 FROM users u
 LEFT JOIN player_stats ps ON u.user_id = ps.user_id
 LEFT JOIN user_run_progress urp ON u.user_id = urp.user_id
-WHERE u.is_active = TRUE
+WHERE u.is_active = TRUE AND u.role = 'player'
 ORDER BY u.created_at DESC;
+
+-- ===================================================
+-- NEW USEFUL ADMIN VIEWS (Per User Requirements)
+-- ===================================================
+
+-- View: Players who defeated all 3 bosses in their first run (MASTER PLAYERS)
+CREATE VIEW vw_all_bosses_first_run AS
+SELECT 
+    u.username as player_name,
+    u.created_at as registration_date,
+    bk_stats.first_run_number,
+    bk_stats.bosses_defeated_first_run,
+    bk_stats.first_dragon_kill_date,
+    CASE 
+        WHEN bk_stats.bosses_defeated_first_run >= 3 THEN 'Master Player'
+        WHEN bk_stats.bosses_defeated_first_run >= 2 THEN 'Advanced Player'
+        WHEN bk_stats.bosses_defeated_first_run >= 1 THEN 'Beginner Player'
+        ELSE 'No Bosses Defeated'
+    END as skill_classification
+FROM users u
+INNER JOIN (
+    SELECT 
+        user_id,
+        MIN(run_number) as first_run_number,
+        COUNT(*) as bosses_defeated_first_run,
+        MIN(killed_at) as first_dragon_kill_date
+    FROM boss_kills 
+    WHERE run_number = 1  -- Only first run
+    GROUP BY user_id
+    HAVING COUNT(*) >= 3  -- Only show players who killed all 3 bosses
+) bk_stats ON u.user_id = bk_stats.user_id
+WHERE u.is_active = TRUE AND u.role = 'player'
+ORDER BY bk_stats.first_dragon_kill_date ASC;
+
+-- View: First permanent upgrade purchases analysis (FEATURE ADOPTION)
+CREATE VIEW vw_first_permanent_purchases AS
+SELECT 
+    upgrade_type,
+    CASE upgrade_type
+        WHEN 'health_max' THEN 'Max Health Upgrade'
+        WHEN 'stamina_max' THEN 'Max Stamina Upgrade'
+        WHEN 'movement_speed' THEN 'Movement Speed Upgrade'
+    END as upgrade_name,
+    COUNT(*) as first_time_buyers,
+    ROUND(AVG(first_purchase_run), 1) as avg_first_purchase_run,
+    MIN(first_purchase_date) as earliest_purchase,
+    MAX(first_purchase_date) as latest_purchase,
+    ROUND(
+        COUNT(*) * 100.0 / (SELECT COUNT(*) FROM users WHERE role = 'player' AND is_active = TRUE), 
+        2
+    ) as adoption_percentage
+FROM (
+    SELECT 
+        ppu.user_id,
+        ppu.upgrade_type,
+        MIN(COALESCE(urp.current_run_number, 1)) as first_purchase_run,
+        MIN(ppu.updated_at) as first_purchase_date
+    FROM permanent_player_upgrades ppu
+    INNER JOIN users u ON ppu.user_id = u.user_id
+    LEFT JOIN user_run_progress urp ON ppu.user_id = urp.user_id
+    WHERE u.is_active = TRUE AND u.role = 'player'
+    GROUP BY ppu.user_id, ppu.upgrade_type
+) first_purchases
+GROUP BY upgrade_type
+ORDER BY first_time_buyers DESC;
+
+-- ===================================================
+-- CHART DATA VIEWS (For Beautiful Visualizations)
+-- ===================================================
+
+-- View: Daily activity data for charts
+CREATE VIEW vw_daily_activity AS
+SELECT 
+    DATE(activity_date) as date,
+    'registrations' as activity_type,
+    COUNT(*) as count
+FROM (
+    SELECT created_at as activity_date 
+    FROM users 
+    WHERE role = 'player' AND is_active = TRUE
+    AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+) reg_data
+GROUP BY DATE(activity_date)
+
+UNION ALL
+
+SELECT 
+    DATE(activity_date) as date,
+    'active_players' as activity_type,
+    COUNT(*) as count
+FROM (
+    SELECT last_login as activity_date 
+    FROM users 
+    WHERE role = 'player' AND is_active = TRUE
+    AND last_login >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+) login_data
+GROUP BY DATE(activity_date)
+
+ORDER BY date DESC, activity_type;
+
+-- View: Playtime distribution for charts
+CREATE VIEW vw_playtime_distribution AS
+SELECT 
+    CASE 
+        WHEN total_playtime_seconds < 3600 THEN '< 1h'
+        WHEN total_playtime_seconds < 10800 THEN '1-3h'
+        WHEN total_playtime_seconds < 21600 THEN '3-6h'
+        WHEN total_playtime_seconds < 43200 THEN '6-12h'
+        ELSE '12h+'
+    END as playtime_range,
+    COUNT(*) as player_count,
+    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM player_stats WHERE total_playtime_seconds > 0), 2) as percentage
+FROM player_stats ps
+INNER JOIN users u ON ps.user_id = u.user_id
+WHERE u.is_active = TRUE AND u.role = 'player' AND ps.total_playtime_seconds > 0
+GROUP BY 
+    CASE 
+        WHEN total_playtime_seconds < 3600 THEN '< 1h'
+        WHEN total_playtime_seconds < 10800 THEN '1-3h'
+        WHEN total_playtime_seconds < 21600 THEN '3-6h'
+        WHEN total_playtime_seconds < 43200 THEN '6-12h'
+        ELSE '12h+'
+    END
+ORDER BY 
+    CASE 
+        WHEN playtime_range = '< 1h' THEN 1
+        WHEN playtime_range = '1-3h' THEN 2
+        WHEN playtime_range = '3-6h' THEN 3
+        WHEN playtime_range = '6-12h' THEN 4
+        ELSE 5
+    END;
+
+-- View: Run experience distribution for charts
+CREATE VIEW vw_run_experience_distribution AS
+SELECT 
+    CASE 
+        WHEN current_run_number <= 5 THEN 'Run 1-5'
+        WHEN current_run_number <= 15 THEN 'Run 6-15'
+        WHEN current_run_number <= 30 THEN 'Run 16-30'
+        ELSE 'Run 30+'
+    END as run_range,
+    COUNT(*) as player_count,
+    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM user_run_progress), 2) as percentage
+FROM user_run_progress urp
+INNER JOIN users u ON urp.user_id = u.user_id
+WHERE u.is_active = TRUE AND u.role = 'player'
+GROUP BY 
+    CASE 
+        WHEN current_run_number <= 5 THEN 'Run 1-5'
+        WHEN current_run_number <= 15 THEN 'Run 6-15'
+        WHEN current_run_number <= 30 THEN 'Run 16-30'
+        ELSE 'Run 30+'
+    END
+ORDER BY 
+    CASE 
+        WHEN run_range = 'Run 1-5' THEN 1
+        WHEN run_range = 'Run 6-15' THEN 2
+        WHEN run_range = 'Run 16-30' THEN 3
+        ELSE 4
+    END;
+
+-- View: Session duration distribution for live games
+CREATE VIEW vw_session_duration_distribution AS
+SELECT 
+    session_duration_type,
+    COUNT(*) as session_count,
+    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM vw_current_games WHERE session_duration_type IS NOT NULL), 2) as percentage
+FROM vw_current_games
+GROUP BY session_duration_type
+ORDER BY 
+    CASE 
+        WHEN session_duration_type = 'Fresh' THEN 1
+        WHEN session_duration_type = 'Active' THEN 2
+        ELSE 3
+    END;
+
+-- ===================================================
+-- ESSENTIAL STATUS VIEWS (KEPT)
+-- ===================================================
 
 -- View: Active players status (ENHANCED)
 CREATE VIEW vw_active_players AS
@@ -615,7 +722,7 @@ END//
 DELIMITER ;
 
 -- ===================================================
--- PERMISSIONS AND SECURITY
+-- PERMISSIONS AND SECURITY (UPDATED FOR OPTIMIZED VIEWS)
 -- ===================================================
 
 -- Grant SELECT permissions on all views to application user
@@ -633,23 +740,33 @@ GRANT SELECT ON vw_purchase_log TO 'tc2005b'@'localhost';
 GRANT SELECT ON vw_combat_log TO 'tc2005b'@'localhost';
 GRANT SELECT ON vw_boss_victories TO 'tc2005b'@'localhost';
 GRANT SELECT ON vw_player_config TO 'tc2005b'@'localhost';
-GRANT SELECT ON vw_leaderboard_floors TO 'tc2005b'@'localhost';
-GRANT SELECT ON vw_leaderboard_bosses TO 'tc2005b'@'localhost';
+
+-- Admin dashboard views (OPTIMIZED - removed unnecessary views)
 GRANT SELECT ON vw_leaderboard_playtime TO 'tc2005b'@'localhost';
-GRANT SELECT ON vw_economy_stats TO 'tc2005b'@'localhost';
-GRANT SELECT ON vw_combat_analytics TO 'tc2005b'@'localhost';
 GRANT SELECT ON vw_player_progression TO 'tc2005b'@'localhost';
 GRANT SELECT ON vw_active_players TO 'tc2005b'@'localhost';
 GRANT SELECT ON vw_current_games TO 'tc2005b'@'localhost';
+
+-- New useful admin views
+GRANT SELECT ON vw_all_bosses_first_run TO 'tc2005b'@'localhost';
+GRANT SELECT ON vw_first_permanent_purchases TO 'tc2005b'@'localhost';
+
+-- Chart data views
+GRANT SELECT ON vw_daily_activity TO 'tc2005b'@'localhost';
+GRANT SELECT ON vw_playtime_distribution TO 'tc2005b'@'localhost';
+GRANT SELECT ON vw_run_experience_distribution TO 'tc2005b'@'localhost';
+GRANT SELECT ON vw_session_duration_distribution TO 'tc2005b'@'localhost';
+
+-- Specialized API views
 GRANT SELECT ON vw_player_initialization TO 'tc2005b'@'localhost';
 GRANT SELECT ON vw_complete_player_stats TO 'tc2005b'@'localhost';
 
 -- ===================================================
--- VIEW TO ENDPOINT MAPPING (ENHANCED FOR v3.0)
+-- VIEW TO ENDPOINT MAPPING (OPTIMIZED FOR v3.0)
 -- ===================================================
 
 /*
-API ENDPOINT USAGE v3.0:
+API ENDPOINT USAGE v3.0 - OPTIMIZED:
 
 CORE PLAYER ENDPOINTS:
 GET /api/users/:userId/profile → vw_user_profile
@@ -676,19 +793,32 @@ GET /api/users/:userId/history → vw_game_history
 PLAYER INITIALIZATION ENDPOINT:
 GET /api/users/:userId/initialization-data → vw_player_initialization
 
-ADMIN DASHBOARD ENDPOINTS:
-GET /api/leaderboards/floors → vw_leaderboard_floors
-GET /api/leaderboards/bosses → vw_leaderboard_bosses
-GET /api/leaderboards/playtime → vw_leaderboard_playtime
+OPTIMIZED ADMIN DASHBOARD ENDPOINTS:
 
-GET /api/analytics/economy → vw_economy_stats
-GET /api/analytics/combat → vw_combat_analytics
-GET /api/analytics/player-progression → vw_player_progression
+KEPT ADMIN ENDPOINTS (Useful for 3-floor game):
+GET /api/admin/leaderboards/playtime → vw_leaderboard_playtime
+GET /api/admin/analytics/player-progression → vw_player_progression (simplified)
+GET /api/admin/status/active-players → vw_active_players
+GET /api/admin/status/current-games → vw_current_games
 
-GET /api/status/active-players → vw_active_players
-GET /api/status/current-games → vw_current_games
+NEW USEFUL ADMIN ENDPOINTS:
+GET /api/admin/analytics/first-run-masters → vw_all_bosses_first_run
+GET /api/admin/analytics/permanent-upgrades-adoption → vw_first_permanent_purchases
 
-✅ FUNCTIONALITIES v3.0:
+CHART DATA ENDPOINTS (For visualizations):
+GET /api/admin/charts/activity-trends → vw_daily_activity
+GET /api/admin/charts/playtime-distribution → vw_playtime_distribution
+GET /api/admin/charts/run-experience → vw_run_experience_distribution
+GET /api/admin/charts/session-duration → vw_session_duration_distribution
+GET /api/admin/charts/upgrade-adoption → vw_first_permanent_purchases
+
+REMOVED ADMIN ENDPOINTS (Unnecessary for 3-floor game):
+❌ GET /api/admin/leaderboards/floors (only 3 floors, not useful)
+❌ GET /api/admin/leaderboards/bosses (no developer value)  
+❌ GET /api/admin/analytics/economy (not needed)
+❌ GET /api/admin/analytics/combat (not needed)
+
+✅ OPTIMIZED FUNCTIONALITIES v3.0:
 
 #1 RUN PERSISTENCE:
 - vw_user_run_progress: Persistent run counter per user
@@ -710,6 +840,20 @@ GET /api/status/current-games → vw_current_games
 - JSON-like permanent upgrades string
 - All flags for frontend consumption
 
+#5 OPTIMIZED ADMIN ANALYTICS:
+- vw_all_bosses_first_run: Exceptional players who beat all 3 bosses in first run
+- vw_first_permanent_purchases: Feature adoption analysis for permanent upgrades
+- Chart data views: Activity trends, playtime distribution, run experience, session duration
+- Simplified progression: Only experience tier (Newcomer/Regular/Experienced/Veteran)
+
+OPTIMIZATION BENEFITS:
+- Removed 4 unnecessary admin views for better performance
+- Focused on actionable insights for developers
+- Added 6 new useful views for meaningful analytics
+- Chart-ready data for beautiful visualizations
+- Simplified player progression without vanity metrics
+- Enhanced with first-run masters tracking for exceptional players
+
 TRIGGERS:
 - tr_create_user_run_progress: Auto-initialize new users
 - tr_calculate_permanent_upgrade_values: Auto-calculate upgrade values
@@ -718,13 +862,14 @@ TRIGGERS:
 - tr_update_player_stats_after_run: Update stats and increment run number on completion
 - tr_update_run_gold_spent: Track gold spending during runs
 
-BENEFITS:
+DATABASE OPTIMIZATION:
 - Complete run persistence across sessions
 - Automatic permanent upgrade calculation
 - Temporary upgrade persistence until run completion
 - One-query player initialization
 - Enhanced analytics with run tracking
 - Ready-for-frontend calculated values
+- Optimized admin views focused on useful metrics only
 */
 
 -- ===================================================

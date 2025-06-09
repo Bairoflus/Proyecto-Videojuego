@@ -488,7 +488,7 @@ export async function hasActiveTemporaryUpgrades(userId) {
  * CRITICAL: Must be called on ALL logout scenarios to prevent data contamination
  */
 export function clearSessionLocalStorage() {
-    console.log('🧹 Clearing all session localStorage data...');
+    console.log('Clearing all session localStorage data...');
     
     // Complete list of all session-related keys
     const sessionKeys = [
@@ -498,63 +498,369 @@ export function clearSessionLocalStorage() {
         'currentRunId',
         'testMode',
         'runCreationFailed',
+        'username',
+        'userRole',
+        'weaponUpgradeManagerState',
+        'saveStateManagerState',
+        'lastAutoSave',
         'gameSettings',
-        // Add any other session-specific keys here
+        'debugFlags'
     ];
     
-    const clearedKeys = [];
-    
+    // Clear each key
     sessionKeys.forEach(key => {
-        const previousValue = localStorage.getItem(key);
-        if (previousValue !== null) {
+        if (localStorage.getItem(key) !== null) {
             localStorage.removeItem(key);
-            clearedKeys.push(`${key}: ${previousValue}`);
-            console.log(`  ✅ Cleared ${key}`);
+            console.log(`  Cleared: ${key}`);
         }
     });
     
-    if (clearedKeys.length > 0) {
-        console.log(`🧹 Session cleanup complete. Cleared ${clearedKeys.length} keys:`);
-        clearedKeys.forEach(entry => console.log(`    - ${entry}`));
-    } else {
-        console.log('🧹 No session data found to clear');
-    }
-    
-    return clearedKeys.length;
+    console.log('All session localStorage cleared');
 }
 
 /**
- * Enhanced logout with complete session cleanup
- * @param {string} sessionToken - Session token for backend logout
+ * Enhanced logout function with complete cleanup
+ * @param {string} sessionToken - Current session token (optional)
  * @returns {Promise<boolean>} Success status
  */
 export async function enhancedLogout(sessionToken = null) {
     try {
-        console.log('🚪 Starting enhanced logout process...');
+        console.log('Starting enhanced logout process...');
         
-        // Step 1: Backend logout if token available
-        if (sessionToken) {
-            console.log('🔐 Logging out from backend...');
-            await logoutUser(sessionToken);
-            console.log('✅ Backend logout successful');
-        } else {
-            console.log('⚠️ No session token provided - skipping backend logout');
+        // Get session token if not provided
+        if (!sessionToken) {
+            sessionToken = localStorage.getItem('sessionToken');
         }
         
-        // Step 2: Complete localStorage cleanup (CRITICAL)
-        const clearedCount = clearSessionLocalStorage();
+        // Call backend logout if we have a token
+        if (sessionToken) {
+            try {
+                await logoutUser(sessionToken);
+                console.log('Backend logout successful');
+            } catch (error) {
+                console.warn('Backend logout failed, but continuing with cleanup:', error);
+            }
+        }
         
-        console.log(`✅ Enhanced logout complete - cleared ${clearedCount} localStorage entries`);
+        // CRITICAL: Always clear localStorage regardless of backend success
+        clearSessionLocalStorage();
+        
+        console.log('Enhanced logout completed successfully');
         return true;
         
     } catch (error) {
-        console.error('❌ Enhanced logout error:', error);
+        console.error('Enhanced logout error:', error);
         
-        // CRITICAL: Even if backend logout fails, ALWAYS clear localStorage
-        console.log('🧹 Force clearing localStorage despite backend error...');
-        const clearedCount = clearSessionLocalStorage();
-        console.log(`🧹 Force cleanup complete - cleared ${clearedCount} localStorage entries`);
+        // Emergency cleanup even on error
+        clearSessionLocalStorage();
         
-        return false; // Indicate backend logout failed
+        return false;
+    }
+}
+
+// ===================================================
+// ADMIN API FUNCTIONS (NEW)
+// ===================================================
+
+/**
+ * Admin login - separate from regular user login
+ * @param {string} username - Admin username
+ * @param {string} password - Admin password
+ * @returns {Promise<Object>} Admin session data
+ */
+export async function adminLogin(username, password) {
+    const response = await apiRequest('/admin/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+    });
+    return response;
+}
+
+/**
+ * Admin logout
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Object>} Logout confirmation
+ */
+export async function adminLogout(sessionToken) {
+    const response = await apiRequest('/admin/auth/logout', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response;
+}
+
+/**
+ * Verify admin session
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Object>} Verification result
+ */
+export async function verifyAdminSession(sessionToken) {
+    const response = await apiRequest('/admin/auth/verify', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response;
+}
+
+/**
+ * Get playtime leaderboard (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Array>} Playtime leaderboard data
+ */
+export async function getAdminPlaytimeLeaderboard(sessionToken) {
+    const response = await apiRequest('/admin/leaderboards/playtime', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+/**
+ * Get player progression analytics (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Array>} Player progression data
+ */
+export async function getAdminPlayerProgression(sessionToken) {
+    const response = await apiRequest('/admin/analytics/player-progression', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+/**
+ * Get first run masters (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Array>} First run masters data
+ */
+export async function getAdminFirstRunMasters(sessionToken) {
+    const response = await apiRequest('/admin/analytics/first-run-masters', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+/**
+ * Get permanent upgrades adoption (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Array>} Permanent upgrades adoption data
+ */
+export async function getAdminUpgradeAdoption(sessionToken) {
+    const response = await apiRequest('/admin/analytics/permanent-upgrades-adoption', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+/**
+ * Get active players status (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Array>} Active players data
+ */
+export async function getAdminActivePlayers(sessionToken) {
+    const response = await apiRequest('/admin/status/active-players', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+/**
+ * Get current games status (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Array>} Current games data
+ */
+export async function getAdminCurrentGames(sessionToken) {
+    const response = await apiRequest('/admin/status/current-games', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+// ===================================================
+// ADMIN CHART DATA FUNCTIONS
+// ===================================================
+
+/**
+ * Get activity trends chart data (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Object>} Activity trends chart data
+ */
+export async function getAdminActivityTrends(sessionToken) {
+    const response = await apiRequest('/admin/charts/activity-trends', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+/**
+ * Get playtime distribution chart data (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Array>} Playtime distribution data
+ */
+export async function getAdminPlaytimeDistribution(sessionToken) {
+    const response = await apiRequest('/admin/charts/playtime-distribution', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+/**
+ * Get run experience distribution chart data (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Array>} Run experience distribution data
+ */
+export async function getAdminRunExperience(sessionToken) {
+    const response = await apiRequest('/admin/charts/run-experience', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+/**
+ * Get session duration distribution chart data (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Array>} Session duration distribution data
+ */
+export async function getAdminSessionDuration(sessionToken) {
+    const response = await apiRequest('/admin/charts/session-duration', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+/**
+ * Get upgrade adoption chart data (admin only)
+ * @param {string} sessionToken - Admin session token
+ * @returns {Promise<Object>} Upgrade adoption chart data
+ */
+export async function getAdminUpgradeAdoptionChart(sessionToken) {
+    const response = await apiRequest('/admin/charts/upgrade-adoption', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`
+        }
+    });
+    return response.data;
+}
+
+// ===================================================
+// ADMIN UTILITY FUNCTIONS
+// ===================================================
+
+/**
+ * Generic admin API request helper
+ * @param {string} endpoint - Admin endpoint (without /admin prefix)
+ * @param {string} sessionToken - Admin session token
+ * @param {Object} options - Additional fetch options
+ * @returns {Promise<Object>} API response
+ */
+export async function adminApiRequest(endpoint, sessionToken, options = {}) {
+    return await apiRequest(`/admin${endpoint}`, {
+        ...options,
+        headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+            ...options.headers
+        }
+    });
+}
+
+/**
+ * Check if user has admin privileges
+ * @returns {boolean} True if current user is admin
+ */
+export function isAdmin() {
+    const userRole = localStorage.getItem('userRole');
+    const sessionToken = localStorage.getItem('adminSessionToken');
+    
+    return userRole === 'admin' && !!sessionToken;
+}
+
+/**
+ * Clear admin session data
+ */
+export function clearAdminSession() {
+    console.log('🔐 Clearing admin session data...');
+    
+    const adminKeys = [
+        'adminSessionToken',
+        'userRole',
+        'adminUser'
+    ];
+    
+    adminKeys.forEach(key => {
+        if (localStorage.getItem(key) !== null) {
+            localStorage.removeItem(key);
+            console.log(`  Cleared admin key: ${key}`);
+        }
+    });
+    
+    console.log('✅ Admin session cleared');
+}
+
+/**
+ * Enhanced admin logout with complete cleanup
+ * @returns {Promise<boolean>} Success status
+ */
+export async function enhancedAdminLogout() {
+    try {
+        console.log('🚪 Starting enhanced admin logout...');
+        
+        const sessionToken = localStorage.getItem('adminSessionToken');
+        
+        // Call backend admin logout if we have a token
+        if (sessionToken) {
+            try {
+                await adminLogout(sessionToken);
+                console.log('✅ Admin backend logout successful');
+            } catch (error) {
+                console.warn('⚠️ Admin backend logout failed, but continuing with cleanup:', error);
+            }
+        }
+        
+        // Clear admin session data
+        clearAdminSession();
+        
+        console.log('✅ Enhanced admin logout completed successfully');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Enhanced admin logout error:', error);
+        
+        // Emergency cleanup even on error
+        clearAdminSession();
+        
+        return false;
     }
 } 

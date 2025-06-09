@@ -1235,6 +1235,499 @@ app.get('/api/users/:userId/active-weapon-upgrades', async (req, res) => {
 });
 
 // ===================================================
+// ADMIN AUTHENTICATION MIDDLEWARE
+// ===================================================
+
+/**
+ * Middleware to verify admin authentication
+ * Only users with role = 'admin' can access admin endpoints
+ */
+async function verifyAdminAuth(req, res, next) {
+    let connection;
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                success: false,
+                message: 'Admin access denied: No session token provided'
+            });
+        }
+
+        const sessionToken = authHeader.replace('Bearer ', '');
+        
+        connection = await createConnection();
+        
+        // Verify session token and admin role
+        const [sessions] = await connection.execute(`
+            SELECT s.*, u.role, u.username 
+            FROM sessions s 
+            INNER JOIN users u ON s.user_id = u.user_id 
+            WHERE s.session_token = ? AND s.is_active = TRUE AND s.expires_at > NOW() AND u.role = 'admin'
+        `, [sessionToken]);
+        
+        if (sessions.length === 0) {
+            return res.status(401).json({
+                success: false,
+                message: 'Admin access denied: Invalid session or insufficient privileges'
+            });
+        }
+        
+        // Add admin user info to request
+        req.adminUser = sessions[0];
+        next();
+        
+    } catch (error) {
+        console.error('Admin auth verification error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Authentication verification failed'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+}
+
+// ===================================================
+// ADMIN AUTHENTICATION ENDPOINTS
+// ===================================================
+
+// POST /api/admin/auth/login
+app.post('/api/admin/auth/login', async (req, res) => {
+    let connection;
+    try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'Missing username or password' 
+            });
+        }
+        
+        connection = await createConnection();
+        
+        // Find admin user by username (only role = 'admin')
+        const [users] = await connection.execute(
+            'SELECT user_id, password_hash, username FROM users WHERE username = ? AND role = "admin" AND is_active = TRUE',
+            [username]
+        );
+        
+        if (users.length === 0) {
+            return res.status(401).json({ 
+                success: false,
+                message: 'Admin access denied: Invalid credentials' 
+            });
+        }
+        
+        const user = users[0];
+        const passwordMatch = await bcrypt.compare(password, user.password_hash);
+        
+        if (!passwordMatch) {
+            return res.status(401).json({ 
+                success: false,
+                message: 'Admin access denied: Invalid credentials' 
+            });
+        }
+        
+        // Create new admin session
+        const sessionToken = require('crypto').randomUUID();
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        
+        const [sessionResult] = await connection.execute(
+            'INSERT INTO sessions (user_id, session_token, expires_at) VALUES (?, ?, ?)',
+            [user.user_id, sessionToken, expiresAt]
+        );
+        
+        // Update last_login
+        await connection.execute(
+            'UPDATE users SET last_login = NOW() WHERE user_id = ?',
+            [user.user_id]
+        );
+        
+        res.status(200).json({
+            success: true,
+            sessionToken: sessionToken,
+            user: {
+                id: user.user_id,
+                username: user.username,
+                role: 'admin'
+            },
+            expiresAt: expiresAt
+        });
+        
+    } catch (err) {
+        console.error('Admin login error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Authentication server error' 
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// POST /api/admin/auth/logout
+app.post('/api/admin/auth/logout', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        const sessionToken = req.headers.authorization?.replace('Bearer ', '');
+        
+        connection = await createConnection();
+        
+        await connection.execute(
+            'UPDATE sessions SET is_active = FALSE WHERE session_token = ?',
+            [sessionToken]
+        );
+
+        res.status(200).json({
+            success: true,
+            message: 'Admin logged out successfully'
+        });
+        
+    } catch (err) {
+        console.error('Admin logout error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Logout error' 
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/admin/auth/verify
+app.get('/api/admin/auth/verify', verifyAdminAuth, async (req, res) => {
+    res.json({
+        success: true,
+        user: {
+            id: req.adminUser.user_id,
+            username: req.adminUser.username,
+            role: req.adminUser.role
+        },
+        message: 'Admin session verified'
+    });
+});
+
+// ===================================================
+// OPTIMIZED ADMIN ANALYTICS ENDPOINTS
+// ===================================================
+
+// GET /api/admin/leaderboards/playtime (KEPT - Useful)
+app.get('/api/admin/leaderboards/playtime', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [leaderboard] = await connection.execute(
+            'SELECT * FROM vw_leaderboard_playtime'
+        );
+        
+        res.json({
+            success: true,
+            data: leaderboard
+        });
+    } catch (error) {
+        console.error('Error getting playtime leaderboard:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching playtime leaderboard'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/admin/analytics/player-progression (MODIFIED - Simplified)
+app.get('/api/admin/analytics/player-progression', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [progression] = await connection.execute(
+            'SELECT * FROM vw_player_progression ORDER BY registration_date DESC LIMIT 50'
+        );
+        
+        res.json({
+            success: true,
+            data: progression
+        });
+    } catch (error) {
+        console.error('Error getting player progression:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching player progression'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/admin/status/active-players (KEPT)
+app.get('/api/admin/status/active-players', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [players] = await connection.execute(
+            'SELECT * FROM vw_active_players'
+        );
+        
+        res.json({
+            success: true,
+            data: players
+        });
+    } catch (error) {
+        console.error('Error getting active players:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching active players'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/admin/status/current-games (KEPT)
+app.get('/api/admin/status/current-games', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [games] = await connection.execute(
+            'SELECT * FROM vw_current_games'
+        );
+        
+        res.json({
+            success: true,
+            data: games
+        });
+    } catch (error) {
+        console.error('Error getting current games:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching current games'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ===================================================
+// NEW USEFUL ADMIN ANALYTICS ENDPOINTS
+// ===================================================
+
+// GET /api/admin/analytics/first-run-masters (NEW - Very Useful)
+app.get('/api/admin/analytics/first-run-masters', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [masters] = await connection.execute(
+            'SELECT * FROM vw_all_bosses_first_run'
+        );
+        
+        res.json({
+            success: true,
+            data: masters
+        });
+    } catch (error) {
+        console.error('Error getting first run masters:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching first run masters'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/admin/analytics/permanent-upgrades-adoption (NEW - Very Useful)
+app.get('/api/admin/analytics/permanent-upgrades-adoption', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [upgrades] = await connection.execute(
+            'SELECT * FROM vw_first_permanent_purchases'
+        );
+        
+        res.json({
+            success: true,
+            data: upgrades
+        });
+    } catch (error) {
+        console.error('Error getting permanent upgrades adoption:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching permanent upgrades adoption'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ===================================================
+// CHART DATA ENDPOINTS (For Beautiful Graphs)
+// ===================================================
+
+// GET /api/admin/charts/activity-trends
+app.get('/api/admin/charts/activity-trends', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [activity] = await connection.execute(
+            'SELECT * FROM vw_daily_activity ORDER BY date DESC'
+        );
+        
+        // Transform data for chart consumption
+        const chartData = {
+            labels: [],
+            registrations: [],
+            activeLogins: []
+        };
+        
+        // Group by date and separate activity types
+        const dataByDate = {};
+        activity.forEach(row => {
+            const dateStr = row.date.toISOString().split('T')[0];
+            if (!dataByDate[dateStr]) {
+                dataByDate[dateStr] = { registrations: 0, active_players: 0 };
+            }
+            dataByDate[dateStr][row.activity_type] = row.count;
+        });
+        
+        // Convert to chart format
+        Object.keys(dataByDate).sort().forEach(date => {
+            chartData.labels.push(date);
+            chartData.registrations.push(dataByDate[date].registrations || 0);
+            chartData.activeLogins.push(dataByDate[date].active_players || 0);
+        });
+        
+        res.json({
+            success: true,
+            data: chartData
+        });
+    } catch (error) {
+        console.error('Error getting activity trends:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching activity trends'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/admin/charts/playtime-distribution
+app.get('/api/admin/charts/playtime-distribution', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [distribution] = await connection.execute(
+            'SELECT * FROM vw_playtime_distribution'
+        );
+        
+        res.json({
+            success: true,
+            data: distribution
+        });
+    } catch (error) {
+        console.error('Error getting playtime distribution:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching playtime distribution'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/admin/charts/run-experience
+app.get('/api/admin/charts/run-experience', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [experience] = await connection.execute(
+            'SELECT * FROM vw_run_experience_distribution'
+        );
+        
+        res.json({
+            success: true,
+            data: experience
+        });
+    } catch (error) {
+        console.error('Error getting run experience distribution:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching run experience distribution'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/admin/charts/session-duration
+app.get('/api/admin/charts/session-duration', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [sessions] = await connection.execute(
+            'SELECT * FROM vw_session_duration_distribution'
+        );
+        
+        res.json({
+            success: true,
+            data: sessions
+        });
+    } catch (error) {
+        console.error('Error getting session duration distribution:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching session duration distribution'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// GET /api/admin/charts/upgrade-adoption
+app.get('/api/admin/charts/upgrade-adoption', verifyAdminAuth, async (req, res) => {
+    let connection;
+    try {
+        connection = await createConnection();
+        
+        const [upgrades] = await connection.execute(
+            'SELECT * FROM vw_first_permanent_purchases'
+        );
+        
+        // Transform for chart consumption
+        const chartData = {
+            labels: upgrades.map(u => u.upgrade_name),
+            adoptionRates: upgrades.map(u => u.adoption_percentage),
+            firstTimeBuyers: upgrades.map(u => u.first_time_buyers),
+            avgFirstPurchaseRun: upgrades.map(u => u.avg_first_purchase_run)
+        };
+        
+        res.json({
+            success: true,
+            data: chartData
+        });
+    } catch (error) {
+        console.error('Error getting upgrade adoption:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching upgrade adoption'
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ===================================================
 // SERVER START (ENHANCED v3.0 LOGGING)
 // ===================================================
 
@@ -1268,18 +1761,32 @@ app.listen(PORT, () => {
     console.log(`   POST /api/runs/:runId/enemy-kill`);
     console.log(`   POST /api/runs/:runId/boss-kill`);
     console.log(`   POST /api/runs/:runId/weapon-purchase`);
-    console.log(`\nLeaderboards:`);
-    console.log(`   GET /api/leaderboards/floors, /api/leaderboards/bosses, /api/leaderboards/playtime`);
-    console.log(`\nAdvanced Analytics:`);
-    console.log(`   GET /api/analytics/economy, /api/analytics/player-progression`);
-    console.log(`\nStatus Monitoring:`);
-    console.log(`   GET /api/status/active-players, /api/status/current-games`);
+    console.log(`\nADMIN ENDPOINTS (Role-based access):`);
+    console.log(`\nAdmin Authentication:`);
+    console.log(`   POST /api/admin/auth/login (admin credentials only)`);
+    console.log(`   POST /api/admin/auth/logout`);
+    console.log(`   GET /api/admin/auth/verify`);
+    console.log(`\nOptimized Admin Analytics:`);
+    console.log(`   GET /api/admin/leaderboards/playtime`);
+    console.log(`   GET /api/admin/analytics/player-progression (simplified)`);
+    console.log(`   GET /api/admin/analytics/first-run-masters (NEW - Master players)`);
+    console.log(`   GET /api/admin/analytics/permanent-upgrades-adoption (NEW - Feature adoption)`);
+    console.log(`\nAdmin System Status:`);
+    console.log(`   GET /api/admin/status/active-players`);
+    console.log(`   GET /api/admin/status/current-games`);
+    console.log(`\nChart Data Endpoints (for graphs):`);
+    console.log(`   GET /api/admin/charts/activity-trends`);
+    console.log(`   GET /api/admin/charts/playtime-distribution`);
+    console.log(`   GET /api/admin/charts/run-experience`);
+    console.log(`   GET /api/admin/charts/session-duration`);
+    console.log(`   GET /api/admin/charts/upgrade-adoption`);
     console.log(`\nNEW v3.0 FEATURES:`);
-    console.log(`   Run number persistence across logout/login`);
-    console.log(`   Permanent upgrades with auto-calculated values`);
-    console.log(`   Temporary upgrades persistence until run completion`);
-    console.log(`   One-query player initialization endpoint`);
-    console.log(`   Enhanced analytics with run number tracking`);
+    console.log(`   Admin authentication system with role verification`);
+    console.log(`   Optimized analytics focused on useful metrics`);
+    console.log(`   Chart-ready data endpoints for visualizations`);
+    console.log(`   First-run masters tracking (exceptional players)`);
+    console.log(`   Permanent upgrade adoption analysis`);
+    console.log(`   Removed unnecessary views for better performance`);
     console.log(`\nDatabase: Fully optimized with triggers and calculated fields`);
 });
 

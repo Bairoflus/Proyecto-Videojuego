@@ -1,71 +1,106 @@
 /**
- * Admin Dashboard JavaScript
- * Handles all admin functionality including analytics, leaderboards, and player management
+ * Optimized Admin Dashboard JavaScript
+ * Implements secure admin-only access with useful analytics and beautiful charts
+ * Removed unnecessary features, focused on actionable insights for developers
  */
 
 import { 
-    getLeaderboard, 
-    getEconomyAnalytics, 
-    getPlayerProgression,
-    getUserStats,
-    logoutUser,
-    apiRequest
+    adminLogin,
+    adminLogout,
+    verifyAdminSession,
+    getAdminPlaytimeLeaderboard,
+    getAdminPlayerProgression,
+    getAdminFirstRunMasters,
+    getAdminUpgradeAdoption,
+    getAdminActivePlayers,
+    getAdminCurrentGames,
+    enhancedAdminLogout,
+    clearAdminSession
 } from '../../utils/api.js';
 
-class AdminDashboard {
+class OptimizedAdminDashboard {
     constructor() {
+        this.sessionToken = null;
+        this.adminUser = null;
         this.currentSection = 'dashboard';
-        this.currentLeaderboard = 'floors';
-        this.currentAnalytics = 'economy';
-        this.dashboardData = {};
+        this.currentAnalytics = 'first-run-masters';
+        this.charts = {};
+        this.isAuthenticated = false;
         
         this.init();
     }
 
-    init() {
-        this.checkAdminAuth();
-        this.setupEventListeners();
-        this.loadInitialData();
-    }
-
     // ===================================================
-    // AUTHENTICATION AND SECURITY
+    // INITIALIZATION
     // ===================================================
 
-    checkAdminAuth() {
-        const sessionToken = localStorage.getItem('sessionToken');
-        const userId = localStorage.getItem('currentUserId');
-        const userRole = localStorage.getItem('userRole');
-
-        if (!sessionToken || !userId || userRole !== 'admin') {
-            this.showMessage('Access denied. Admin privileges required.', 'error');
-            setTimeout(() => {
-                window.location.href = 'landing.html';
-            }, 2000);
-            return;
+    async init() {
+        console.log('Initializing Optimized Admin Dashboard...');
+        
+        // Check if admin is already authenticated
+        const storedToken = localStorage.getItem('adminSessionToken');
+        if (storedToken) {
+            try {
+                await this.verifyExistingSession(storedToken);
+            } catch (error) {
+                console.log('Stored admin session invalid, showing login');
+                this.showLogin();
+            }
+        } else {
+            this.showLogin();
         }
+        
+        this.setupEventListeners();
+    }
 
-        // Display admin user info
-        const username = localStorage.getItem('username') || 'Admin';
-        document.getElementById('admin-user').textContent = `Welcome, ${username}`;
+    async verifyExistingSession(token) {
+        try {
+            const result = await verifyAdminSession(token);
+            
+            this.sessionToken = token;
+            this.adminUser = result.user;
+            this.isAuthenticated = true;
+            
+            console.log('Admin session verified:', this.adminUser);
+            this.showDashboard();
+            await this.loadInitialData();
+            
+        } catch (error) {
+            console.log('Admin session verification failed:', error);
+            clearAdminSession();
+            throw error;
+        }
     }
 
     // ===================================================
-    // EVENT LISTENERS SETUP
+    // AUTHENTICATION FLOW
     // ===================================================
+
+    showLogin() {
+        document.getElementById('admin-login').style.display = 'flex';
+        document.getElementById('admin-dashboard').style.display = 'none';
+    }
+
+    showDashboard() {
+        document.getElementById('admin-login').style.display = 'none';
+        document.getElementById('admin-dashboard').style.display = 'block';
+        
+        if (this.adminUser) {
+            document.getElementById('admin-user').textContent = `Welcome, ${this.adminUser.username}`;
+        }
+    }
 
     setupEventListeners() {
+        // Admin Login Form
+        const loginForm = document.getElementById('admin-login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => this.handleAdminLogin(e));
+        }
+
         // Navigation
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 this.switchSection(e.target.dataset.section);
-            });
-        });
-
-        // Leaderboard tabs
-        document.querySelectorAll('[data-leaderboard]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.switchLeaderboard(e.target.dataset.leaderboard);
             });
         });
 
@@ -78,14 +113,21 @@ class AdminDashboard {
 
         // Logout
         document.getElementById('logout-btn').addEventListener('click', () => {
-            this.handleLogout();
+            this.handleAdminLogout();
         });
 
-        // Player search
+        // Player search and filters
         const searchInput = document.getElementById('player-search');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
                 this.filterPlayers(e.target.value);
+            });
+        }
+
+        const activityFilter = document.getElementById('activity-filter');
+        if (activityFilter) {
+            activityFilter.addEventListener('change', (e) => {
+                this.filterPlayersByActivity(e.target.value);
             });
         }
 
@@ -98,24 +140,86 @@ class AdminDashboard {
         }
     }
 
+    async handleAdminLogin(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('admin-username').value;
+        const password = document.getElementById('admin-password').value;
+        const errorDiv = document.getElementById('admin-login-error');
+        
+        try {
+            this.showLoading(true);
+            errorDiv.style.display = 'none';
+            
+            console.log('Attempting admin login...');
+            const result = await adminLogin(username, password);
+            
+            this.sessionToken = result.sessionToken;
+            this.adminUser = result.user;
+            this.isAuthenticated = true;
+            
+            // Store admin session
+            localStorage.setItem('adminSessionToken', this.sessionToken);
+            localStorage.setItem('userRole', 'admin');
+            localStorage.setItem('adminUser', JSON.stringify(this.adminUser));
+            
+            console.log('Admin login successful:', this.adminUser);
+            this.showDashboard();
+            await this.loadInitialData();
+            
+        } catch (error) {
+            console.error('Admin login failed:', error);
+            errorDiv.textContent = error.message || 'Invalid admin credentials';
+            errorDiv.style.display = 'block';
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async handleAdminLogout() {
+        try {
+            console.log('Admin logout initiated...');
+            await enhancedAdminLogout();
+            
+            this.sessionToken = null;
+            this.adminUser = null;
+            this.isAuthenticated = false;
+            
+            // Destroy all charts
+            Object.values(this.charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            this.charts = {};
+            
+            console.log('Admin logout successful');
+            this.showLogin();
+            
+        } catch (error) {
+            console.error('Admin logout error:', error);
+            // Force logout even on error
+            clearAdminSession();
+            this.showLogin();
+        }
+    }
+
     // ===================================================
     // NAVIGATION
     // ===================================================
 
     switchSection(section) {
-        if (!section) return;
+        if (!section || !this.isAuthenticated) return;
 
         // Update navigation
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        document.querySelector(`[data-section="${section}"]`).classList.add('active');
+        document.querySelector(`[data-section="${section}"]`)?.classList.add('active');
 
         // Update content
         document.querySelectorAll('.admin-section').forEach(sec => {
             sec.classList.remove('active');
         });
-        document.getElementById(section).classList.add('active');
+        document.getElementById(section)?.classList.add('active');
 
         this.currentSection = section;
 
@@ -123,39 +227,20 @@ class AdminDashboard {
         this.loadSectionData(section);
     }
 
-    switchLeaderboard(type) {
-        if (!type) return;
-
-        // Update tabs
-        document.querySelectorAll('[data-leaderboard]').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.querySelector(`[data-leaderboard="${type}"]`).classList.add('active');
-
-        // Update content
-        document.querySelectorAll('.leaderboard-table').forEach(table => {
-            table.classList.remove('active');
-        });
-        document.getElementById(`leaderboard-${type}`).classList.add('active');
-
-        this.currentLeaderboard = type;
-        this.loadLeaderboardData(type);
-    }
-
     switchAnalytics(type) {
-        if (!type) return;
+        if (!type || !this.isAuthenticated) return;
 
         // Update tabs
         document.querySelectorAll('[data-analytics]').forEach(btn => {
             btn.classList.remove('active');
         });
-        document.querySelector(`[data-analytics="${type}"]`).classList.add('active');
+        document.querySelector(`[data-analytics="${type}"]`)?.classList.add('active');
 
         // Update content
         document.querySelectorAll('.analytics-table').forEach(table => {
             table.classList.remove('active');
         });
-        document.getElementById(`analytics-${type}`).classList.add('active');
+        document.getElementById(`analytics-${type}`)?.classList.add('active');
 
         this.currentAnalytics = type;
         this.loadAnalyticsData(type);
@@ -166,10 +251,13 @@ class AdminDashboard {
     // ===================================================
 
     async loadInitialData() {
+        if (!this.isAuthenticated) return;
+        
         try {
+            console.log('Loading initial admin data...');
             await this.loadDashboardData();
-            await this.loadLeaderboardData(this.currentLeaderboard);
             await this.loadAnalyticsData(this.currentAnalytics);
+            console.log('Initial admin data loaded');
         } catch (error) {
             console.error('Failed to load initial data:', error);
             this.showMessage('Failed to load dashboard data', 'error');
@@ -177,12 +265,11 @@ class AdminDashboard {
     }
 
     async loadSectionData(section) {
+        if (!this.isAuthenticated) return;
+        
         switch (section) {
             case 'dashboard':
                 await this.loadDashboardData();
-                break;
-            case 'leaderboards':
-                await this.loadLeaderboardData(this.currentLeaderboard);
                 break;
             case 'analytics':
                 await this.loadAnalyticsData(this.currentAnalytics);
@@ -195,19 +282,32 @@ class AdminDashboard {
 
     async loadDashboardData() {
         try {
-            // Load current games
-            const currentGames = await this.getAdminData('/status/current-games');
+            // Load key metrics in parallel
+            const [
+                currentGames,
+                activePlayers,
+                playtimeLeaderboard,
+                firstRunMasters
+            ] = await Promise.all([
+                getAdminCurrentGames(this.sessionToken),
+                getAdminActivePlayers(this.sessionToken),
+                getAdminPlaytimeLeaderboard(this.sessionToken),
+                getAdminFirstRunMasters(this.sessionToken)
+            ]);
+
+            // Update dashboard metrics
+            this.updateDashboardMetrics({
+                totalPlayers: activePlayers ? activePlayers.length : 0,
+                activeToday: activePlayers ? activePlayers.filter(p => p.activity_status === 'Active').length : 0,
+                currentGames: currentGames ? currentGames.length : 0,
+                firstRunMasters: firstRunMasters ? firstRunMasters.length : 0
+            });
+
+            // Render current games
             this.renderCurrentGames(currentGames);
-
-            // Load active players
-            const activePlayers = await this.getAdminData('/status/active-players');
-            this.renderActivePlayersCount(activePlayers);
-
-            // Load dashboard metrics
-            await this.loadDashboardMetrics();
-
-            // Load recent activity
-            this.renderRecentActivity();
+            
+            // Render playtime leaderboard
+            this.renderPlaytimeLeaderboard(playtimeLeaderboard);
 
         } catch (error) {
             console.error('Dashboard loading error:', error);
@@ -215,94 +315,54 @@ class AdminDashboard {
         }
     }
 
-    async loadDashboardMetrics() {
-        try {
-            // Get all player progression data for metrics
-            const progression = await getPlayerProgression();
-            
-            if (progression && progression.length > 0) {
-                const totalPlayers = progression.length;
-                const totalRuns = progression.reduce((sum, player) => sum + (player.sessions_played || 0), 0);
-                const totalKills = progression.reduce((sum, player) => sum + (player.combat_experience || 0), 0);
-                
-                // Count active players (played in last 24h - approximation)
-                const activePlayers = progression.filter(player => 
-                    new Date() - new Date(player.registration_date) < 24 * 60 * 60 * 1000
-                ).length;
-
-                this.updateDashboardMetrics({
-                    totalPlayers,
-                    activePlayers,
-                    totalRuns,
-                    totalKills
-                });
-            }
-        } catch (error) {
-            console.error('Failed to load dashboard metrics:', error);
-        }
-    }
-
-    updateDashboardMetrics(metrics) {
-        document.getElementById('total-players').textContent = metrics.totalPlayers || '-';
-        document.getElementById('active-players').textContent = metrics.activePlayers || '-';
-        document.getElementById('total-runs').textContent = metrics.totalRuns || '-';
-        document.getElementById('total-kills').textContent = metrics.totalKills || '-';
-    }
-
-    async loadLeaderboardData(type) {
-        try {
-            const container = document.getElementById(`leaderboard-${type}`);
-            container.innerHTML = '<div class="loading">Loading leaderboard...</div>';
-
-            const data = await getLeaderboard(type);
-            this.renderLeaderboard(container, data, type);
-
-        } catch (error) {
-            console.error(`Failed to load ${type} leaderboard:`, error);
-            const container = document.getElementById(`leaderboard-${type}`);
-            container.innerHTML = `<div class="error">Failed to load ${type} leaderboard</div>`;
-        }
-    }
-
     async loadAnalyticsData(type) {
         try {
             const container = document.getElementById(`analytics-${type}`);
+            if (!container) return;
+
             container.innerHTML = '<div class="loading">Loading analytics...</div>';
 
             let data;
             switch (type) {
-                case 'economy':
-                    data = await getEconomyAnalytics();
+                case 'first-run-masters':
+                    data = await getAdminFirstRunMasters(this.sessionToken);
+                    this.renderFirstRunMasters(container, data);
                     break;
-                case 'combat':
-                    data = await this.getAdminData('/analytics/combat');
+                case 'upgrade-adoption':
+                    data = await getAdminUpgradeAdoption(this.sessionToken);
+                    this.renderUpgradeAdoption(container, data);
                     break;
-                case 'progression':
-                    data = await getPlayerProgression();
+                case 'player-progression':
+                    data = await getAdminPlayerProgression(this.sessionToken);
+                    this.renderPlayerProgression(container, data);
                     break;
             }
-
-            this.renderAnalytics(container, data, type);
 
         } catch (error) {
             console.error(`Failed to load ${type} analytics:`, error);
             const container = document.getElementById(`analytics-${type}`);
-            container.innerHTML = `<div class="error">Failed to load ${type} analytics</div>`;
+            if (container) {
+                container.innerHTML = `<div class="error">Failed to load ${type} analytics</div>`;
+            }
         }
     }
 
     async loadPlayersData() {
         try {
             const container = document.getElementById('players-table');
+            if (!container) return;
+
             container.innerHTML = '<div class="loading">Loading players...</div>';
 
-            const data = await getPlayerProgression();
+            const data = await getAdminActivePlayers(this.sessionToken);
             this.renderPlayersTable(container, data);
 
         } catch (error) {
             console.error('Failed to load players data:', error);
             const container = document.getElementById('players-table');
-            container.innerHTML = '<div class="error">Failed to load players data</div>';
+            if (container) {
+                container.innerHTML = '<div class="error">Failed to load players data</div>';
+            }
         }
     }
 
@@ -310,8 +370,16 @@ class AdminDashboard {
     // RENDERING FUNCTIONS
     // ===================================================
 
+    updateDashboardMetrics(metrics) {
+        document.getElementById('total-players').textContent = metrics.totalPlayers || '-';
+        document.getElementById('active-today').textContent = metrics.activeToday || '-';
+        document.getElementById('current-games').textContent = metrics.currentGames || '-';
+        document.getElementById('first-run-masters').textContent = metrics.firstRunMasters || '-';
+    }
+
     renderCurrentGames(games) {
         const container = document.getElementById('current-games-table');
+        if (!container) return;
         
         if (!games || games.length === 0) {
             container.innerHTML = '<div class="loading">No active games</div>';
@@ -323,20 +391,22 @@ class AdminDashboard {
                 <thead>
                     <tr>
                         <th>Player</th>
+                        <th>Run #</th>
                         <th>Duration</th>
                         <th>Floor</th>
                         <th>Kills</th>
-                        <th>Gold</th>
+                        <th>Session Type</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${games.map(game => `
                         <tr>
                             <td>${game.player}</td>
+                            <td>#${game.run_number}</td>
                             <td>${game.minutes_playing}m</td>
                             <td>${game.current_level}</td>
                             <td>${game.current_kills}</td>
-                            <td>${game.current_gold}</td>
+                            <td><span class="activity-status ${game.session_duration_type.toLowerCase()}">${game.session_duration_type}</span></td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -346,89 +416,36 @@ class AdminDashboard {
         container.innerHTML = html;
     }
 
-    renderActivePlayersCount(players) {
-        // This data is used in updateDashboardMetrics
-        this.dashboardData.activePlayers = players ? players.length : 0;
-    }
-
-    renderRecentActivity() {
-        const container = document.getElementById('recent-activity');
+    renderPlaytimeLeaderboard(leaderboard) {
+        const container = document.getElementById('playtime-leaderboard');
+        if (!container) return;
         
-        // Simulated recent activity (in a real app, this would come from an API)
-        const activities = [
-            { icon: '🎮', text: 'New player registered', time: '2 min ago' },
-            { icon: '🐉', text: 'Boss defeated on Floor 3', time: '5 min ago' },
-            { icon: '🏆', text: 'Player reached new high score', time: '8 min ago' },
-            { icon: '💰', text: 'Shop purchase made', time: '12 min ago' },
-            { icon: '⚔️', text: 'Enemy kill recorded', time: '15 min ago' }
-        ];
-
-        const html = activities.map(activity => `
-            <div class="activity-item">
-                <div class="activity-icon">${activity.icon}</div>
-                <div class="activity-text">${activity.text}</div>
-                <div class="activity-time">${activity.time}</div>
-            </div>
-        `).join('');
-
-        container.innerHTML = html;
-    }
-
-    renderLeaderboard(container, data, type) {
-        if (!data || data.length === 0) {
-            container.innerHTML = '<div class="loading">No leaderboard data available</div>';
+        if (!leaderboard || leaderboard.length === 0) {
+            container.innerHTML = '<div class="loading">No playtime data</div>';
             return;
-        }
-
-        let headers, rowRenderer;
-
-        switch (type) {
-            case 'floors':
-                headers = ['Rank', 'Player', 'Max Floor', 'Total Runs', 'Total Kills', 'Gold Invested'];
-                rowRenderer = (item, index) => `
-                    <tr>
-                        <td class="rank-cell">#${index + 1}</td>
-                        <td>${item.champion}</td>
-                        <td>${item.max_level}</td>
-                        <td>${item.total_attempts}</td>
-                        <td>${item.total_eliminations}</td>
-                        <td>${item.gold_invested || 0}</td>
-                    </tr>
-                `;
-                break;
-            case 'bosses':
-                headers = ['Rank', 'Player', 'Bosses Defeated', 'Progression', 'Total Runs'];
-                rowRenderer = (item, index) => `
-                    <tr>
-                        <td class="rank-cell">#${index + 1}</td>
-                        <td>${item.boss_slayer}</td>
-                        <td>${item.bosses_defeated}</td>
-                        <td>Floor ${item.progression}</td>
-                        <td>${item.attempts}</td>
-                    </tr>
-                `;
-                break;
-            case 'playtime':
-                headers = ['Rank', 'Player', 'Hours Played', 'Sessions', 'Best Floor'];
-                rowRenderer = (item, index) => `
-                    <tr>
-                        <td class="rank-cell">#${index + 1}</td>
-                        <td>${item.dedicated_player}</td>
-                        <td>${item.hours_played}h</td>
-                        <td>${item.sessions}</td>
-                        <td>Floor ${item.best_achievement}</td>
-                    </tr>
-                `;
-                break;
         }
 
         const html = `
             <table class="data-table">
                 <thead>
-                    <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Hours</th>
+                        <th>Sessions</th>
+                        <th>Best Floor</th>
+                    </tr>
                 </thead>
                 <tbody>
-                    ${data.map(rowRenderer).join('')}
+                    ${leaderboard.slice(0, 10).map((player, index) => `
+                        <tr>
+                            <td class="rank-cell">#${index + 1}</td>
+                            <td>${player.dedicated_player}</td>
+                            <td>${player.hours_played}h</td>
+                            <td>${player.sessions}</td>
+                            <td>Floor ${player.best_achievement}</td>
+                        </tr>
+                    `).join('')}
                 </tbody>
             </table>
         `;
@@ -436,62 +453,105 @@ class AdminDashboard {
         container.innerHTML = html;
     }
 
-    renderAnalytics(container, data, type) {
+    renderFirstRunMasters(container, data) {
         if (!data || data.length === 0) {
-            container.innerHTML = '<div class="loading">No analytics data available</div>';
+            container.innerHTML = '<div class="loading">No first run masters found</div>';
             return;
-        }
-
-        let headers, rowRenderer;
-
-        switch (type) {
-            case 'economy':
-                headers = ['Weapon Type', 'Tier', 'Purchases', 'Avg Price', 'Total Revenue', 'Unique Buyers'];
-                rowRenderer = (item) => `
-                    <tr>
-                        <td>${item.item_category}</td>
-                        <td>${item.tier}</td>
-                        <td>${item.purchase_count}</td>
-                        <td>${Math.round(item.avg_price)} gold</td>
-                        <td>${item.total_revenue} gold</td>
-                        <td>${item.unique_buyers || 0}</td>
-                    </tr>
-                `;
-                break;
-            case 'combat':
-                headers = ['Enemy Type', 'Floor', 'Room', 'Total Kills', 'Players Involved'];
-                rowRenderer = (item) => `
-                    <tr>
-                        <td>${item.creature_type}</td>
-                        <td>${item.encounter_level}</td>
-                        <td>${item.battle_zone}</td>
-                        <td>${item.elimination_count}</td>
-                        <td>${item.hunters_involved}</td>
-                    </tr>
-                `;
-                break;
-            case 'progression':
-                headers = ['Player', 'Registration', 'Sessions', 'Best Floor', 'Skill Tier', 'Spending Tier'];
-                rowRenderer = (item) => `
-                    <tr>
-                        <td>${item.player_name}</td>
-                        <td>${new Date(item.registration_date).toLocaleDateString()}</td>
-                        <td>${item.sessions_played}</td>
-                        <td>Floor ${item.best_progress}</td>
-                        <td>${item.skill_tier}</td>
-                        <td>${item.spending_tier || 'Unknown'}</td>
-                    </tr>
-                `;
-                break;
         }
 
         const html = `
             <table class="data-table">
                 <thead>
-                    <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                    <tr>
+                        <th>Player</th>
+                        <th>Registration Date</th>
+                        <th>Bosses Defeated</th>
+                        <th>First Dragon Kill</th>
+                        <th>Classification</th>
+                    </tr>
                 </thead>
                 <tbody>
-                    ${data.slice(0, 50).map(rowRenderer).join('')}
+                    ${data.map(player => `
+                        <tr>
+                            <td>${player.player_name}</td>
+                            <td>${new Date(player.registration_date).toLocaleDateString()}</td>
+                            <td>${player.bosses_defeated_first_run}/3</td>
+                            <td>${new Date(player.first_dragon_kill_date).toLocaleDateString()}</td>
+                            <td><span class="skill-classification ${player.skill_classification.toLowerCase().replace(' ', '-')}">${player.skill_classification}</span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    renderUpgradeAdoption(container, data) {
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="loading">No upgrade adoption data</div>';
+            return;
+        }
+
+        const html = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Upgrade Type</th>
+                        <th>First Time Buyers</th>
+                        <th>Adoption Rate</th>
+                        <th>Avg First Purchase Run</th>
+                        <th>Date Range</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(upgrade => `
+                        <tr>
+                            <td><strong>${upgrade.upgrade_name}</strong></td>
+                            <td>${upgrade.first_time_buyers}</td>
+                            <td><strong>${upgrade.adoption_percentage}%</strong></td>
+                            <td>Run ${upgrade.avg_first_purchase_run}</td>
+                            <td>${new Date(upgrade.earliest_purchase).toLocaleDateString()} - ${new Date(upgrade.latest_purchase).toLocaleDateString()}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    renderPlayerProgression(container, data) {
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="loading">No player progression data</div>';
+            return;
+        }
+
+        const html = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Current Run</th>
+                        <th>Sessions</th>
+                        <th>Best Progress</th>
+                        <th>Experience Tier</th>
+                        <th>Total Kills</th>
+                        <th>Total Spent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.slice(0, 50).map(player => `
+                        <tr>
+                            <td>${player.player_name}</td>
+                            <td>#${player.current_run}</td>
+                            <td>${player.sessions_played}</td>
+                            <td>Floor ${player.best_progress}</td>
+                            <td><span class="experience-tier ${player.experience_tier.toLowerCase()}">${player.experience_tier}</span></td>
+                            <td>${player.combat_experience}</td>
+                            <td>${player.total_spent} gold</td>
+                        </tr>
+                    `).join('')}
                 </tbody>
             </table>
         `;
@@ -501,31 +561,35 @@ class AdminDashboard {
 
     renderPlayersTable(container, data) {
         if (!data || data.length === 0) {
-            container.innerHTML = '<div class="loading">No players data available</div>';
+            container.innerHTML = '<div class="loading">No players data</div>';
             return;
         }
+
+        this.playersData = data; // Store for filtering
 
         const html = `
             <table class="data-table">
                 <thead>
                     <tr>
                         <th>Player</th>
-                        <th>Registration</th>
-                        <th>Sessions</th>
-                        <th>Best Progress</th>
-                        <th>Combat Experience</th>
-                        <th>Skill Tier</th>
+                        <th>Last Active</th>
+                        <th>Current Run</th>
+                        <th>Total Sessions</th>
+                        <th>Lifetime Kills</th>
+                        <th>Best Floor</th>
+                        <th>Activity Status</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="players-table-body">
                     ${data.map(player => `
-                        <tr>
+                        <tr data-player-name="${player.player_name.toLowerCase()}" data-activity="${player.activity_status}">
                             <td>${player.player_name}</td>
-                            <td>${new Date(player.registration_date).toLocaleDateString()}</td>
-                            <td>${player.sessions_played}</td>
-                            <td>Floor ${player.best_progress}</td>
-                            <td>${player.combat_experience} kills</td>
-                            <td><span class="skill-tier-${player.skill_tier.toLowerCase()}">${player.skill_tier}</span></td>
+                            <td>${new Date(player.last_active).toLocaleDateString()}</td>
+                            <td>#${player.current_run}</td>
+                            <td>${player.total_sessions}</td>
+                            <td>${player.lifetime_kills}</td>
+                            <td>Floor ${player.best_floor}</td>
+                            <td><span class="activity-status ${player.activity_status.toLowerCase()}">${player.activity_status}</span></td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -536,65 +600,79 @@ class AdminDashboard {
     }
 
     // ===================================================
-    // UTILITY FUNCTIONS
+    // CHART FUNCTIONS - TEMPORARILY DISABLED
+    // ===================================================
+    
+    // loadChartsData() - Disabled
+    // createActivityTrendsChart() - Disabled
+    // createPlaytimeDistributionChart() - Disabled
+    // createRunExperienceChart() - Disabled
+    // createSessionDurationChart() - Disabled
+    // createUpgradeAdoptionChart() - Disabled
+    //
+    // To re-enable charts:
+    // 1. Uncomment chart imports at the top
+    // 2. Uncomment charts case in loadSectionData()
+    // 3. Uncomment charts section in admin.html
+    // 4. Restore all chart functions
+
+    // ===================================================
+    // FILTERING FUNCTIONS
     // ===================================================
 
-    async getAdminData(endpoint) {
-        try {
-            const response = await apiRequest(endpoint);
-            return response.data || response;
-        } catch (error) {
-            console.error(`Failed to fetch ${endpoint}:`, error);
-            throw error;
-        }
-    }
-
     filterPlayers(searchTerm) {
-        const table = document.querySelector('#players-table .data-table');
-        if (!table) return;
+        if (!this.playersData) return;
 
-        const rows = table.querySelectorAll('tbody tr');
+        const rows = document.querySelectorAll('#players-table-body tr');
         const term = searchTerm.toLowerCase();
 
         rows.forEach(row => {
-            const playerName = row.cells[0].textContent.toLowerCase();
-            if (playerName.includes(term)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            const playerName = row.dataset.playerName;
+            const isVisible = playerName.includes(term);
+            row.style.display = isVisible ? '' : 'none';
         });
     }
 
-    async handleLogout() {
-        try {
-            const sessionToken = localStorage.getItem('sessionToken');
-            if (sessionToken) {
-                await logoutUser(sessionToken);
-            }
-        } catch (error) {
-            console.error('Logout error:', error);
-        } finally {
-            // Clear all session data
-            localStorage.clear();
-            window.location.href = 'landing.html';
+    filterPlayersByActivity(activityStatus) {
+        if (!this.playersData) return;
+
+        const rows = document.querySelectorAll('#players-table-body tr');
+
+        rows.forEach(row => {
+            const activity = row.dataset.activity;
+            const isVisible = activityStatus === 'all' || activity === activityStatus;
+            row.style.display = isVisible ? '' : 'none';
+        });
+    }
+
+    // ===================================================
+    // UTILITY FUNCTIONS
+    // ===================================================
+
+    showLoading(show) {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.style.display = show ? 'flex' : 'none';
         }
     }
 
     showMessage(text, type) {
-        const messageContainer = document.getElementById(`${type}-message`);
-        if (messageContainer) {
-            messageContainer.textContent = text;
-            messageContainer.style.display = 'block';
-            
+        const messageDiv = document.getElementById(`${type}-message`);
+        if (messageDiv) {
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
             setTimeout(() => {
-                messageContainer.style.display = 'none';
+                messageDiv.style.display = 'none';
             }, 5000);
         }
     }
 }
 
-// Initialize admin dashboard when DOM is loaded
+// ===================================================
+// INITIALIZATION
+// ===================================================
+
 document.addEventListener('DOMContentLoaded', () => {
-    new AdminDashboard();
+    console.log('Initializing Optimized Admin Dashboard...');
+    new OptimizedAdminDashboard();
 }); 
