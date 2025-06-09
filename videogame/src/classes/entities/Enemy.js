@@ -180,20 +180,32 @@ export class Enemy extends AnimatedObject {
         return false;
       }
 
-      // Map enemy types to backend format ('common' or 'rare')
-      let enemyType = 'common'; // Default to common
+      // ✅ MAPEO INTELIGENTE V2 - CONSERVADOR
+      let enemyType = 'common'; // Por defecto para melee
       
-      // Map specific enemy types to backend categories
+      // RANGED ENEMIES → 'rare'
       if (this.enemyTypeName === 'goblin_archer' || 
           this.enemyTypeName === 'GoblinArcher' ||
+          this.enemyTypeName === 'mage_goblin' ||
+          this.enemyTypeName === 'MageGoblin' ||
+          this.enemyTypeName === 'great_bow_goblin' ||
+          this.enemyTypeName === 'GreatBowGoblin' ||
           this.enemyTypeName.toLowerCase().includes('archer') ||
+          this.enemyTypeName.toLowerCase().includes('mage') ||
+          this.enemyTypeName.toLowerCase().includes('bow') ||
           this.enemyTypeName.toLowerCase().includes('ranged')) {
         enemyType = 'rare';
-      } else if (this.enemyTypeName === 'goblin_dagger' || 
-                 this.enemyTypeName === 'GoblinDagger' ||
-                 this.enemyTypeName === 'goblin' ||
-                 this.enemyTypeName.toLowerCase().includes('melee') ||
-                 this.enemyTypeName.toLowerCase().includes('dagger')) {
+      }
+      
+      // MELEE ENEMIES → 'common' (already default, but explicit for clarity)
+      if (this.enemyTypeName === 'goblin_dagger' || 
+          this.enemyTypeName === 'GoblinDagger' ||
+          this.enemyTypeName === 'sword_goblin' ||
+          this.enemyTypeName === 'SwordGoblin' ||
+          this.enemyTypeName === 'goblin' ||
+          this.enemyTypeName.toLowerCase().includes('melee') ||
+          this.enemyTypeName.toLowerCase().includes('dagger') ||
+          this.enemyTypeName.toLowerCase().includes('sword')) {
         enemyType = 'common';
       }
 

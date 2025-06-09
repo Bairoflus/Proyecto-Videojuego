@@ -1,38 +1,37 @@
 /**
- * Goblin Archer enemy class - UPDATED TO V2
- * Ranged enemy type that attacks from a distance with projectiles → MAPS TO 'rare'
- * Less common but more dangerous enemy type on floor 1
+ * Sword Goblin enemy class - NEW V2 ENEMY
+ * Enhanced melee enemy type with higher damage and health → MAPS TO 'common'
+ * Slower but more dangerous than standard GoblinDagger
  */
-import { RangedEnemy } from "../../entities/RangedEnemy.js";
-import { ENEMY_CONSTANTS_V2 } from "../../../constants/gameConstants.js";
+import { MeleeEnemy } from "../../entities/MeleeEnemy.js";
 import { Vec } from "../../../utils/Vec.js";
+import { ENEMY_CONSTANTS_V2 } from "../../../constants/gameConstants.js";
 
-export class GoblinArcher extends RangedEnemy {
+export class SwordGoblin extends MeleeEnemy {
   constructor(position) {
-    const config = ENEMY_CONSTANTS_V2.GOBLIN_ARCHER;
+    const config = ENEMY_CONSTANTS_V2.SWORD_GOBLIN;
     
     super(
       position,
       config.size.width,
       config.size.height,
-      "red", // color (temporary, will be replaced by sprite)
+      "darkred", // color (darker red to distinguish from GoblinDagger)
       4, // sheetCols
-      "goblin_archer", // type
+      "sword_goblin", // type
       config.speed,
       config.damage,
       config.health,
       config.attackRange,
-      config.projectileSpeed,
-      "goblin_archer" // enemyTypeName → maps to 'rare'
+      "sword_goblin" // enemyTypeName → maps to 'common'
     );
 
     // Set specific properties
     this.attackDuration = config.attackCooldown;
-    this.retreatDistance = config.retreatDistance;
-    this.projectileType = "arrow";
+    this.isAttacking = false;
+    this.currentDirection = "down";
   }
 
-  // Override attack to ensure proper projectile firing
+  // Override attack for heavy melee strikes
   attack(target) {
     if (this.state === "dead" || this.attackCooldown > 0) return;
 
@@ -47,11 +46,12 @@ export class GoblinArcher extends RangedEnemy {
     if (distance <= this.attackRange) {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
-      this.fireProjectile(target);
+      target.takeDamage(this.baseDamage);
+      console.log(`SwordGoblin dealt ${this.baseDamage} damage to ${target.type || 'player'}`);
     }
   }
 
   updateAnimation() {
-    // TODO: Implement goblin archer specific animations
+    // TODO: Implement sword goblin specific animations
   }
-}
+} 

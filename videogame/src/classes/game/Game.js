@@ -13,139 +13,73 @@ import { PermanentUpgradePopup } from "../ui/PermanentUpgradePopup.js";
 
 export class Game {
   constructor() {
-    // FIX: Initialize properties FIRST before calling methods that use them
+    // Basic game properties
     this.canvas = null;
     this.ctx = null;
     this.player = null;
     this.floorGenerator = null;
     this.currentRoom = null;
-    this.gameState = "loading"; // loading, playing, paused, gameover
+    this.gameState = "loading";
     this.debug = false;
     this.lastTime = 0;
 
-    // NEW: Game ready state
+    // Game ready state
     this.isReady = false;
     this.gameReadyCallback = null;
 
-    // Auto-save timing with new saveStateManager
+    // Auto-save timing
     this.lastAutoSave = Date.now();
     this.autoSaveInterval = 30000; // 30 seconds
 
-    // FIX: Add room transition state management
-    this.isTransitioning = false; // Flag to prevent multiple transitions
-    this.transitionCooldown = 0; // Cooldown timer between transitions
-    this.transitionCooldownTime = 500; // 500ms cooldown between transitions
+    // SIMPLIFIED: Only essential transition control
+    this.isTransitioning = false; // Single flag to prevent multiple transitions
 
-    // NEW: Debug flag for verbose transition logging
-    this.debugTransitions = false; // Can be enabled via enableTransitionDebug() command
+    // Enemy synchronization
+    this.enemies = [];
 
-    // NEW: Visual transition feedback
-    this.transitionState = null; // 'starting', 'in_progress', 'completing'
-    this.transitionMessage = null; // Message to show during transition
-    this.transitionStartTime = null; // For timing
-
-    // FIX: Enemy synchronization management
-    this.needsEnemySync = false; // Flag to force enemy array synchronization when needed
-
-    // NEW: Pause system
+    // Pause system
     this.isPaused = false;
     this.pauseOverlay = null;
-    this.activeTab = 'controls'; // Default tab
+    this.activeTab = 'controls';
 
-    // NEW: Permanent upgrade popup system
+    // Permanent upgrade popup
     this.permanentUpgradePopup = null;
 
-    // FIX: Track permanent upgrade popup state to prevent multiple shows
-    this.bossUpgradeShown = false; // Flag to track if upgrade popup was shown for current boss
+    // Boss-related flags (simplified)
+    this.bossUpgradeShown = false;
+    this.bossJustDefeated = false;
+    this.transitionZoneActivatedMessage = null;
+    this.transitionZoneMessageTimer = 0;
 
-    // FIX: Track boss defeat for immediate transition zone activation
-    this.bossJustDefeated = false; // Flag to track if boss was just defeated for immediate feedback
-    this.transitionZoneActivatedMessage = null; // Message display for transition zone activation
-    this.transitionZoneMessageTimer = 0; // Timer for transition zone message display
-
-    // NEW: Track when room is just cleared for immediate transition check
-    this.roomJustCleared = false; // Flag set by Room.js when all enemies are eliminated
-
-    // Managers initialization status
+    // Managers initialization
     this.managersInitialized = false;
     this.managersInitializationResult = null;
 
-    // Run statistics tracking
+    // Run statistics
     this.runStats = {
       goldSpent: 0,
       totalKills: 0
     };
 
     // Event logging state
-    this.loggedBossEncounters = new Set(); // Track logged boss encounters to avoid duplicates
+    this.loggedBossEncounters = new Set();
 
-    // FIX: Now initialize game objects AFTER properties are set up
+    // Initialize game components
     this.globalShop = new Shop();
-
-    // FIXED: Initialize PermanentUpgradePopup (was missing!)
     this.permanentUpgradePopup = new PermanentUpgradePopup();
-    console.log('PermanentUpgradePopup initialized');
-
+    
     this.createEventListeners();
     this.floorGenerator = new FloorGenerator();
-    this.enemies = [];
-
-    // NEW: Initialize pause system
     this.createPauseSystem();
 
-    // Make managers globally available for other classes
+    // Make managers globally available
     window.weaponUpgradeManager = weaponUpgradeManager;
     window.saveStateManager = saveStateManager;
 
-    // NEW: Global command to fix stuck transition flag
-    window.fixTransitionFlag = () => {
-      if (!window.game) {
-        console.error('❌ Game instance not found');
-        return false;
-      }
+    // SIMPLIFIED: Essential debug commands only
+    this.initializeSessionDebugCommands();
 
-      console.log('🔧 FIXING STUCK TRANSITION FLAG...');
-      
-      // Clear the stuck flag
-      window.game.isTransitioning = false;
-      window.game.transitionCooldown = 0;
-      
-      // Reset any related transition state
-      window.game.transitionState = null;
-      window.game.transitionMessage = null;
-      window.game.transitionStartTime = null;
-      
-      console.log('✅ Transition flag reset - Try moving to the right edge now');
-      console.log('Current state:', {
-        isTransitioning: window.game.isTransitioning,
-        transitionCooldown: window.game.transitionCooldown
-      });
-      
-      return true;
-    };
-
-    // NEW: Debug command to toggle verbose transition logging
-    window.enableTransitionDebug = (enable = true) => {
-      if (!window.game) {
-        console.error('❌ Game instance not found');
-        return false;
-      }
-
-      window.game.debugTransitions = enable;
-      console.log(`🔧 Transition debug logging ${enable ? 'ENABLED' : 'DISABLED'}`);
-      
-      if (enable) {
-        console.log('💡 Verbose transition logs will now appear in console');
-        console.log('💡 Use enableTransitionDebug(false) to disable');
-      }
-      
-      return true;
-    };
-
-    console.log('🔧 Emergency fix command available: fixTransitionFlag()');
-    console.log('🔧 Debug command available: enableTransitionDebug(true/false)');
-
-    // FIXED: Initialize game asynchronously but signal when ready
+    // Initialize game asynchronously
     this.initializeGameAsync();
 
     window.game = this;
@@ -153,8 +87,6 @@ export class Game {
     if (variables.debug) {
       this.initializeDebugCommands();
     }
-
-    // REMOVED: Initialize managers - now done in initializeGameAsync()
   }
 
   /**
@@ -392,21 +324,6 @@ export class Game {
             return false;
           }
         },
-        enableTestMode: () => {
-          localStorage.setItem('testMode', 'true');
-          console.log('Test mode enabled - warnings will be suppressed');
-        },
-        disableTestMode: () => {
-          localStorage.removeItem('testMode');
-          console.log('Test mode disabled - full backend integration active');
-        },
-        clear: () => {
-          localStorage.removeItem('currentUserId');
-          localStorage.removeItem('currentSessionId');
-          localStorage.removeItem('currentRunId');
-          localStorage.removeItem('testMode');
-          console.log('🗑️ All session data cleared');
-        },
         fix: async () => {
           console.log('Attempting to fix session data...');
           const userId = localStorage.getItem('currentUserId');
@@ -441,17 +358,7 @@ export class Game {
           console.log('Session data is already complete');
           return { alreadyComplete: true };
         },
-        managers: {
-          saveState: () => saveStateManager.getCurrentSaveState(),
-          weaponUpgrade: () => weaponUpgradeManager.getStatusSummary(),
-          save: () => this.saveCurrentGameState(),
-          load: async () => {
-            const userId = parseInt(localStorage.getItem('currentUserId'));
-            return await saveStateManager.loadSaveState(userId);
-          },
-          weaponLevels: () => weaponUpgradeManager.getAllWeaponsInfo()
-        },
-        // ENHANCED: Room transition debugging commands
+        // SIMPLIFIED: Basic room debugging
         room: {
           current: () => {
             if (!window.game) {
@@ -466,57 +373,16 @@ export class Game {
               floor: fg.getCurrentFloor(),
               roomIndex: fg.getCurrentRoomIndex(),
               roomNumber: fg.getCurrentRoomIndex() + 1,
-              roomId: fg.validateRoomMapping(),
               roomType: fg.getCurrentRoomType(),
               canTransition: room ? room.canTransition() : 'N/A',
-              isBossRoom: fg.isBossRoom(),
-              bossDefeated: room ? room.bossDefeated : 'N/A',
               enemies: room ? room.objects.enemies.length : 'N/A',
               aliveEnemies: room ? room.objects.enemies.filter(e => e.state !== 'dead').length : 'N/A',
-              isTransitioning: window.game.isTransitioning,
-              transitionCooldown: window.game.transitionCooldown
+              isTransitioning: window.game.isTransitioning
             };
 
             console.log('🎯 CURRENT ROOM STATE:');
             console.table(data);
             return data;
-          },
-          validate: () => {
-            if (!window.game || !window.game.floorGenerator) {
-              console.error('❌ Game or FloorGenerator not found');
-              return false;
-            }
-
-            try {
-              const fg = window.game.floorGenerator;
-              const mappedId = fg.getCurrentRoomId();
-              const calculatedId = fg.getExpectedRoomId();
-              const validatedId = fg.validateRoomMapping();
-
-              const data = {
-                mappedRoomId: mappedId,
-                calculatedRoomId: calculatedId,
-                validatedRoomId: validatedId,
-                consistent: mappedId === calculatedId && calculatedId === validatedId,
-                floor: fg.getCurrentFloor(),
-                roomIndex: fg.getCurrentRoomIndex(),
-                roomType: fg.getCurrentRoomType()
-              };
-
-              console.log('🗺️ ROOM MAPPING VALIDATION:');
-              console.table(data);
-
-              if (!data.consistent) {
-                console.warn('⚠️ INCONSISTENT ROOM MAPPING DETECTED!');
-              } else {
-                console.log('✅ Room mapping is consistent');
-              }
-
-              return data;
-            } catch (error) {
-              console.error('❌ Room validation failed:', error);
-              return false;
-            }
           },
           forceTransition: () => {
             if (!window.game || !window.game.currentRoom) {
@@ -525,229 +391,36 @@ export class Game {
             }
 
             console.log('🔓 FORCING ROOM TRANSITION...');
-
-            // Force boss room transition if in boss room
-            if (window.game.currentRoom.roomType === 'boss') {
-              window.game.currentRoom.forceBossTransition();
-              console.log('👑 Boss room transition forced');
-            }
-
-            // Force general transition
+            
+            // Clear transition lock
             window.game.isTransitioning = false;
-            window.game.transitionCooldown = 0;
-
-            // ENHANCED: Auto-fix for Floor 2, Room 4 and similar issues
-            const currentFloor = window.game.floorGenerator.getCurrentFloor();
-            const currentRoomIndex = window.game.floorGenerator.getCurrentRoomIndex();
-            if (currentFloor === 2 && currentRoomIndex === 3) {
-              console.log('🚨 FLOOR 2, ROOM 4 AUTO-FIX ACTIVATED');
-
-              // Force kill all enemies
+            
+            // Force kill all enemies if in combat room
+            if (window.game.currentRoom.isCombatRoom) {
               window.game.enemies.forEach(enemy => {
                 if (enemy.state !== 'dead') {
                   enemy.state = 'dead';
                   console.log(`💀 Force killed: ${enemy.type}`);
                 }
               });
-
-              // Force room enemy cleanup
+              
+              // Clean room enemies array
               window.game.currentRoom.objects.enemies = window.game.currentRoom.objects.enemies.filter(
                 enemy => enemy.state !== 'dead'
               );
-
-              // Force chest spawn
-              if (window.game.currentRoom.isCombatRoom && !window.game.currentRoom.chestSpawned) {
-                window.game.currentRoom.spawnChest();
-                console.log('📦 Force spawned chest');
-              }
-
-              console.log('✅ Floor 2, Room 4 state corrected');
             }
 
-            console.log('✅ Transition locks cleared - try moving to right edge');
+            console.log('✅ Transition forced - try moving to right edge');
             return true;
-          },
-          resetBoss: () => {
-            if (!window.game) {
-              console.error('❌ Game instance not found');
-              return false;
-            }
-
-            // Reset all boss-related flags
-            window.game.resetBossFlags();
-
-            if (window.game.currentRoom && window.game.currentRoom.roomType === 'boss') {
-              window.game.currentRoom.resetBossState();
-              console.log('👑 Boss room state reset');
-            }
-
-            console.log('🔄 All boss flags reset');
-            return true;
-          },
-          // NEW: Emergency reset command
-          emergencyReset: () => {
-            if (!window.game) {
-              console.error('❌ Game instance not found');
-              return false;
-            }
-
-            console.log('🚨 EMERGENCY RESET - Clearing all problematic flags');
-
-            // Clear all transition-related flags
-            window.game.isTransitioning = false;
-            window.game.transitionCooldown = 0;
-            window.game.transitionStartTime = null;
-            window.game.roomJustCleared = false;
-            window.game.bossJustDefeated = false;
-
-            // Clear room transition logging throttle
-            if (window.game.currentRoom) {
-              window.game.currentRoom.lastCombatCanTransition = undefined;
-              window.game.currentRoom.lastBossCanTransition = undefined;
-            }
-
-            console.log('✅ Emergency reset complete - All flags cleared');
-            console.log('💡 Try moving to the right edge now');
-
-            return true;
-          },
-          syncState: () => {
-            if (!window.game || !saveStateManager) {
-              console.error('❌ Game or SaveStateManager not found');
-              return false;
-            }
-
-            try {
-              const currentState = window.game.getCurrentGameState();
-              const isValid = saveStateManager.validateGameStateSync(currentState);
-
-              console.log('🔄 STATE SYNCHRONIZATION CHECK:');
-              console.log('Current game state:', currentState);
-              console.log('State is synchronized:', isValid);
-
-              if (!isValid) {
-                console.warn('⚠️ State synchronization issues detected!');
-                console.log('💡 Try: gameSessionDebug.room.forceTransition() or restart the game');
-              }
-
-              return isValid;
-            } catch (error) {
-              console.error('❌ State sync check failed:', error);
-              return false;
-            }
-          },
-          // NEW: Permanent upgrade popup debugging commands
-          popup: {
-            status: () => {
-              if (!window.game) {
-                console.error('❌ Game instance not found');
-                return null;
-              }
-
-              const status = {
-                popupExists: !!window.game.permanentUpgradePopup,
-                isActive: window.game.permanentUpgradePopup ? window.game.permanentUpgradePopup.isActive : false,
-                bossUpgradeShown: window.game.bossUpgradeShown,
-                gameState: window.game.gameState,
-                isBossRoom: window.game.floorGenerator ? window.game.floorGenerator.isBossRoom() : false,
-                aliveEnemies: window.game.enemies ? window.game.enemies.filter(e => e.state !== 'dead').length : 'N/A'
-              };
-
-              console.log('🎭 PERMANENT UPGRADE POPUP STATUS:');
-              console.table(status);
-              return status;
-            },
-            reset: () => {
-              if (!window.game) {
-                console.error('❌ Game instance not found');
-                return false;
-              }
-
-              console.log('🔄 Resetting permanent upgrade popup flags...');
-              window.game.resetBossFlags();
-
-              if (window.game.permanentUpgradePopup && window.game.permanentUpgradePopup.isActive) {
-                window.game.permanentUpgradePopup.hide();
-                console.log('✅ Popup hidden');
-              }
-
-              window.game.gameState = 'playing';
-              console.log('✅ Game state reset to playing');
-              console.log('✅ All popup flags reset - popup should show on next boss kill');
-
-              return true;
-            },
-            forceShow: () => {
-              if (!window.game || !window.game.permanentUpgradePopup) {
-                console.error('❌ Game or popup not found');
-                return false;
-              }
-
-              console.log('🎭 Force showing permanent upgrade popup...');
-              window.game.resetBossFlags(); // Reset flags first
-              window.game.permanentUpgradePopup.show();
-              window.game.gameState = "upgradeSelection";
-              window.game.bossUpgradeShown = true;
-
-              console.log('✅ Popup force shown');
-              return true;
-            },
-            testBossDeath: () => {
-              if (!window.game) {
-                console.error('❌ Game instance not found');
-                return false;
-              }
-
-              console.log('⚔️ Simulating boss death for popup test...');
-
-              // Reset flags first
-              window.game.resetBossFlags();
-
-              // Simulate boss room and boss defeat
-              if (window.game.currentRoom) {
-                window.game.currentRoom.roomType = 'boss';
-                window.game.currentRoom.bossDefeated = true;
-              }
-
-              // Trigger popup logic
-              if (window.game.permanentUpgradePopup && !window.game.bossUpgradeShown) {
-                console.log('✅ Showing permanent upgrade popup after simulated boss defeat');
-                window.game.permanentUpgradePopup.show();
-                window.game.gameState = "upgradeSelection";
-                window.game.bossUpgradeShown = true;
-                window.game.bossJustDefeated = true;
-
-                console.log('✅ Boss death simulation complete - popup should be visible');
-                return true;
-              } else {
-                console.error('❌ Popup not available or flags preventing display');
-                return false;
-              }
-            }
           }
         }
       };
 
-      console.log('Session debug commands available (run in console):');
-      console.log('  gameSessionDebug.check() - Check current session data');
-      console.log('  gameSessionDebug.createRun() - Manually create run');
+      console.log('Debug commands available:');
+      console.log('  gameSessionDebug.check() - Check session data');
       console.log('  gameSessionDebug.fix() - Auto-fix session issues');
-      console.log('  gameSessionDebug.managers.saveState() - Check save state manager');
-      console.log('  gameSessionDebug.managers.weaponUpgrade() - Check weapon upgrade manager');
-      console.log('');
-      console.log('🎯 Room transition debugging commands:');
-      console.log('  gameSessionDebug.room.current() - Show current room state');
-      console.log('  gameSessionDebug.room.validate() - Validate room mapping consistency');
-      console.log('  gameSessionDebug.room.forceTransition() - Force enable room transition');
-      console.log('  gameSessionDebug.room.resetBoss() - Reset boss room flags');
-      console.log('  gameSessionDebug.room.emergencyReset() - Emergency reset all transition flags');
-      console.log('  gameSessionDebug.room.syncState() - Check state synchronization');
-      console.log('');
-      console.log('🎭 Permanent upgrade popup debugging commands:');
-      console.log('  gameSessionDebug.popup.status() - Check popup and boss flags status');
-      console.log('  gameSessionDebug.popup.reset() - Reset all popup flags');
-      console.log('  gameSessionDebug.popup.forceShow() - Force show popup for testing');
-      console.log('  gameSessionDebug.popup.testBossDeath() - Simulate boss death to test popup');
+      console.log('  gameSessionDebug.room.current() - Show room state');
+      console.log('  gameSessionDebug.room.forceTransition() - Force enable transition');
     }
   }
 
@@ -1247,172 +920,92 @@ export class Game {
   }
 
   async handleRoomTransition(direction) {
-    // ENHANCED: Check if we can advance with better validation
+    // SIMPLIFIED: Single validation check
     if (!this.currentRoom.canTransition()) {
-      // Removed excessive logging - only log when there are actual issues
       return;
     }
 
-    // ENHANCED: Additional validation for combat rooms
-    if (this.currentRoom.isCombatRoom) {
-      const aliveEnemies = this.enemies.filter((enemy) => enemy.state !== "dead");
-      if (aliveEnemies.length > 0) {
-        // Only log if there are debugging issues
-        return;
-      }
+    // SIMPLIFIED: Basic lock to prevent double transitions
+    if (this.isTransitioning) {
+      return;
     }
 
     try {
-      // FIX: Lock transitions immediately to prevent race conditions
       this.isTransitioning = true;
-      // Removed: Excessive lock logging
+      console.log("Starting room transition...");
 
-      // NEW: Update visual state
-      this.transitionState = 'in_progress';
-
-      // DETAILED LOGGING before transition - reduced verbosity
-      const beforeIndex = this.floorGenerator.getCurrentRoomIndex();
-      const beforeFloor = this.floorGenerator.getCurrentFloor();
+      // Determine if this is a boss room
       const wasInBossRoom = this.floorGenerator.isBossRoom();
-
-      // Only log important transitions
+      
       if (wasInBossRoom) {
-        console.log(`🏆 Boss defeated! Advancing to Floor ${beforeFloor + 1}`);
-      }
-
-      // BOSS ROOM TRANSITION LOGIC
-      if (wasInBossRoom) {
-        // Auto-save after boss completion
+        // BOSS ROOM: Advance to next floor
+        console.log("🏆 Boss defeated! Advancing to next floor...");
+        
+        // Critical API call: Auto-save after boss completion
         await this.saveCurrentGameState();
-
-        // ENHANCED: Reset boss flags before floor transition
+        
+        // Reset boss flags
         this.resetBossFlags();
-
-        // Proceed to next floor
+        
+        // Advance to next floor
         await this.floorGenerator.nextFloor();
-
-        this.currentRoom = this.floorGenerator.getCurrentRoom();
-
-        if (this.currentRoom) {
-          // ENHANCED: Reset boss state for new floor's boss room
-          this.currentRoom.resetBossState();
-
-          this.player.setCurrentRoom(this.currentRoom);
-          this.player.position = this.currentRoom.getPlayerStartPosition();
-          this.player.velocity = new Vec(0, 0);
-          this.player.keys = [];
-          this.enemies = this.currentRoom.objects.enemies;
-
-          console.log(`📍 Now on Floor ${this.floorGenerator.getCurrentFloor()}, Room 1`);
-
-          // Update shop gameData with new room information
-          this.configureShopGameData();
-        }
+        
+        console.log(`📍 Advanced to Floor ${this.floorGenerator.getCurrentFloor()}, Room 1`);
       } else {
-        // NORMAL ROOM TRANSITION (not boss room, forward only)
+        // NORMAL ROOM: Advance to next room
         if (!this.floorGenerator.nextRoom()) {
-          console.warn("❌ Room transition failed - could not advance");
+          console.warn("Cannot advance to next room");
           return;
         }
-
-        // Simplified logging for normal transitions
-        const afterIndex = this.floorGenerator.getCurrentRoomIndex();
-        const afterFloor = this.floorGenerator.getCurrentFloor();
-
-        this.currentRoom = this.floorGenerator.getCurrentRoom();
-        if (this.currentRoom) {
-          // ENHANCED: Reset boss state if entering a new boss room
-          if (this.currentRoom.roomType === 'boss') {
-            this.currentRoom.resetBossState();
-          }
-
-          this.player.setCurrentRoom(this.currentRoom);
-          this.player.position = this.currentRoom.getPlayerStartPosition();
-          this.player.velocity = new Vec(0, 0);
-          this.player.keys = [];
-          this.enemies = this.currentRoom.objects.enemies;
-
-          // Update shop gameData with new room information
-          this.configureShopGameData();
-
-          // ENHANCED: Register room enter event with validation
-          const newRoomId = this.floorGenerator.validateRoomMapping(); // Use enhanced validation
-          const roomType = this.floorGenerator.getCurrentRoomType();
-
-          // Log boss encounter if entering a boss room for the first time
-          if (roomType === 'boss') {
-            console.log(`⚔️ Entering boss room - Floor ${afterFloor}`);
-            try {
-              const userId = parseInt(localStorage.getItem('currentUserId'));
-              const runId = parseInt(localStorage.getItem('currentRunId'));
-              const floor = this.floorGenerator.getCurrentFloor();
-
-              if (userId && runId) {
-                await registerBossKill(runId, {
-                  userId: userId,
-                  bossType: 'dragon',
-                  floor: floor,
-                  fightDuration: 0, // Fight hasn't started yet
-                  playerHpRemaining: this.player.health
-                });
-              }
-            } catch (error) {
-              console.error('Failed to log boss encounter:', error);
-            }
-          }
-        }
-
-        // AUTO-SAVE: Using saveStateManager after successful room transition
+        
+        console.log(`📍 Advanced to Room ${this.floorGenerator.getCurrentRoomIndex() + 1}`);
+        
+        // Critical API call: Auto-save after successful room transition
         await this.saveCurrentGameState();
       }
 
-      // FIX: Set cooldown timer to prevent immediate re-transition
-      this.transitionCooldown = this.transitionCooldownTime;
+      // Update game state
+      this.currentRoom = this.floorGenerator.getCurrentRoom();
+      this.currentRoom.resetBossState();
+      
+      // Update player position
+      this.player.setCurrentRoom(this.currentRoom);
+      this.player.position = this.currentRoom.getPlayerStartPosition();
+      this.player.velocity = new Vec(0, 0);
+      this.player.keys = [];
+      
+      // Update enemies
+      this.enemies = this.currentRoom.objects.enemies;
+      
+      // Critical API call: Update shop data with new room information
+      this.configureShopGameData();
+      
+      console.log("✅ Room transition completed successfully");
 
     } catch (error) {
-      console.error("❌ Room transition error:", error);
-
-      // ENHANCED: Additional error recovery
+      console.error("❌ Room transition failed:", error);
+      
+      // Simple recovery: try to restore current room state
       try {
-        // Try to restore a stable state
         this.currentRoom = this.floorGenerator.getCurrentRoom();
         if (this.currentRoom && this.player) {
           this.player.setCurrentRoom(this.currentRoom);
           this.enemies = this.currentRoom.objects.enemies;
-          console.log("🔄 State recovery attempted after transition error");
         }
       } catch (recoveryError) {
-        console.error("Failed to recover state after transition error:", recoveryError);
+        console.error("Failed to recover from transition error:", recoveryError);
       }
     } finally {
-      // FIX: Always clear the transition flag, even if there was an error
       this.isTransitioning = false;
-      // Removed: Excessive unlock logging
     }
   }
 
-  /**
-   * NEW: Non-blocking room transition without visual overlay
-   * Keeps transitions smooth without blocking render or showing overlays
-   */
+  // SIMPLIFIED: Non-blocking transition starter
   startRoomTransition(direction) {
-    // REMOVED: Don't set isTransitioning here - let handleRoomTransition handle it
-    // This was causing the flag to get stuck when errors occurred
-
-    // Removed: Excessive logging
-
-    // Execute transition with proper error handling
-    this.handleRoomTransition(direction)
-      .then(() => {
-        // Success is handled in handleRoomTransition now
-      })
-      .catch((error) => {
-        console.error("❌ Room transition error:", error);
-
-        // Emergency cleanup - ensure flag is cleared
-        this.isTransitioning = false;
-        this.transitionCooldown = 0;
-      });
+    this.handleRoomTransition(direction).catch(error => {
+      console.error("Error in room transition:", error);
+      this.isTransitioning = false; // Emergency cleanup
+    });
   }
 
   async update(deltaTime) {
@@ -1429,9 +1022,6 @@ export class Game {
     // FIX: Allow essential updates even during upgrade selection
     if (this.gameState === "upgradeSelection") {
       // CRITICAL: Keep essential systems running during upgrade selection
-      console.log("UPGRADE SELECTION MODE: Allowing essential updates");
-
-      // Update player movement
       this.player.update(deltaTime);
 
       // Update transition zone message timer
@@ -1447,35 +1037,16 @@ export class Game {
         this.player.position = this.player.previousPosition;
       }
 
-      // Save current position for next update
       this.player.previousPosition = new Vec(
         this.player.position.x,
         this.player.position.y
       );
 
-      // FIX: Update transition cooldown timer even during upgrade selection
-      if (this.transitionCooldown > 0) {
-        this.transitionCooldown -= deltaTime;
-        if (this.transitionCooldown <= 0) {
-          this.transitionCooldown = 0;
-          console.log("ROOM TRANSITION COOLDOWN EXPIRED - Transitions now allowed");
-        }
+      // SIMPLIFIED: Check for room transition during upgrade selection
+      if (this.currentRoom.isPlayerAtRightEdge(this.player) && !this.isTransitioning) {
+        this.startRoomTransition("right");
       }
 
-      // CRITICAL: Keep room transition detection active during upgrade selection
-      if (
-        this.currentRoom.isPlayerAtRightEdge(this.player) &&
-        !this.isTransitioning &&
-        this.transitionCooldown <= 0
-      ) {
-        console.log("ROOM TRANSITION TRIGGERED DURING UPGRADE SELECTION - Player at right edge");
-        // Allow transitions even during upgrade selection
-        this.handleRoomTransition("right").catch(error => {
-          console.error("Error in room transition during upgrade selection:", error);
-        });
-      }
-
-      // Return after essential updates - don't run full game loop
       return;
     }
 
@@ -1484,47 +1055,19 @@ export class Game {
       return;
     }
 
-    // FIX: Update transition cooldown timer
-    if (this.transitionCooldown > 0) {
-      this.transitionCooldown -= deltaTime;
-      if (this.transitionCooldown <= 0) {
-        this.transitionCooldown = 0;
-        // Removed: Excessive cooldown logging
-      }
-    }
-
     // Update current room
     this.currentRoom.update(deltaTime);
 
-    // ENHANCED: Smart enemies array synchronization
-    const roomEnemies = this.currentRoom.objects.enemies;
-    const currentEnemiesLength = this.enemies ? this.enemies.length : 0;
-    const roomEnemiesLength = roomEnemies ? roomEnemies.length : 0;
-
-    // Check if arrays need synchronization
-    if (this.enemies !== roomEnemies) {
-      const lengthDifference = currentEnemiesLength - roomEnemiesLength;
-      const isNormalEnemyCleanup = lengthDifference > 0 && roomEnemiesLength >= 0;
-      
-      // NEW: Detect legitimate dynamic enemy spawning (boss summoning drones, etc.)
-      const isDynamicSpawning = lengthDifference < 0 && this.floorGenerator.isBossRoom();
-      const isLegitimateDesync = isNormalEnemyCleanup || isDynamicSpawning;
-
-      // Only show warning for unexpected desyncs (not normal enemy death cleanup or boss spawning)
-      if (!isLegitimateDesync && (currentEnemiesLength !== roomEnemiesLength || this.needsEnemySync)) {
-        console.warn("⚠️ Unexpected enemy array desync - auto-correcting");
-        this.needsEnemySync = false; // Reset sync flag
-      }
-
-      // Always sync arrays (but only log for unexpected cases)
-      this.enemies = roomEnemies;
+    // SIMPLIFIED: Basic enemy synchronization
+    if (this.enemies !== this.currentRoom.objects.enemies) {
+      this.enemies = this.currentRoom.objects.enemies;
     }
 
-    // FIX: Check if boss was just defeated to show immediate transition feedback
+    // Show boss defeat message
     if (this.bossJustDefeated && this.floorGenerator.isBossRoom()) {
       this.transitionZoneActivatedMessage = "BOSS DEFEATED! \nMove to the right edge to advance to next floor!";
-      this.transitionZoneMessageTimer = 3000; // Show for 3 seconds
-      this.bossJustDefeated = false; // Reset flag
+      this.transitionZoneMessageTimer = 3000;
+      this.bossJustDefeated = false;
     }
 
     // Update transition zone message timer
@@ -1535,18 +1078,14 @@ export class Game {
       }
     }
 
-    // FIXED: Check room transition (FORWARD ONLY) with proper state management
+    // SIMPLIFIED: Room transition check - only 3 conditions
     if (
       this.currentRoom.isPlayerAtRightEdge(this.player) &&
       !this.isTransitioning &&
-      this.transitionCooldown <= 0
+      this.currentRoom.canTransition()
     ) {
-      // Don't block the game loop with async operations
-      this.handleRoomTransition("right").catch(error => {
-        console.error("Error in room transition:", error);
-      });
+      this.startRoomTransition("right");
     }
-    // REMOVED: Left edge transition - no regression allowed
 
     // Update player
     this.player.update(deltaTime);
@@ -1562,7 +1101,7 @@ export class Game {
       this.player.position.y
     );
 
-    // Check if all enemies are dead and spawn chest
+    // Spawn chest when all enemies are dead
     const aliveEnemies = this.enemies.filter((enemy) => enemy.state !== "dead");
     if (
       this.currentRoom &&
@@ -1573,7 +1112,7 @@ export class Game {
       this.currentRoom.spawnChest();
     }
 
-    // Update shop reference if we're in a shop room
+    // Update shop reference for shop rooms
     if (this.currentRoom && this.currentRoom.roomType === "shop") {
       this.currentRoom.objects.shop = this.globalShop;
       this.currentRoom.objects.shop.setOnCloseCallback(() => {
@@ -1581,7 +1120,7 @@ export class Game {
       });
     }
 
-    // NEW: Auto-save using saveStateManager periodically
+    // Auto-save periodically
     const currentTime = Date.now();
     if (currentTime - this.lastAutoSave >= this.autoSaveInterval) {
       this.saveCurrentGameState().catch(error => {
@@ -1589,8 +1128,6 @@ export class Game {
       });
       this.lastAutoSave = currentTime;
     }
-
-    // REMOVED: Excessive transition debug logging - system works reliably now
   }
 
   // Event listeners

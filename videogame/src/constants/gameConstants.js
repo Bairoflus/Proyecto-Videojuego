@@ -108,6 +108,67 @@ export const ENEMY_CONSTANTS = {
   },
 };
 
+// ✅ V2 ENEMY CONSTANTS - CONSERVATIVE MAPPING
+export const ENEMY_CONSTANTS_V2 = {
+  // MELEE ENEMIES (map to 'common')
+  GOBLIN_DAGGER: {
+    size: { width: 32, height: 32 },
+    health: 20,
+    damage: 10,
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 0.7,
+    attackRange: 32,
+    attackCooldown: 1000,
+    backendType: 'common' // Explicit mapping
+  },
+  
+  SWORD_GOBLIN: {
+    size: { width: 32, height: 32 },
+    health: 35,
+    damage: 12,
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 0.6,
+    attackRange: 45,
+    attackCooldown: 1200,
+    backendType: 'common' // Explicit mapping
+  },
+  
+  // RANGED ENEMIES (map to 'rare')
+  GOBLIN_ARCHER: {
+    size: { width: 32, height: 32 },
+    health: 30,
+    damage: 15,
+    speed: 0,
+    attackRange: 200,
+    attackCooldown: 2000,
+    projectileSpeed: 250,
+    retreatDistance: 80,
+    backendType: 'rare' // Explicit mapping
+  },
+  
+  MAGE_GOBLIN: {
+    size: { width: 32, height: 32 },
+    health: 25,
+    damage: 18,
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 0.2,
+    attackRange: 180,
+    attackCooldown: 2500,
+    projectileSpeed: 200,
+    retreatDistance: 100,
+    backendType: 'rare' // Explicit mapping
+  },
+  
+  GREAT_BOW_GOBLIN: {
+    size: { width: 32, height: 32 },
+    health: 40,
+    damage: 20,
+    speed: 0,
+    attackRange: 250,
+    attackCooldown: 3000,
+    projectileSpeed: 350,
+    retreatDistance: 120,
+    backendType: 'rare' // Explicit mapping
+  }
+};
+
 // Room constants
 export const ROOM_CONSTANTS = {
   TILE_SIZE: 32,
@@ -245,4 +306,48 @@ export const DEBUG_CONSTANTS = {
   SHOW_FPS: false,
   ENABLE_DEBUG_COMMANDS: true,
   LOG_LEVEL: 2, // INFO level
+};
+
+// Projectile type registry for different sprites and properties
+export const PROJECTILE_TYPES = {
+  arrow: {
+    sprite: "/assets/sprites/projectiles/arrow.png",
+    width: 64, // Match actual sprite width
+    height: 64, // Match actual sprite height
+    damageBoxColor: "yellow",
+    damageBoxWidth: 48, // Arrow shaft length in 64x64 sprite
+    damageBoxHeight: 8, // Arrow thickness (narrow shaft)
+    scale: 1.0, // Normal scale since sprite is already good size
+    radius: 6, // Collision radius for arrow tip
+  },
+  fireball: {
+    sprite: "/assets/sprites/projectiles/fireball.png",
+    width: 24,
+    height: 24,
+    damageBoxColor: "orange",
+    damageBoxWidth: 20,
+    damageBoxHeight: 20,
+    scale: 1.2,
+    radius: 6,
+  },
+  magic_bolt: {
+    sprite: "/assets/sprites/projectiles/magic_bolt.png",
+    width: 16,
+    height: 16,
+    damageBoxColor: "yellow",
+    damageBoxWidth: 14,
+    damageBoxHeight: 14,
+    scale: 1.0,
+    radius: 3,
+  },
+  crossbow_bolt: {
+    sprite: "/assets/sprites/projectiles/crossbow_bolt.png",
+    width: 28,
+    height: 6,
+    damageBoxColor: "gray",
+    damageBoxWidth: 22,
+    damageBoxHeight: 4,
+    scale: 1.0,
+    radius: 3,
+  },
 };
