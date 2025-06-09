@@ -123,11 +123,11 @@ export class Enemy extends AnimatedObject {
       // FIX: Check if this was the last enemy in boss room to activate transition zone immediately
       const aliveEnemies = this.currentRoom.objects.enemies.filter(e => e.state !== 'dead');
       if (this.currentRoom.roomType === 'boss' && aliveEnemies.length === 0) {
-        console.log('🏆 BOSS DEFEATED! Transition zone activated immediately');
+        console.log('BOSS DEFEATED! Transition zone activated immediately');
         
         // Mark room as immediately available for transition
         this.currentRoom.bossDefeated = true;
-        console.log(`✅ Boss room marked as defeated (bossDefeated = true)`);
+        console.log(`Boss room marked as defeated (bossDefeated = true)`);
         
         // Notify game that boss room is cleared
         if (window.game) {
