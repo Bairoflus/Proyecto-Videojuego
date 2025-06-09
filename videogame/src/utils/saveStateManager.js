@@ -189,23 +189,14 @@ export class SaveStateManager {
         gold
       });
 
-      const endTime = performance.now();
-      const saveTime = endTime - startTime;
-      this.updatePerformanceMetrics(saveTime, response.success);
+      const saveTime = performance.now() - startTime;
+      this.updatePerformanceMetrics(saveTime, true);
 
       if (response.success) {
         this.currentSaveState = { ...gameState, savedAt: new Date().toISOString() };
         this.lastSaveTime = Date.now();
         
-        // Log the save with timing info
-        if (isLogout || force) {
-          console.log(`💾 Game state saved successfully ${isLogout ? '(logout)' : '(forced)'} in ${saveTime.toFixed(2)}ms`);
-        } else {
-          // Reduced logging for auto-saves - only show timing for slow saves
-          if (saveTime > 50) { // Only log if save took more than 50ms
-            console.log(`⚠️ Slow auto-save completed in ${saveTime.toFixed(2)}ms`);
-          }
-        }
+        console.log(`Game state saved successfully ${isLogout ? '(logout)' : '(auto-save)'} in ${saveTime.toFixed(2)}ms`);
         return true;
       } else {
         this.updatePerformanceMetrics(saveTime, false);

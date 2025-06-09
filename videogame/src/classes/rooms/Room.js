@@ -432,6 +432,37 @@ export class Room {
       Math.abs(playerHitbox.y + playerHitbox.height / 2 - middleY) <
       playerHitbox.height;
 
+    // ENHANCED: Add debugging when player is close to transition
+    const debugThreshold = rightEdge - this.transitionZone * 1.5; // Slightly before transition zone
+    if (playerHitbox.x > debugThreshold) {
+      // Initialize debug counter if not exists
+      if (!this.rightEdgeDebugCounter) this.rightEdgeDebugCounter = 0;
+      this.rightEdgeDebugCounter++;
+
+      // Log every 30 frames when player is near transition area
+      if (this.rightEdgeDebugCounter % 30 === 0) {
+        const playerCenterY = playerHitbox.y + playerHitbox.height / 2;
+        const yDifference = Math.abs(playerCenterY - middleY);
+
+        console.log('🎯 RIGHT EDGE DEBUG - Player near transition zone:', {
+          playerX: Math.round(playerHitbox.x),
+          playerY: Math.round(playerHitbox.y),
+          playerCenterY: Math.round(playerCenterY),
+          rightEdge: Math.round(rightEdge),
+          transitionZone: this.transitionZone,
+          transitionThreshold: Math.round(rightEdge - this.transitionZone),
+          middleY: Math.round(middleY),
+          yDifference: Math.round(yDifference),
+          yTolerance: playerHitbox.height,
+          isAtRightEdge,
+          isAtMiddleY,
+          finalResult: isAtRightEdge && isAtMiddleY,
+          failureReason: !isAtRightEdge ? 'X position not in transition zone' :
+            !isAtMiddleY ? 'Y position not centered enough' : 'None'
+        });
+      }
+    }
+
     return isAtRightEdge && isAtMiddleY;
   }
 
@@ -657,6 +688,11 @@ export class Room {
             // Ensure bossDefeated flag is set for consistency
             this.bossDefeated = true;
           }
+          console.log(`BOSS ROOM TRANSITION ALLOWED - Player can advance to next floor`);
+        } else {
+          const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');
+          log.debug(`Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`);
+          console.log(`BOSS ROOM TRANSITION BLOCKED - Must defeat all enemies first`);
         }
       }
 
@@ -665,6 +701,7 @@ export class Room {
 
     // Non-combat rooms always allow transition
     if (!this.isCombatRoom) {
+      log.debug("Transition allowed: Non-combat room");
       return true;
     }
 
@@ -681,6 +718,13 @@ export class Room {
         log.info(
           `Combat room cleared: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
         );
+        console.log(`COMBAT ROOM TRANSITION ALLOWED - Player can advance`);
+      } else {
+        const aliveTypes = aliveEnemies.map(e => e.type || 'unknown').join(', ');
+        log.debug(
+          `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
+        );
+        console.log(`COMBAT ROOM TRANSITION BLOCKED - ${aliveEnemies.length} enemies remain`);
       }
     }
 
