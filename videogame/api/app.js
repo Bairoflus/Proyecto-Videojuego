@@ -21,7 +21,7 @@ const dbConfig = {
   host: 'localhost',
   user: 'tc2005b',
   password: 'qwer1234',
-  database: 'dbshatteredtimeline' // ← NUEVA BASE DE DATOS OPTIMIZADA
+  database: 'dbshatteredtimeline' // BASE DE DATOS OPTIMIZADA
 };
 
 async function createConnection() {
