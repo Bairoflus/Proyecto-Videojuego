@@ -1,0 +1,692 @@
+/* Global styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Page layout styles */
+body {
+  color: #fff;
+  min-height: 100vh;
+  background-image: url('../../assets/backgrounds/pages_background.png');
+  background-size: cover;
+  background-position: center;
+}
+
+/* Regular pages (landing, login, register) */
+body:not(.game-page) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Logo */
+.logo {
+  display: block;
+  max-width: 280px;
+  margin: 0 auto 30px;
+}
+
+/* Main content wrappers */
+.page-container {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 40px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+  max-width: 380px;
+  width: 90%;
+}
+
+/* Game page specific styles */
+.game-page {
+  background-color: #1a1a1a;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+
+.game-header {
+  background-color: rgba(0, 0, 0, 0.75);
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+}
+
+#welcome-msg {
+  color: white;
+  font-size: 1.1em;
+}
+
+/* Game canvas styles */
+#gameCanvas {
+  background-color: transparent;
+  border: 2px solid #333;
+  margin: auto;
+  display: block;
+}
+
+main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+/* Forms */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Common form elements */
+input, button {
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+}
+
+input {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+button {
+  background: #4a90e2;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background: #357abd;
+}
+
+/* Game UI overlay */
+#uiContainer {
+  position: absolute;
+  top: 15vh;
+  right: 5vw;
+  z-index: 3;
+  font-family: monospace;
+  pointer-events: none;
+  padding: 1em;
+  background-color: rgba(0, 0, 0, 0.8);
+  border-radius: 1em;
+  border: 1px solid turquoise;
+}
+
+/* UI elements */
+#ui {
+  opacity: 0.8;
+}
+
+#ui > div {
+  pointer-events: none;
+}
+
+#ui input,
+#ui select,
+#ui option,
+#ui canvas {
+  pointer-events: auto;
+}
+
+/* Debug GUI positioning */
+.lil-gui.autoPlace {
+  top: 15vh;
+  right: 5vw;
+}
+
+/* Headings */
+h2 {
+  margin-bottom: 25px;
+  font-size: 26px;
+  color: #ffffff;
+}
+
+/* Landing page specific */
+.landing-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+}
+
+/* Message styles */
+#error-message {
+  background: rgba(255, 82, 82, 0.15);
+  border: 1px solid #ff5252;
+  color: #ff5252;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+#success-message {
+  background: rgba(76, 175, 80, 0.15);
+  border: 1px solid #4caf50;
+  color: #4caf50;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+/* Login Status Indicator Styles - Issue #7 Enhancement */
+.status-indicator {
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin: 10px 0;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.status-indicator.idle {
+  display: none;
+}
+
+.status-indicator.clearing {
+  background: rgba(156, 39, 176, 0.15);
+  border-color: #9c27b0;
+  color: #e1bee7;
+  animation: statusPulse 2s infinite;
+}
+
+.status-indicator.authenticating {
+  background: rgba(33, 150, 243, 0.15);
+  border-color: #2196f3;
+  color: #bbdefb;
+  animation: statusPulse 2s infinite;
+}
+
+.status-indicator.creating-run {
+  background: rgba(255, 152, 0, 0.15);
+  border-color: #ff9800;
+  color: #ffcc02;
+  animation: statusPulse 2s infinite;
+}
+
+.status-indicator.success {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: #4caf50;
+  color: #c8e6c9;
+  animation: statusGlow 1.5s ease-in-out;
+}
+
+.status-indicator.error {
+  background: rgba(244, 67, 54, 0.15);
+  border-color: #f44336;
+  color: #ffcdd2;
+  animation: statusShake 0.5s ease-in-out;
+}
+
+/* Status indicator animations */
+@keyframes statusPulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes statusGlow {
+  0% {
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+  }
+}
+
+@keyframes statusShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+/* Enhanced button states for better feedback */
+button:disabled {
+  background: #666;
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+button:disabled:hover {
+  background: #666;
+}
+
+/* Responsive improvements */
+@media (max-width: 480px) {
+  .page-container {
+    padding: 30px 20px;
+    max-width: 95%;
+  }
+  
+  .status-indicator {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+}
+
+/* ========================================
+   🎮 PAUSE SYSTEM STYLES
+   ======================================== */
+
+/* Pause indicator in game header */
+.pause-indicator {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  border: 1px solid #4a90e2;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.pause-indicator kbd {
+  background: #4a90e2;
+  color: white;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 12px;
+  margin: 0 2px;
+}
+
+/* Pause overlay - full screen */
+.pause-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.pause-overlay.hidden {
+  display: none !important;
+}
+
+/* Main pause container - matching shop style */
+.pause-container {
+  background: rgba(20, 20, 30, 0.95);
+  border: 3px solid #444;
+  border-radius: 16px;
+  width: 650px;
+  max-width: 90vw;
+  height: 500px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+/* Pause header */
+.pause-header {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  text-align: center;
+  border-bottom: 2px solid #444;
+}
+
+.pause-header h2 {
+  color: #4a90e2;
+  font-size: 28px;
+  margin: 0;
+  font-weight: bold;
+}
+
+/* Tab navigation */
+.pause-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid #444;
+}
+
+.pause-tab-btn {
+  flex: 1;
+  padding: 15px 20px;
+  background: transparent;
+  color: #888;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  border-right: 1px solid rgba(68, 68, 68, 0.5);
+}
+
+.pause-tab-btn:last-child {
+  border-right: none;
+}
+
+.pause-tab-btn:hover {
+  background: rgba(74, 144, 226, 0.1);
+  color: #fff;
+}
+
+.pause-tab-btn.active {
+  background: #4a90e2;
+  color: white;
+  font-weight: bold;
+}
+
+/* Content area */
+.pause-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.tab-content h3 {
+  color: #4a90e2;
+  font-size: 20px;
+  margin: 0 0 20px 0;
+  font-weight: bold;
+}
+
+/* Controls content */
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.control-section h4 {
+  color: #4CAF50;
+  font-size: 16px;
+  margin: 0 0 10px 0;
+  border-bottom: 1px solid rgba(76, 175, 80, 0.3);
+  padding-bottom: 5px;
+}
+
+.control-item {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #ddd;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-item kbd {
+  background: #333;
+  color: #4a90e2;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  min-width: 20px;
+  text-align: center;
+  border: 1px solid #555;
+}
+
+/* Stats content */
+.stats-section {
+  margin-bottom: 25px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid rgba(68, 68, 68, 0.5);
+}
+
+.stats-section h4 {
+  color: #FFD700;
+  font-size: 16px;
+  margin: 0 0 12px 0;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+  padding-bottom: 5px;
+}
+
+.stat-item {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-item span {
+  color: #4a90e2;
+  font-weight: bold;
+}
+
+.error {
+  color: #FF6B6B;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Settings content */
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px 15px;
+  border-radius: 8px;
+  border: 1px solid rgba(68, 68, 68, 0.5);
+}
+
+.setting-item label {
+  color: #4CAF50;
+  font-weight: bold;
+  min-width: 120px;
+  font-size: 14px;
+}
+
+.setting-item input[type="range"] {
+  flex: 1;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  outline: none;
+  border: none;
+}
+
+.setting-item input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #4a90e2;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.setting-item input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #4a90e2;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.setting-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #4a90e2;
+}
+
+.setting-item span {
+  color: #ddd;
+  font-size: 14px;
+  min-width: 50px;
+}
+
+.save-settings-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin-top: 10px;
+  align-self: flex-start;
+}
+
+.save-settings-btn:hover {
+  background: #45a049;
+}
+
+.save-settings-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+/* Action buttons */
+.pause-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 2px solid #444;
+  gap: 15px;
+}
+
+.resume-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  flex: 1;
+  max-width: 200px;
+}
+
+.resume-btn:hover {
+  background: #45a049;
+}
+
+.logout-btn {
+  background: #FF6B6B;
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  flex: 1;
+  max-width: 120px;
+}
+
+.logout-btn:hover {
+  background: #ff5252;
+}
+
+/* Responsive design for pause menu */
+@media (max-width: 700px) {
+  .pause-container {
+    width: 95vw;
+    height: 90vh;
+  }
+  
+  .controls-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .pause-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .resume-btn, .logout-btn {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .pause-header h2 {
+    font-size: 24px;
+  }
+  
+  .pause-tabs {
+    flex-direction: column;
+  }
+  
+  .pause-tab-btn {
+    border-right: none;
+    border-bottom: 1px solid rgba(68, 68, 68, 0.5);
+  }
+  
+  .pause-tab-btn:last-child {
+    border-bottom: none;
+  }
+  
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .setting-item label {
+    min-width: auto;
+  }
+}

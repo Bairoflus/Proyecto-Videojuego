@@ -11,6 +11,9 @@ import { Chest } from "../entities/Chest.js";
 import { Shop } from "../entities/Shop.js";
 import { GoblinDagger } from "../enemies/floor1/GoblinDagger.js";
 import { GoblinArcher } from "../enemies/floor1/GoblinArcher.js";
+import { SwordGoblin } from "../enemies/floor1/SwordGoblin.js";
+import { MageGoblin } from "../enemies/floor1/MageGoblin.js";
+import { GreatBowGoblin } from "../enemies/floor1/GreatBowGoblin.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
 import { ROOM_CONSTANTS, PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
@@ -27,32 +30,50 @@ export class Room {
       walls: [],
       enemies: [],
       coins: [],
-      chest: null, // Gold chest that spawns after clearing enemies
+      chest: null,
       shop: null,
       boss: null,
     };
-    this.chestSpawned = false; // Track if chest has been spawned
-    this.chestCollected = false; // Track if chest has been collected
-    this.shopActivationArea = null; // Shop activation area
-    this.playerInShopArea = false; // Track if player is in shop activation area
-    this.shopCanBeOpened = true; // Prevent reopening until player leaves area
+    this.chestSpawned = false;
+    this.chestCollected = false;
+    this.shopActivationArea = null;
+    this.playerInShopArea = false;
+    this.shopCanBeOpened = true;
+
     this.parseLayout();
 
     // Create shop instance for shop rooms
     if (this.roomType === "shop" && !this.objects.shop) {
       this.objects.shop = new Shop();
-
-      // Set callback to handle ESC closing
       this.objects.shop.setOnCloseCallback(() => {
         this.shopCanBeOpened = false;
       });
-
       log.info("Shop instance created in constructor for shop room");
     }
+  }
+  addEntity(entity) {
+    if (typeof entity.setCurrentRoom === 'function') {
+      entity.setCurrentRoom(this);
+    }
+    this.objects.enemies.push(entity);
+  }
 
-    // Generate enemies procedurally if this is a combat room
-    if (this.isCombatRoom) {
+  // NEW METHOD: Initialize enemies for NEW combat rooms only
+  initializeEnemies() {
+    console.log(`ROOM.initializeEnemies() called:`, {
+      isCombatRoom: this.isCombatRoom,
+      currentEnemyCount: this.objects.enemies.length,
+      roomType: this.roomType
+    });
+
+    if (this.isCombatRoom && this.objects.enemies.length === 0) {
+      console.log('Generating NEW enemies for fresh combat room...');
       this.generateEnemies();
+      console.log(`Enemy generation complete: ${this.objects.enemies.length} enemies created`);
+    } else if (this.isCombatRoom) {
+      console.log(`Skipping enemy generation: ${this.objects.enemies.length} enemies already exist (SAVED STATE)`);
+    } else {
+      console.log(`Non-combat room (${this.roomType}): No enemy generation needed`);
     }
   }
 
@@ -82,7 +103,7 @@ export class Room {
               8
             );
             coin.setSprite(
-              "./assets/sprites/coin_gold.png",
+              "/assets/sprites/hud/gold_coin.png",
               new Rect(0, 0, 32, 32)
             );
             coin.setAnimation(0, 7, true, variables.animationDelay);
@@ -112,8 +133,22 @@ export class Room {
     }
   }
 
+  // NEW: Helper method to clean undefined/null enemies from array
+  cleanEnemiesArray() {
+    const originalLength = this.objects.enemies.length;
+    this.objects.enemies = this.objects.enemies.filter(enemy => enemy !== undefined && enemy !== null);
+    const cleanedLength = this.objects.enemies.length;
+    
+    if (originalLength !== cleanedLength) {
+      console.warn(`ENEMIES ARRAY CLEANED: Removed ${originalLength - cleanedLength} undefined/null entries`);
+    }
+  }
+
   // Draws all room objects
   draw(ctx) {
+    // CRITICAL: Clean enemies array before drawing
+    this.cleanEnemiesArray();
+    
     // Draw background first
     if (variables.backgroundImage && variables.backgroundImage.complete) {
       ctx.drawImage(
@@ -126,7 +161,7 @@ export class Room {
     }
 
     // Draw walls
-    ctx.fillStyle = "gray";
+    ctx.fillStyle = "brown";
     this.objects.walls.forEach((wall) => {
       ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
     });
@@ -139,8 +174,8 @@ export class Room {
       this.objects.chest.draw(ctx);
     }
 
-    // Draw enemies
-    this.objects.enemies.forEach((enemy) => enemy.draw(ctx));
+    // Draw enemies (now with additional safety)
+    this.objects.enemies.filter(enemy => enemy !== undefined && enemy !== null).forEach((enemy) => enemy.draw(ctx));
 
     // Draw shop activation area if this is a shop room
     if (this.roomType === "shop" && this.shopActivationArea) {
@@ -187,6 +222,9 @@ export class Room {
 
   // Updates all room objects
   update(deltaTime) {
+    // CRITICAL: Clean enemies array before updating
+    this.cleanEnemiesArray();
+    
     this.objects.coins.forEach((coin) => coin.update(deltaTime));
 
     // Update chest if it exists
@@ -208,7 +246,7 @@ export class Room {
     }
 
     // Update enemies
-    this.objects.enemies.forEach((enemy) => {
+    this.objects.enemies.filter(enemy => enemy !== undefined && enemy !== null).forEach((enemy) => {
       // Ensure enemy has room reference for collision detection
       if (!enemy.currentRoom) {
         enemy.setCurrentRoom(this);
@@ -226,26 +264,44 @@ export class Room {
           );
           enemy.moveTo(playerCenter);
 
-          // For ranged enemies, also call their attack method
-          if (enemy.type === "goblin_archer") {
+          // ✅ V2 RANGED ENEMIES ATTACK LOGIC
+          if (enemy.type === "goblin_archer" || 
+              enemy.type === "mage_goblin" || 
+              enemy.type === "great_bow_goblin") {
             enemy.attack(window.game.player);
           }
         }
 
         // Update enemy with player reference for projectile handling
-        enemy.update(deltaTime, window.game.player);
+        enemy.update(deltaTime, window.game.player, this);
       } else {
         // Even dead enemies need to update their projectiles
-        enemy.update(deltaTime, window.game.player);
+        enemy.update(deltaTime, window.game.player, this);
       }
     });
 
-    // Remove dead enemies from the array
-    const previousEnemyCount = this.objects.enemies.length;
+    // Remove dead enemies from the array (also filter out undefined/null)
+    const previousEnemyCount = this.objects.enemies.filter(enemy => enemy !== undefined && enemy !== null).length;
+
+    // ENHANCED: Better logging for enemy removal
+    const deadEnemies = this.objects.enemies.filter((enemy) => enemy && enemy.state === "dead");
+    const aliveEnemiesBefore = this.objects.enemies.filter((enemy) => enemy && enemy.state !== "dead");
+
+    // CRITICAL: Filter out both dead enemies AND undefined/null entries
     this.objects.enemies = this.objects.enemies.filter(
-      (enemy) => enemy.state !== "dead"
+      (enemy) => enemy !== undefined && enemy !== null && enemy.state !== "dead"
     );
     const currentEnemyCount = this.objects.enemies.length;
+
+    // ENHANCED: Diagnostic logging for enemy state changes
+    if (deadEnemies.length > 0) {
+      console.log(`Removing ${deadEnemies.length} dead enemies from room`);
+      console.log(`  Dead enemies:`, deadEnemies.map(e => ({
+        type: e.type,
+        position: `(${Math.round(e.position.x)}, ${Math.round(e.position.y)})`
+      })));
+      console.log(`  Enemy count: ${previousEnemyCount} → ${currentEnemyCount}`);
+    }
 
     // Check if all enemies were just defeated in a combat room
     if (
@@ -254,7 +310,43 @@ export class Room {
       previousEnemyCount > 0 &&
       currentEnemyCount === 0
     ) {
+      console.log("ALL ENEMIES DEFEATED - Spawning chest");
       this.spawnChest();
+
+      // ✅ FORCE IMMEDIATE CLEANUP - Ensure no dead enemies remain
+      this.objects.enemies = this.objects.enemies.filter(
+        (enemy) => enemy !== undefined && enemy !== null && enemy.state !== "dead"
+      );
+
+      // IMMEDIATE DIAGNOSTIC: Check transition state right after enemy cleanup
+      console.log("IMMEDIATE TRANSITION CHECK AFTER ENEMY CLEANUP:");
+      console.log(`  - Room type: ${this.roomType}, Combat room: ${this.isCombatRoom}`);
+      console.log(`  - Enemies remaining: ${this.objects.enemies.length}`);
+      console.log(`  - Alive enemies: ${this.objects.enemies.filter(e => e.state !== 'dead').length}`);
+      console.log(`  - Dead enemies removed: ${deadEnemies.length}`);
+      console.log(`  - Can transition: ${this.canTransition()}`);
+
+      // FORCE VERIFICATION: Double-check all enemies are actually dead
+      const stillAlive = this.objects.enemies.filter(e => e.state !== 'dead');
+      if (stillAlive.length > 0) {
+        console.error("ERROR: Enemies marked as alive after cleanup!");
+        stillAlive.forEach(enemy => {
+          console.error(`  - ALIVE: ${enemy.type} at (${Math.round(enemy.position.x)}, ${Math.round(enemy.position.y)}) - Health: ${enemy.health}, State: ${enemy.state}`);
+        });
+      } else {
+        console.log("VERIFICATION PASSED - All enemies confirmed dead/removed");
+
+        // FORCE NOTIFICATION to Game.js that room is now clear
+        if (window.game) {
+          console.log("NOTIFYING GAME: Combat room is now clear for transition");
+          window.game.roomJustCleared = true; // Set flag for immediate feedback
+
+          // If player is already at right edge, trigger transition check immediately
+          if (window.game.player && this.isPlayerAtRightEdge(window.game.player)) {
+            console.log("PLAYER AT RIGHT EDGE - Transition should be possible now!");
+          }
+        }
+      }
     }
 
     // Update shop interaction
@@ -276,7 +368,17 @@ export class Room {
         // Player just entered the area
         this.playerInShopArea = true;
         if (this.shopCanBeOpened && !this.objects.shop.isOpen) {
-          this.objects.shop.open();
+          // NEW: Prepare shop data for opening
+          const shopData = {
+            userId: parseInt(localStorage.getItem('currentUserId')),
+            runId: parseInt(localStorage.getItem('currentRunId')),
+            roomId: window.game?.floorGenerator?.getCurrentRoomId() || 1
+          };
+
+          // Open shop with proper data
+          this.objects.shop.open(shopData, () => {
+            this.shopCanBeOpened = false;
+          });
         }
       } else if (this.playerInShopArea && !isInArea) {
         // Player just left the area
@@ -375,32 +477,33 @@ export class Room {
 
     return new Vec(
       variables.canvasWidth -
-        this.transitionZone -
-        this.minSafeDistance -
-        playerWidth +
-        hitboxOffset,
+      this.transitionZone -
+      this.minSafeDistance -
+      playerWidth +
+      hitboxOffset,
       variables.canvasHeight / 2 - 32
     );
   }
 
   // Generates procedural enemies for combat rooms
   generateEnemies() {
-    log.info("Starting procedural enemy generation for combat room...");
+    log.info("Starting procedural enemy generation for combat room V2...");
 
     // Generate enemies randomly within defined range
     const enemyCount = Math.floor(Math.random() * (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)) + ROOM_CONSTANTS.MIN_ENEMIES;
 
-    // Random proportion using constants
-    const commonPercentage = Math.random() * (ROOM_CONSTANTS.COMMON_ENEMY_RATIO.max - ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min) + ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min;
-    const commonCount = Math.floor(enemyCount * commonPercentage);
-    const rareCount = enemyCount - commonCount;
+    // ✅ V2 ENEMY DISTRIBUTION WITH WEIGHTED SELECTION
+    const enemyTypes = [
+      { class: GoblinDagger, weight: 30, type: 'melee', name: 'GoblinDagger' },      // common
+      { class: SwordGoblin, weight: 25, type: 'melee', name: 'SwordGoblin' },       // common  
+      { class: GoblinArcher, weight: 20, type: 'ranged', name: 'GoblinArcher' },    // rare
+      { class: MageGoblin, weight: 15, type: 'ranged', name: 'MageGoblin' },        // rare
+      { class: GreatBowGoblin, weight: 10, type: 'ranged', name: 'GreatBowGoblin' } // rare
+    ];
 
     log.debug(
-      `Enemy distribution: ${enemyCount} total | ${commonCount} GoblinDagger (${Math.round(
-        commonPercentage * 100
-      )}%) | ${rareCount} GoblinArcher (${Math.round(
-        (1 - commonPercentage) * 100
-      )}%)`
+      `Enemy V2 distribution for ${enemyCount} enemies:`,
+      enemyTypes.map(e => `${e.name}(${e.weight}%)`).join(', ')
     );
 
     // Safe zone definition using constants
@@ -416,87 +519,86 @@ export class Room {
     );
 
     let successfulPlacements = 0;
+    let enemyTypeCount = {};
 
-    // Generate common enemies (left half, excluding safe zone)
-    log.debug("Generating GoblinDagger enemies (left half)...");
-    for (let i = 0; i < commonCount; i++) {
-      const position = this.getValidEnemyPosition(true, safeZone);
+    // Generate all enemies using weighted selection
+    for (let i = 0; i < enemyCount; i++) {
+      const selectedType = this.weightedRandomSelect(enemyTypes);
+      const position = this.getValidEnemyPositionV2(selectedType.type === 'melee', safeZone);
+      
       if (position) {
-        const enemy = new GoblinDagger(position);
+        const enemy = new selectedType.class(position);
         enemy.setCurrentRoom(this); // Set room reference for collision detection
         this.objects.enemies.push(enemy);
         successfulPlacements++;
+        
+        // Track enemy type counts
+        enemyTypeCount[selectedType.name] = (enemyTypeCount[selectedType.name] || 0) + 1;
+        
         log.verbose(
-          `  GoblinDagger ${i + 1} placed at (${Math.round(
+          `  ${selectedType.name} ${i + 1} placed at (${Math.round(
             position.x
           )}, ${Math.round(position.y)})`
         );
       } else {
-        log.warn(`  Failed to place GoblinDagger ${i + 1}`);
-      }
-    }
-
-    // Generate rare enemies (right half)
-    log.debug("Generating GoblinArcher enemies (right half)...");
-    for (let i = 0; i < rareCount; i++) {
-      const position = this.getValidEnemyPosition(false, safeZone);
-      if (position) {
-        const enemy = new GoblinArcher(position);
-        enemy.setCurrentRoom(this); // Set room reference for collision detection
-        this.objects.enemies.push(enemy);
-        successfulPlacements++;
-        log.verbose(
-          `  GoblinArcher ${i + 1} placed at (${Math.round(
-            position.x
-          )}, ${Math.round(position.y)})`
-        );
-      } else {
-        log.warn(`  Failed to place GoblinArcher ${i + 1}`);
+        log.warn(`  Failed to place ${selectedType.name} ${i + 1}`);
       }
     }
 
     log.info(
-      `Enemy generation complete: ${successfulPlacements}/${enemyCount} enemies successfully placed`
+      `Enemy generation V2 complete: ${successfulPlacements}/${enemyCount} enemies successfully placed`
     );
+
+    // Log final distribution
+    Object.entries(enemyTypeCount).forEach(([type, count]) => {
+      log.debug(`  ${type}: ${count} spawned`);
+    });
 
     // Validate that all enemies are correct instances
-    const goblinDaggerCount = this.objects.enemies.filter(
-      (e) => e.type === "goblin_dagger"
-    ).length;
-    const goblinArcherCount = this.objects.enemies.filter(
-      (e) => e.type === "goblin_archer"
-    ).length;
-
-    log.debug(
-      `Validation: ${goblinDaggerCount} GoblinDagger, ${goblinArcherCount} GoblinArcher instances created`
-    );
+    const totalValidEnemies = this.objects.enemies.filter(e => e && e.type).length;
+    log.debug(`Validation: ${totalValidEnemies} valid enemy instances created`);
   }
 
-  // Improved method to get valid enemy position with better organization
-  getValidEnemyPosition(isCommon, safeZone) {
+  // ✅ V2 WEIGHTED RANDOM SELECTION
+  weightedRandomSelect(types) {
+    const totalWeight = types.reduce((sum, type) => sum + type.weight, 0);
+    const random = Math.random() * totalWeight;
+    
+    let currentWeight = 0;
+    for (const type of types) {
+      currentWeight += type.weight;
+      if (random <= currentWeight) {
+        return type;
+      }
+    }
+    return types[0]; // Fallback
+  }
+
+  // ✅ V2 IMPROVED POSITION GENERATION
+  getValidEnemyPositionV2(isMelee, safeZone) {
     let attempts = 0;
 
     while (attempts < ROOM_CONSTANTS.MAX_PLACEMENT_ATTEMPTS) {
-      const position = this.generateRandomPosition(isCommon, safeZone);
-      
-      if (position && this.isValidEnemyPosition(position)) {
+      const position = this.generateRandomPositionV2(isMelee, safeZone);
+
+      if (position && this.isValidEnemyPositionV2(position)) {
         return position;
       }
-      
+
       attempts++;
     }
 
-    log.warn("Could not find valid position for enemy after", ROOM_CONSTANTS.MAX_PLACEMENT_ATTEMPTS, "attempts");
+    log.warn("Could not find valid position for V2 enemy after", ROOM_CONSTANTS.MAX_PLACEMENT_ATTEMPTS, "attempts");
     return null;
   }
 
-  // Helper method to generate random position based on enemy type
-  generateRandomPosition(isCommon, safeZone) {
+  // ✅ V2 POSITION GENERATION WITH BETTER LOGIC
+  generateRandomPositionV2(isMelee, safeZone) {
     let x, y;
 
-    if (isCommon) {
-      // Common enemies: left half (excluding safe zone)
-      x = Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE);
+    if (isMelee) {
+      // Melee enemies: prefer left side but can spawn anywhere except safe zone
+      x = Math.random() * (variables.canvasWidth * 0.7 - ROOM_CONSTANTS.TILE_SIZE);
       y = Math.random() * (variables.canvasHeight - ROOM_CONSTANTS.TILE_SIZE);
 
       // Check if position overlaps with safe zone
@@ -504,8 +606,8 @@ export class Room {
         return null; // Invalid position
       }
     } else {
-      // Rare enemies: right half
-      x = Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE) + variables.canvasWidth / 2;
+      // Ranged enemies: prefer right side for better positioning
+      x = Math.random() * (variables.canvasWidth * 0.6 - ROOM_CONSTANTS.TILE_SIZE) + variables.canvasWidth * 0.4;
       y = Math.random() * (variables.canvasHeight - ROOM_CONSTANTS.TILE_SIZE);
     }
 
@@ -522,41 +624,59 @@ export class Room {
     );
   }
 
-  // Helper method to validate enemy position
-  isValidEnemyPosition(position) {
-    // Create a temporary enemy to test collision
-    const tempEnemy = new GoblinDagger(position);
+  // ✅ V2 VALIDATION WITH BETTER ENEMY DETECTION
+  isValidEnemyPositionV2(position) {
+    // Create a temporary enemy to test collision (use base enemy for testing)
+    const tempEnemy = {
+      position: position,
+      width: 32,
+      height: 32,
+      getHitboxBounds: () => ({
+        x: position.x,
+        y: position.y,
+        width: 32,
+        height: 32
+      })
+    };
     return !this.checkWallCollision(tempEnemy);
   }
 
-  // Checks if the room can transition (no enemies alive)
+  // SIMPLIFIED: Checks if the room allows transition - streamlined logic
   canTransition() {
+    // Clean enemies array first
+    this.cleanEnemiesArray();
+    
+    // Non-combat rooms always allow transition
     if (!this.isCombatRoom) {
-      log.debug("Transition allowed: Non-combat room");
-      return true; // Non-combat rooms can always transition
+      return true;
     }
-
-    // Combat rooms require all enemies to be defeated
-    const totalEnemies = this.objects.enemies.length;
+    
+    // Combat rooms: check if all enemies are dead
     const aliveEnemies = this.objects.enemies.filter(
-      (enemy) => enemy.state !== "dead"
+      e => e !== undefined && e !== null && e.state !== 'dead'
     );
-    const deadEnemies = totalEnemies - aliveEnemies.length;
-
+    
+    // SIMPLIFIED: Only one condition - no complex boss logic needed
     const canTransition = aliveEnemies.length === 0;
-
-    if (canTransition) {
-      log.info(
-        `Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
-      );
-    } else {
-      const aliveGoblins = aliveEnemies.map((e) => e.type).join(", ");
-      log.debug(
-        `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveGoblins})`
-      );
+    
+    // Only log when transition state changes to avoid spam
+    if (canTransition !== this.lastCanTransition) {
+      this.lastCanTransition = canTransition;
+      if (canTransition) {
+        console.log(`✅ Room cleared: All enemies defeated! Can transition now.`);
+      } else {
+        console.log(`🚫 Transition blocked: ${aliveEnemies.length} enemies still alive`);
+      }
     }
-
+    
     return canTransition;
+  }
+
+  // NEW: Reset boss room state when entering a new boss room
+  resetBossState() {
+    if (this.roomType === 'boss') {
+      console.log(`Boss room state reset - ready for new encounter`);
+    }
   }
 
   /**

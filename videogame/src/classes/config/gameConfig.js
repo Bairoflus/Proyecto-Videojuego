@@ -63,6 +63,38 @@ export const gameConfig = {
             slingshotDamage: 15,
             projectileSpeed: 300
         }
+    },
+
+    // Boss configuration - hardcoded (no longer loaded from API)
+    bosses: {
+        // Boss data hardcoded for better performance
+        data: [
+            {
+                enemy_id: 101,
+                name: 'Dragon Boss',
+                max_hp: 500,
+                description: 'A powerful dragon that guards the treasure',
+                moves: [
+                    {
+                        name: 'Fire Breath',
+                        description: 'Breathes fire in a cone',
+                        phase: 1
+                    },
+                    {
+                        name: 'Claw Strike', 
+                        description: 'Powerful melee attack',
+                        phase: 1
+                    },
+                    {
+                        name: 'Wing Slam',
+                        description: 'Area damage attack',
+                        phase: 2
+                    }
+                ]
+            }
+        ],
+        loaded: true,
+        error: null
     }
 };
 
@@ -80,4 +112,37 @@ export function updateConfig(path, value) {
     }
     
     obj[keys[keys.length - 1]] = value;
+}
+
+/**
+ * Get boss data by enemy_id
+ * @param {number} enemyId - The enemy ID to search for
+ * @returns {Object|null} Boss data or null if not found
+ */
+export function getBossById(enemyId) {
+    return gameConfig.bosses.data.find(boss => boss.enemy_id === enemyId) || null;
+}
+
+/**
+ * Convert boss data to format expected by Boss class
+ * @param {Object} bossData - Boss data from config
+ * @returns {Object} Formatted boss data for game engine
+ */
+export function formatBossDataForGame(bossData) {
+    return {
+        enemyId: bossData.enemy_id,
+        name: bossData.name,
+        maxHp: bossData.max_hp,
+        description: bossData.description,
+        attacks: bossData.moves.map(move => ({
+            name: move.name,
+            description: move.description,
+            phase: move.phase,
+            cooldown: 3000, // Default cooldown
+            execute: (self) => {
+                console.log(`${bossData.name} uses ${move.name}!`);
+                // Default attack logic - can be customized per boss
+            }
+        }))
+    };
 } 

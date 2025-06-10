@@ -14,6 +14,7 @@ export class Projectile {
     this.radius = radius;
     this.speed = speed;
     this.damage = damage;
+    this.color = "white"; // Default color, can be changed later
 
     // Calculate direction to target
     // Handle both Vec objects and objects with position property
@@ -24,11 +25,11 @@ export class Projectile {
     // Projectile state
     this.isActive = true;
     this.hasHit = false;
-    
+
     // Reference to current room for wall collision detection
     this.currentRoom = null;
   }
-  
+
   // Set the current room reference for wall collision detection
   setCurrentRoom(room) {
     this.currentRoom = room;
@@ -78,7 +79,7 @@ export class Projectile {
 
     ctx.beginPath();
     ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
-    ctx.fillStyle = "white";
+    ctx.fillStyle = this.color;
     ctx.fill();
     ctx.closePath();
   }
@@ -110,12 +111,12 @@ export class Projectile {
     const hitbox = entity.getHitboxBounds
       ? entity.getHitboxBounds()
       : {
-          x: entity.position.x,
-          y: entity.position.y,
-          width: entity.width,
-          height: entity.height,
-        };
-    
+        x: entity.position.x,
+        y: entity.position.y,
+        width: entity.width,
+        height: entity.height,
+      };
+
     // Get projectile bounds using helper method
     const projBox = this.getProjectileBounds();
     return this.checkRectangleCollision(projBox, hitbox);
@@ -129,7 +130,7 @@ export class Projectile {
 
     // Apply damage to entity
     entity.takeDamage(this.damage);
-    
+
     // Log successful hit
     log.verbose(`Projectile hit ${entity.type} for ${this.damage} damage`);
 
@@ -139,7 +140,7 @@ export class Projectile {
   // Check collision with walls
   checkWallCollision() {
     if (!this.currentRoom || !this.isActive) return false;
-    
+
     // Create a temporary object representing the projectile for collision detection
     const tempProjectile = {
       position: this.position,
@@ -147,7 +148,7 @@ export class Projectile {
       height: this.radius * 2,
       getHitboxBounds: () => this.getProjectileBounds()
     };
-    
+
     return this.currentRoom.checkWallCollision(tempProjectile);
   }
 }

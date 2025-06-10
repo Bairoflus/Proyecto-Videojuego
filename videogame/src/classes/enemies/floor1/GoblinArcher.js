@@ -1,15 +1,15 @@
 /**
- * Goblin Archer enemy class
- * Ranged enemy type that attacks from a distance with projectiles
+ * Goblin Archer enemy class - UPDATED TO V2
+ * Ranged enemy type that attacks from a distance with projectiles → MAPS TO 'rare'
  * Less common but more dangerous enemy type on floor 1
  */
 import { RangedEnemy } from "../../entities/RangedEnemy.js";
-import { ENEMY_CONSTANTS } from "../../../constants/gameConstants.js";
+import { ENEMY_CONSTANTS_V2 } from "../../../constants/gameConstants.js";
 import { Vec } from "../../../utils/Vec.js";
 
 export class GoblinArcher extends RangedEnemy {
   constructor(position) {
-    const config = ENEMY_CONSTANTS.GOBLIN_ARCHER;
+    const config = ENEMY_CONSTANTS_V2.GOBLIN_ARCHER;
     
     super(
       position,
@@ -20,23 +20,19 @@ export class GoblinArcher extends RangedEnemy {
       "goblin_archer", // type
       config.speed,
       config.damage,
-      config.health
+      config.health,
+      config.attackRange,
+      config.projectileSpeed,
+      "goblin_archer" // enemyTypeName → maps to 'rare'
     );
 
     // Set specific properties
-    this.attackRange = config.attackRange;
     this.attackDuration = config.attackCooldown;
-    this.projectileSpeed = config.projectileSpeed;
     this.retreatDistance = config.retreatDistance;
+    this.projectileType = "arrow";
   }
 
-  // Override moveTo for static behavior
-  moveTo(targetPosition) {
-    // Goblin Archers are static - they don't move
-    this.velocity = new Vec(0, 0);
-    this.state = "idle";
-  }
-
+  // Override attack to ensure proper projectile firing
   attack(target) {
     if (this.state === "dead" || this.attackCooldown > 0) return;
 

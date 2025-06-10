@@ -17,19 +17,29 @@ export function main() {
   // Initialize logging system
   log.setLevel(log.LEVELS.INFO); // Set to DEBUG for development, INFO for production
 
+  console.log('🎮 Creating game instance...');
   const game = new Game();
 
-  let previousTime = 0;
-  function frame(currentTime) {
-    const deltaTime = currentTime - previousTime;
-    previousTime = currentTime;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    game.update(deltaTime);
-    game.draw(ctx);
+  // 🎮 FIXED: Wait for game to be ready before starting game loop
+  game.onReady(() => {
+    console.log('🚀 Game ready - starting game loop');
+    
+    let previousTime = 0;
+    async function frame(currentTime) {
+      const deltaTime = currentTime - previousTime;
+      previousTime = currentTime;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Handle async update without blocking frame rate
+      try {
+        await game.update(deltaTime);
+      } catch (error) {
+        console.error('Game update error:', error);
+      }
+      
+      game.draw(ctx);
+      requestAnimationFrame(frame);
+    }
     requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
+  });
 }
-
-// Execute main function when loaded
-main();
