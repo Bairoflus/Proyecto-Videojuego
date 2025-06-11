@@ -3,6 +3,10 @@
  * Issue #7: Frontend Login Flow Enhancement
  */
 import { loginUser, createRun, clearSessionLocalStorage } from '../../utils/api.js';
+import { SimpleAudioManager } from '../../utils/SimpleAudioManager.js';
+
+// Initialize audio manager for menu music
+const audioManager = new SimpleAudioManager();
 
 // Login states for improved UI feedback
 const LOGIN_STATES = {
@@ -267,6 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Clear any existing session data on page load
     clearSessionData();
+    
+    // Start menu music
+    audioManager.playMainMenuMusic();
     
     // Handle form submission
     form.addEventListener('submit', async (e) => {
