@@ -37,7 +37,7 @@ export class RangedEnemy extends Enemy {
     this.retreatDistance = Math.max(attackRange * 0.5, 80);
     this.projectileSpeed = projectileSpeed;
     this.projectileType = "arrow";
-    
+
     // Initialize projectile system
     this.initializeProjectiles();
   }
@@ -71,9 +71,9 @@ export class RangedEnemy extends Enemy {
   update(deltaTime, player) {
     // Update projectiles first
     this.updateProjectiles(deltaTime, player);
-    
+
     if (this.state === "dead") return;
-    
+
     // Call parent update
     super.update(deltaTime);
   }
@@ -84,13 +84,19 @@ export class RangedEnemy extends Enemy {
       if (projectile.isActive) {
         ctx.fillStyle = projectile.color;
         ctx.beginPath();
-        ctx.arc(projectile.position.x, projectile.position.y, projectile.radius, 0, 2 * Math.PI);
+        ctx.arc(
+          projectile.position.x,
+          projectile.position.y,
+          projectile.radius,
+          0,
+          2 * Math.PI
+        );
         ctx.fill();
       }
     });
-    
+
     if (this.state === "dead") return;
-    
+
     // Draw enemy
     super.draw(ctx);
   }
@@ -123,7 +129,7 @@ export class RangedEnemy extends Enemy {
       isActive: true,
       lifetime: 5000,
       timeAlive: 0,
-      color: this.getProjectileColor(this.projectileType)
+      color: this.getProjectileColor(this.projectileType),
     };
 
     this.projectiles.push(projectile);
@@ -131,10 +137,10 @@ export class RangedEnemy extends Enemy {
 
   getProjectileColor(type) {
     const colors = {
-      arrow: "#8B4513",     // Brown
-      magic: "#9932CC",     // Purple
-      fire: "#FF4500",      // Red-orange
-      ice: "#00BFFF"        // Blue
+      arrow: "#8B4513", // Brown
+      magic: "#9932CC", // Purple
+      fire: "#FF4500", // Red-orange
+      ice: "#00BFFF", // Blue
     };
     return colors[type] || colors.arrow;
   }
@@ -144,7 +150,7 @@ export class RangedEnemy extends Enemy {
 
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const projectile = this.projectiles[i];
-      
+
       if (!projectile.isActive) {
         this.projectiles.splice(i, 1);
         continue;
@@ -180,14 +186,18 @@ export class RangedEnemy extends Enemy {
       }
 
       // Check player collision
-      if (player && player.health > 0 && this.checkProjectilePlayerCollision(projectile, player)) {
+      if (
+        player &&
+        player.health > 0 &&
+        this.checkProjectilePlayerCollision(projectile, player)
+      ) {
         player.takeDamage(projectile.damage);
         projectile.isActive = false;
       }
     }
 
     // Clean up inactive projectiles
-    this.projectiles = this.projectiles.filter(p => p.isActive);
+    this.projectiles = this.projectiles.filter((p) => p.isActive);
   }
 
   checkProjectileWallCollision(projectile) {
@@ -199,8 +209,8 @@ export class RangedEnemy extends Enemy {
         x: projectile.position.x - projectile.radius,
         y: projectile.position.y - projectile.radius,
         width: projectile.radius * 2,
-        height: projectile.radius * 2
-      })
+        height: projectile.radius * 2,
+      }),
     };
 
     return this.currentRoom.checkWallCollision(tempProjectile);
@@ -212,7 +222,7 @@ export class RangedEnemy extends Enemy {
       x: projectile.position.x - projectile.radius,
       y: projectile.position.y - projectile.radius,
       width: projectile.radius * 2,
-      height: projectile.radius * 2
+      height: projectile.radius * 2,
     };
 
     return (
@@ -222,4 +232,4 @@ export class RangedEnemy extends Enemy {
       projectileHitbox.y + projectileHitbox.height > playerHitbox.y
     );
   }
-} 
+}

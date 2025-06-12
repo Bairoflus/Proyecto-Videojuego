@@ -25,31 +25,31 @@ export const variables = {
 export const BACKGROUND_CONFIG = {
   // Floor 1 backgrounds (6 different backgrounds for 6 rooms)
   floor1: [
-    "/assets/backgrounds/grass.png",     // Room 1 (Combat)
-    "/assets/backgrounds/woods.png",     // Room 2 (Combat)  
-    "/assets/backgrounds/swamp.png",     // Room 3 (Combat)
-    "/assets/backgrounds/cave.png",      // Room 4 (Combat)
-    "/assets/backgrounds/store.png",     // Room 5 (Shop)
-    "/assets/backgrounds/volcano.png"    // Room 6 (Boss)
+    "/assets/backgrounds/floor1/grass.png", // Room 1 (Combat)
+    "/assets/backgrounds/floor1/woods.png", // Room 2 (Combat)
+    "/assets/backgrounds/floor1/swamp.png", // Room 3 (Combat)
+    "/assets/backgrounds/floor1/cave.png", // Room 4 (Combat)
+    "/assets/backgrounds/floor1/store.png", // Room 5 (Shop)
+    "/assets/backgrounds/floor1/volcano.png", // Room 6 (Boss)
   ],
   // Floor 2 backgrounds (can be added later)
   floor2: [
-    "/assets/backgrounds/grass.png",     // Fallback for now
-    "/assets/backgrounds/woods.png",
-    "/assets/backgrounds/swamp.png", 
-    "/assets/backgrounds/cave.png",
-    "/assets/backgrounds/store.png",
-    "/assets/backgrounds/volcano.png"
+    "/assets/backgrounds/floor1/grass.png", // Fallback for now
+    "/assets/backgrounds/floor1/woods.png",
+    "/assets/backgrounds/floor1/swamp.png",
+    "/assets/backgrounds/floor1/cave.png",
+    "/assets/backgrounds/floor1/store.png",
+    "/assets/backgrounds/floor1/volcano.png",
   ],
   // Floor 3 backgrounds (can be added later)
   floor3: [
-    "/assets/backgrounds/grass.png",     // Fallback for now
-    "/assets/backgrounds/woods.png",
-    "/assets/backgrounds/swamp.png",
-    "/assets/backgrounds/cave.png", 
-    "/assets/backgrounds/store.png",
-    "/assets/backgrounds/volcano.png"
-  ]
+    "/assets/backgrounds/floor1/grass.png", // Fallback for now
+    "/assets/backgrounds/floor1/woods.png",
+    "/assets/backgrounds/floor1/swamp.png",
+    "/assets/backgrounds/floor1/cave.png",
+    "/assets/backgrounds/floor1/store.png",
+    "/assets/backgrounds/floor1/volcano.png",
+  ],
 };
 
 // Initialize with default background (will be updated dynamically)
@@ -196,51 +196,63 @@ export function updateBackgroundForRoom(floor, roomIndex) {
   try {
     const floorKey = `floor${floor}`;
     const backgroundsForFloor = BACKGROUND_CONFIG[floorKey];
-    
+
     if (!backgroundsForFloor) {
-      console.warn(`No backgrounds configured for floor ${floor}, using floor 1 backgrounds`);
-      const fallbackBackground = BACKGROUND_CONFIG.floor1[roomIndex] || BACKGROUND_CONFIG.floor1[0];
+      console.warn(
+        `No backgrounds configured for floor ${floor}, using floor 1 backgrounds`
+      );
+      const fallbackBackground =
+        BACKGROUND_CONFIG.floor1[roomIndex] || BACKGROUND_CONFIG.floor1[0];
       variables.backgroundImage.src = fallbackBackground;
       return;
     }
-    
+
     // Ensure roomIndex is within bounds
     const backgroundIndex = Math.min(roomIndex, backgroundsForFloor.length - 1);
     const newBackgroundSrc = backgroundsForFloor[backgroundIndex];
-    
+
     // Only update if it's a different background
     if (variables.backgroundImage.src !== newBackgroundSrc) {
-      console.log(`Changing background for Floor ${floor}, Room ${roomIndex + 1}: ${newBackgroundSrc}`);
+      console.log(
+        `Changing background for Floor ${floor}, Room ${
+          roomIndex + 1
+        }: ${newBackgroundSrc}`
+      );
       variables.backgroundImage.src = newBackgroundSrc;
-      
+
       // Ensure the new background loads properly
       variables.backgroundImage.onload = () => {
         console.log(`Background loaded successfully: ${newBackgroundSrc}`);
       };
-      
+
       variables.backgroundImage.onerror = () => {
-        console.error(`Failed to load background: ${newBackgroundSrc}, using fallback`);
+        console.error(
+          `Failed to load background: ${newBackgroundSrc}, using fallback`
+        );
         variables.backgroundImage.src = BACKGROUND_CONFIG.floor1[0]; // Fallback to first background
       };
     }
   } catch (error) {
-    console.error(`Error updating background for Floor ${floor}, Room ${roomIndex}:`, error);
+    console.error(
+      `Error updating background for Floor ${floor}, Room ${roomIndex}:`,
+      error
+    );
     // Fallback to default background
     variables.backgroundImage.src = BACKGROUND_CONFIG.floor1[0];
   }
 }
 
 export function preloadBackgrounds() {
-  console.log('Preloading all background images...');
+  console.log("Preloading all background images...");
   const allBackgrounds = new Set();
-  
+
   // Collect all unique background paths
-  Object.values(BACKGROUND_CONFIG).forEach(floorBackgrounds => {
-    floorBackgrounds.forEach(bgPath => allBackgrounds.add(bgPath));
+  Object.values(BACKGROUND_CONFIG).forEach((floorBackgrounds) => {
+    floorBackgrounds.forEach((bgPath) => allBackgrounds.add(bgPath));
   });
-  
+
   // Preload each unique background
-  const preloadPromises = Array.from(allBackgrounds).map(bgPath => {
+  const preloadPromises = Array.from(allBackgrounds).map((bgPath) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -254,6 +266,6 @@ export function preloadBackgrounds() {
       img.src = bgPath;
     });
   });
-  
+
   return Promise.allSettled(preloadPromises);
 }
