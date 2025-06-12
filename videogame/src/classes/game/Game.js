@@ -10,6 +10,7 @@ import { completeRun, createRun, registerEnemyKill, registerBossKill, getPermane
 import { saveStateManager } from "../../utils/saveStateManager.js";
 import { weaponUpgradeManager } from "../../utils/weaponUpgradeManager.js";
 import { PermanentUpgradePopup } from "../ui/PermanentUpgradePopup.js";
+import { SimpleAudioManager } from "../../utils/SimpleAudioManager.js";
 
 export class Game {
   constructor() {
@@ -67,6 +68,15 @@ export class Game {
     // Initialize game components
     this.globalShop = new Shop();
     this.permanentUpgradePopup = new PermanentUpgradePopup();
+    
+    // Initialize audio manager for floor music
+    this.audioManager = null;
+    try {
+      this.audioManager = new SimpleAudioManager();
+      console.log('🎵 Audio manager initialized for floor music');
+    } catch (error) {
+      console.warn('🎵 Audio manager not available - floor music disabled:', error);
+    }
     
     this.createEventListeners();
     this.floorGenerator = new FloorGenerator();
@@ -888,6 +898,12 @@ export class Game {
       // Reinitialize objects - NOW with fresh permanent upgrades data
       this.initObjects();
 
+      // Reset floor music to Floor 1 after death
+      if (this.audioManager) {
+        console.log('🎵 Resetting to Floor 1 music after death');
+        await this.audioManager.playFloorMusic(1);
+      }
+
       console.log("Game reset completed successfully with updated permanent upgrades");
     } catch (error) {
       console.error("Failed to reset game after death:", error);
@@ -951,6 +967,18 @@ export class Game {
         await this.floorGenerator.nextFloor();
         
         console.log(`📍 Advanced to Floor ${this.floorGenerator.getCurrentFloor()}, Room 1`);
+        
+        // Play time travel (floor transition) sound effect
+        if (this.audioManager) {
+          this.audioManager.playTimeTravelSFX();
+        }
+        
+        // Change floor music
+        if (this.audioManager) {
+          const newFloor = this.floorGenerator.getCurrentFloor();
+          console.log(`🎵 Transitioning to Floor ${newFloor} music`);
+          await this.audioManager.playFloorMusic(newFloor);
+        }
       } else {
         // NORMAL ROOM: Advance to next room
         if (!this.floorGenerator.nextRoom()) {
@@ -1735,6 +1763,13 @@ export class Game {
       this.isReady = true;
       this.gameState = "playing";
       console.log('Game initialization complete - ready to start');
+
+      // Initialize floor music when game is ready
+      if (this.audioManager) {
+        const currentFloor = this.floorGenerator.getCurrentFloor();
+        console.log(`🎵 Starting floor ${currentFloor} music`);
+        await this.audioManager.playFloorMusic(currentFloor);
+      }
 
       // Call ready callback if set
       if (this.gameReadyCallback) {
