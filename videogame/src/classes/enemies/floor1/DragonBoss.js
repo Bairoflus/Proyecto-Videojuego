@@ -79,12 +79,12 @@ export class DragonBoss extends Boss {
           const cols = layoutRows[0].length;
           const rows = layoutRows.length;
 
-          // Reiniciamos estado de “Fire Walls”
+          // Reiniciamos solo las olas, mantenemos los proyectiles existentes
           self.wallWaves = [];
-          self.wallProjectiles = [];
+          // NO reiniciamos los proyectiles para que sigan hasta el final
           self.wallTime = 0;
 
-          // Calculamos qué “filas centrales” queremos cubrir (centro ± halfCenter)
+          // Calculamos qué "filas centrales" queremos cubrir (centro ± halfCenter)
           const midRow = Math.floor(rows / 2);
           const halfCenter = Math.floor(self.wallCenterHeight / 2);
           const startCenterRow = midRow - halfCenter;
@@ -94,7 +94,7 @@ export class DragonBoss extends Boss {
           let prevGap =
             Math.floor(Math.random() * (cols - self.wallGapSize - 2)) + 1;
 
-          // Creamos N sub-olas “center”, una por cada fila entre startCenterRow..endCenterRow
+          // Creamos N sub-olas "center", una por cada fila entre startCenterRow..endCenterRow
           // Cada sub-ola tendrá un delay base (w * wallInterval) + offset según su fila,
           // para escalonar la aparición y simular espaciado vertical.
           for (let w = 0; w < self.wallWaveCount; w++) {
@@ -106,7 +106,7 @@ export class DragonBoss extends Boss {
             );
             prevGap = gapStart;
 
-            // Para cada fila “row” (filas centrales virtuales)
+            // Para cada fila "row" (filas centrales virtuales)
             for (let row = startCenterRow; row <= endCenterRow; row++) {
               if (row < 1 || row > rows - 2) continue;
 
@@ -282,14 +282,14 @@ export class DragonBoss extends Boss {
 
     for (let wv of this.wallWaves) {
       if (!wv.spawned && this.wallTime >= wv.delay) {
-        // 1) Primero: generamos la “línea central” para wv.row
+        // 1) Primero: generamos la "línea central" para wv.row
         for (let col = 1; col < cols - 1; col++) {
           // Si col está dentro del hueco [gapStart … gapStart+wallGapSize-1], lo saltamos
           if (col >= wv.gapStart && col < wv.gapStart + this.wallGapSize) {
             continue;
           }
           const x = col * room.tileSize + room.tileSize / 2;
-          // El spawn siempre se hace en “fila 1” (justo debajo del techo):
+          // El spawn siempre se hace en "fila 1" (justo debajo del techo):
           const y = room.tileSize + room.tileSize / 2;
           const start = new Vec(x, y);
           const end = new Vec(x, y + maxDistance);
