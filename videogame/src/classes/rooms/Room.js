@@ -264,10 +264,16 @@ export class Room {
           );
           enemy.moveTo(playerCenter);
 
-          // ✅ V2 RANGED ENEMIES ATTACK LOGIC
+          // V2 RANGED ENEMIES ATTACK LOGIC
           if (enemy.type === "goblin_archer" || 
               enemy.type === "mage_goblin" || 
               enemy.type === "great_bow_goblin") {
+            enemy.attack(window.game.player);
+          }
+
+          // V2 MELEE ENEMIES ATTACK LOGIC
+          if (enemy.type === "goblin_dagger" || 
+              enemy.type === "sword_goblin") {
             enemy.attack(window.game.player);
           }
         }
@@ -313,7 +319,7 @@ export class Room {
       console.log("ALL ENEMIES DEFEATED - Spawning chest");
       this.spawnChest();
 
-      // ✅ FORCE IMMEDIATE CLEANUP - Ensure no dead enemies remain
+      // FORCE IMMEDIATE CLEANUP - Ensure no dead enemies remain
       this.objects.enemies = this.objects.enemies.filter(
         (enemy) => enemy !== undefined && enemy !== null && enemy.state !== "dead"
       );
