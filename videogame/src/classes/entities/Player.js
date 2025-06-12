@@ -1283,6 +1283,35 @@ export class Player extends AnimatedObject {
           window.game.audioManager.playPlayerDashSFX();
         }
       }
+
+      if (!dashDir) {
+        switch (this.previousDirection) {
+          case "up":
+            dashDir = new Vec(0, -1);
+            break;
+          case "down":
+            dashDir = new Vec(0, 1);
+            break;
+          case "left":
+            dashDir = new Vec(-1, 0);
+            break;
+          case "right":
+            dashDir = new Vec(1, 0);
+            break;
+          default:
+            dashDir = null;
+        }
+      }
+      // Solo dash si hay movimiento
+      if (dashDir) {
+        this.dashDirection = dashDir;
+        this.dashTime = this.dashDuration;
+        this.stamina -= DASH_STAMINA_COST;
+        this.staminaCooldown = this.staminaRegenDelay;
+        this.dashCooldownTime = this.dashCooldown;
+        this.isInvulnerable = true;
+        this.invulnerabilityTimer = this.dashDuration;
+      }
     }
   }
 

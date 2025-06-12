@@ -2,7 +2,7 @@
 import { Vec } from "../../utils/Vec.js";
 import { Rect } from "../../utils/Rect.js";
 import { Player } from "../entities/Player.js";
-import { variables, keyDirections } from "../../config.js";
+import { variables, keyDirections, preloadBackgrounds } from "../../config.js";
 import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
 import { Boss } from "../entities/Boss.js";
@@ -1065,14 +1065,16 @@ export class Game {
         // BOSS ROOM: Advance to next floor
         console.log("🏆 Boss defeated! Advancing to next floor...");
 
-        // Critical API call: Auto-save after boss completion
-        await this.saveCurrentGameState();
+        // NON-BLOCKING: Auto-save after boss completion
+        this.saveCurrentGameState().catch((error) => {
+          console.warn("Failed to auto-save after boss completion:", error);
+        });
 
         // Reset boss flags
         this.resetBossFlags();
 
-        // Advance to next floor
-        await this.floorGenerator.nextFloor();
+        // INSTANT: Advance to next floor (no await)
+        this.floorGenerator.nextFloor();
 
         console.log(
           `📍 Advanced to Floor ${this.floorGenerator.getCurrentFloor()}, Room 1`
@@ -1083,11 +1085,13 @@ export class Game {
           this.audioManager.playTimeTravelSFX();
         }
 
-        // Change floor music
+        // NON-BLOCKING: Change floor music
         if (this.audioManager) {
           const newFloor = this.floorGenerator.getCurrentFloor();
           console.log(`🎵 Transitioning to Floor ${newFloor} music`);
-          await this.audioManager.playFloorMusic(newFloor);
+          this.audioManager.playFloorMusic(newFloor).catch((error) => {
+            console.warn("Failed to play floor music:", error);
+          });
         }
       } else {
         // NORMAL ROOM: Advance to next room
@@ -1100,8 +1104,10 @@ export class Game {
           `📍 Advanced to Room ${this.floorGenerator.getCurrentRoomIndex() + 1}`
         );
 
-        // Critical API call: Auto-save after successful room transition
-        await this.saveCurrentGameState();
+        // NON-BLOCKING: Auto-save after successful room transition
+        this.saveCurrentGameState().catch((error) => {
+          console.warn("Failed to auto-save after room transition:", error);
+        });
       }
 
       // Update game state
@@ -1916,6 +1922,11 @@ export class Game {
       // CRITICAL FIX: Wait for managers to initialize FIRST
       await this.initializeManagers();
       console.log("Managers initialization complete");
+
+      // Preload all background images
+      console.log("Preloading background images...");
+      await preloadBackgrounds();
+      console.log("Background preloading complete");
 
       // THEN load saved state
       await this.loadSavedState()

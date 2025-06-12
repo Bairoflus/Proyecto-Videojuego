@@ -175,8 +175,8 @@ export class Room {
       );
     }
 
-    // Draw walls
-    ctx.fillStyle = "brown";
+    // Draw walls - black and half transparent
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     this.objects.walls.forEach((wall) => {
       ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
     });
@@ -283,7 +283,7 @@ export class Room {
             );
             enemy.moveTo(playerCenter);
 
-            // V2 RANGED ENEMIES ATTACK LOGIC
+            // ✅ V2 RANGED ENEMIES ATTACK LOGIC
             if (
               enemy.type === "goblin_archer" ||
               enemy.type === "mage_goblin" ||
@@ -355,7 +355,7 @@ export class Room {
       console.log("ALL ENEMIES DEFEATED - Spawning chest");
       this.spawnChest();
 
-      // FORCE IMMEDIATE CLEANUP - Ensure no dead enemies remain
+      // ✅ FORCE IMMEDIATE CLEANUP - Ensure no dead enemies remain
       this.objects.enemies = this.objects.enemies.filter(
         (enemy) =>
           enemy !== undefined && enemy !== null && enemy.state !== "dead"
