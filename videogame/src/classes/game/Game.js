@@ -17,6 +17,7 @@ import {
 import { saveStateManager } from "../../utils/saveStateManager.js";
 import { weaponUpgradeManager } from "../../utils/weaponUpgradeManager.js";
 import { PermanentUpgradePopup } from "../ui/PermanentUpgradePopup.js";
+import { SimpleAudioManager } from "../../utils/SimpleAudioManager.js";
 
 export class Game {
   constructor() {
@@ -74,6 +75,18 @@ export class Game {
     // Initialize game components
     this.globalShop = new Shop();
     this.permanentUpgradePopup = new PermanentUpgradePopup();
+
+    // Initialize audio manager for floor music
+    this.audioManager = null;
+    try {
+      this.audioManager = new SimpleAudioManager();
+      console.log("🎵 Audio manager initialized for floor music");
+    } catch (error) {
+      console.warn(
+        "🎵 Audio manager not available - floor music disabled:",
+        error
+      );
+    }
 
     this.createEventListeners();
     this.floorGenerator = new FloorGenerator();
@@ -986,6 +999,12 @@ export class Game {
       // Reinitialize objects - NOW with fresh permanent upgrades data
       this.initObjects();
 
+      // Reset floor music to Floor 1 after death
+      if (this.audioManager) {
+        console.log("🎵 Resetting to Floor 1 music after death");
+        await this.audioManager.playFloorMusic(1);
+      }
+
       console.log(
         "Game reset completed successfully with updated permanent upgrades"
       );
@@ -1046,20 +1065,34 @@ export class Game {
         // BOSS ROOM: Advance to next floor
         console.log("🏆 Boss defeated! Advancing to next floor...");
 
-        // Reset boss flags immediately
+        // NON-BLOCKING: Auto-save after boss completion
+        this.saveCurrentGameState().catch((error) => {
+          console.warn("Failed to auto-save after boss completion:", error);
+        });
+
+        // Reset boss flags
         this.resetBossFlags();
 
-        // Advance to next floor immediately
-        await this.floorGenerator.nextFloor();
+        // INSTANT: Advance to next floor (no await)
+        this.floorGenerator.nextFloor();
 
         console.log(
           `📍 Advanced to Floor ${this.floorGenerator.getCurrentFloor()}, Room 1`
         );
 
-        // Save after boss completion (can be async since transition is visually complete)
-        this.saveCurrentGameState().catch((error) => {
-          console.error("Failed to auto-save after boss completion:", error);
-        });
+        // Play time travel (floor transition) sound effect
+        if (this.audioManager) {
+          this.audioManager.playTimeTravelSFX();
+        }
+
+        // NON-BLOCKING: Change floor music
+        if (this.audioManager) {
+          const newFloor = this.floorGenerator.getCurrentFloor();
+          console.log(`🎵 Transitioning to Floor ${newFloor} music`);
+          this.audioManager.playFloorMusic(newFloor).catch((error) => {
+            console.warn("Failed to play floor music:", error);
+          });
+        }
       } else {
         // NORMAL ROOM: Advance to next room
         if (!this.floorGenerator.nextRoom()) {
@@ -1070,33 +1103,30 @@ export class Game {
         console.log(
           `📍 Advanced to Room ${this.floorGenerator.getCurrentRoomIndex() + 1}`
         );
+
+        // NON-BLOCKING: Auto-save after successful room transition
+        this.saveCurrentGameState().catch((error) => {
+          console.warn("Failed to auto-save after room transition:", error);
+        });
       }
 
-      // Update game state IMMEDIATELY for instant transition
+      // Update game state
       this.currentRoom = this.floorGenerator.getCurrentRoom();
       this.currentRoom.resetBossState();
 
-      // Update player position IMMEDIATELY
+      // Update player position
       this.player.setCurrentRoom(this.currentRoom);
       this.player.position = this.currentRoom.getPlayerStartPosition();
       this.player.velocity = new Vec(0, 0);
       this.player.keys = [];
 
-      // Update enemies IMMEDIATELY
+      // Update enemies
       this.enemies = this.currentRoom.objects.enemies;
 
-      // Update shop data IMMEDIATELY
+      // Critical API call: Update shop data with new room information
       this.configureShopGameData();
 
       console.log("✅ Room transition completed successfully");
-
-      // Save game state AFTER visual transition is complete (non-blocking)
-      if (!wasInBossRoom) {
-        // For normal rooms, save asynchronously without blocking
-        this.saveCurrentGameState().catch((error) => {
-          console.error("Failed to auto-save after room transition:", error);
-        });
-      }
     } catch (error) {
       console.error("❌ Room transition failed:", error);
 
@@ -1913,6 +1943,13 @@ export class Game {
       this.isReady = true;
       this.gameState = "playing";
       console.log("Game initialization complete - ready to start");
+
+      // Initialize floor music when game is ready
+      if (this.audioManager) {
+        const currentFloor = this.floorGenerator.getCurrentFloor();
+        console.log(`🎵 Starting floor ${currentFloor} music`);
+        await this.audioManager.playFloorMusic(currentFloor);
+      }
 
       // Call ready callback if set
       if (this.gameReadyCallback) {

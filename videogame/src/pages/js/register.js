@@ -2,12 +2,21 @@
  * Registration page functionality
  */
 import { registerUser } from "../../utils/api.js";
+import { SimpleAudioManager } from "../../utils/SimpleAudioManager.js";
+
+// Initialize audio manager for menu music
+const audioManager = new SimpleAudioManager();
 
 // Wait for DOM to load
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("register-form");
   const errorMessage = document.getElementById("error-message");
   const successMessage = document.getElementById("success-message");
+
+  console.log("Register page initialized");
+
+  // Start menu music
+  audioManager.playMainMenuMusic();
 
   // Handle form submission
   form.addEventListener("submit", async (e) => {

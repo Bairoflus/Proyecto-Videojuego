@@ -343,6 +343,11 @@ export class Shop {
       `Purchased: ${option.name} for ${option.cost} gold. Remaining gold: ${player.gold}`
     );
 
+    // Play store purchase sound effect
+    if (window.game && window.game.audioManager) {
+      window.game.audioManager.playStorePurchaseSFX();
+    }
+
     // Register purchase in backend (async, don't wait)
     if (option.type !== "health") {
       this.registerPurchaseInBackend(

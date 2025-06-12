@@ -21,8 +21,14 @@
 
   <script type="module">
     import { createRun } from '../../utils/api.js';
+    import { SimpleAudioManager } from '../../utils/SimpleAudioManager.js';
 
     const status = document.getElementById('status');
+
+    // Clean up menu music when entering game
+    const menuAudioManager = new SimpleAudioManager();
+    menuAudioManager.cleanupForGamePage();
+    console.log('🎵 Menu music cleaned up for game page');
 
     /**
      * Clear all session data for complete logout

@@ -291,6 +291,14 @@ export class Room {
             ) {
               enemy.attack(window.game.player);
             }
+
+            // V2 MELEE ENEMIES ATTACK LOGIC
+            if (
+              enemy.type === "goblin_dagger" ||
+              enemy.type === "sword_goblin"
+            ) {
+              enemy.attack(window.game.player);
+            }
           }
 
           // Update enemy with player reference for projectile handling

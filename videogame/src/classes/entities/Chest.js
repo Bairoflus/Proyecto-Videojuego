@@ -46,6 +46,11 @@ export class Chest extends GameObject {
     this.isCollected = true;
     this.isOpen = true;
 
+    // Play chest opened sound effect
+    if (window.game && window.game.audioManager) {
+      window.game.audioManager.playChestOpenedSFX();
+    }
+
     // Award gold to player
     const goldAwarded = this.goldReward;
     player.addGold(goldAwarded);

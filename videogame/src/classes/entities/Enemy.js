@@ -103,6 +103,11 @@ export class Enemy extends AnimatedObject {
     this.state = "dead";
     log.debug(`${this.type} died`);
 
+    // Play enemy death SFX
+    if (window.game && window.game.audioManager) {
+      window.game.audioManager.playEnemyDeathSFX();
+    }
+
     // Track kill in global game statistics
     if (window.game && typeof window.game.trackKill === "function") {
       window.game.trackKill();

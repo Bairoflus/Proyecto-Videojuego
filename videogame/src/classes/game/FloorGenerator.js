@@ -547,8 +547,8 @@ export class FloorGenerator {
     return roomMapping.isValidRoomId(roomId);
   }
 
-  // COMPLETELY REWRITTEN: Fixed floor transition logic
-  async nextFloor() {
+  // INSTANT: Non-blocking floor transition logic
+  nextFloor() {
     const beforeFloor = this.floorCount;
     const beforeRun = this.runCount;
 
@@ -582,63 +582,63 @@ export class FloorGenerator {
         `ALL FLOORS COMPLETED! Max floors (${FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN}) reached`
       );
 
-      // Complete current run in backend
-      try {
-        const currentRunId = localStorage.getItem("currentRunId");
+      // Complete current run in backend - NON-BLOCKING
+      const currentRunId = localStorage.getItem("currentRunId");
 
-        if (currentRunId && window.game) {
-          console.log("Completing run for successful completion...");
+      if (currentRunId && window.game) {
+        console.log("Completing run for successful completion...");
 
-          // Get run statistics from game instance
-          const runStats = window.game.getRunStats();
+        // Get run statistics from game instance
+        const runStats = window.game.getRunStats();
 
-          const completionData = {
-            goldCollected: runStats.goldCollected,
-            goldSpent: runStats.goldSpent,
-            totalKills: runStats.totalKills,
-            deathCause: null, // null for successful completion
-          };
+        const completionData = {
+          goldCollected: runStats.goldCollected,
+          goldSpent: runStats.goldSpent,
+          totalKills: runStats.totalKills,
+          deathCause: null, // null for successful completion
+        };
 
-          console.log("Victory completion data:", completionData);
-          const result = await completeRun(currentRunId, completionData);
-          console.log("Run completed for victory:", result);
-
-          // Clear the current run ID since run is now complete
-          localStorage.removeItem("currentRunId");
-
-          // FIXED: Do NOT create run here - let resetToInitialState handle it
-          // This prevents double run creation (victory run + death run)
-          console.log("Run completed - Next run will be created when needed");
-        } else {
-          console.log(
-            "No current run ID found or game instance missing - playing in test mode"
-          );
-        }
-      } catch (error) {
-        console.error("Failed to complete run on victory:", error);
+        console.log("Victory completion data:", completionData);
+        
+        // NON-BLOCKING: Complete run in background
+        completeRun(currentRunId, completionData)
+          .then((result) => {
+            console.log("Run completed for victory:", result);
+            // Clear the current run ID since run is now complete
+            localStorage.removeItem("currentRunId");
+            console.log("Run completed - Next run will be created when needed");
+          })
+          .catch((error) => {
+            console.error("Failed to complete run on victory:", error);
+          });
+      } else {
+        console.log(
+          "No current run ID found or game instance missing - playing in test mode"
+        );
       }
 
       // NEW v3.0: Increment run and create new run in database immediately
       this.runCount++;
       console.log(`VICTORY: Starting run ${this.runCount}`);
 
-      // Create new run in backend immediately
-      try {
-        const userId = localStorage.getItem("currentUserId");
-        if (userId) {
-          console.log("Creating new run for victory progression...");
-          const newRunData = await createRun(parseInt(userId));
-          localStorage.setItem("currentRunId", newRunData.runId);
-          console.log("New run created for victory:", newRunData.runId);
-        } else {
-          console.log("No userId available, enabling test mode");
-          localStorage.setItem("testMode", "true");
-        }
-      } catch (error) {
-        console.error(
-          "Failed to create new run during victory, enabling test mode:",
-          error
-        );
+      // Create new run in backend immediately - NON-BLOCKING
+      const userId = localStorage.getItem("currentUserId");
+      if (userId) {
+        console.log("Creating new run for victory progression...");
+        createRun(parseInt(userId))
+          .then((newRunData) => {
+            localStorage.setItem("currentRunId", newRunData.runId);
+            console.log("New run created for victory:", newRunData.runId);
+          })
+          .catch((error) => {
+            console.error(
+              "Failed to create new run during victory, enabling test mode:",
+              error
+            );
+            localStorage.setItem("testMode", "true");
+          });
+      } else {
+        console.log("No userId available, enabling test mode");
         localStorage.setItem("testMode", "true");
       }
 
