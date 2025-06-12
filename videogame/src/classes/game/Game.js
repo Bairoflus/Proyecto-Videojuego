@@ -1284,6 +1284,17 @@ export class Game {
 
   // Event listeners
   createEventListeners() {
+    // Agregar evento para rastrear la posición del mouse
+    addEventListener("mousemove", (e) => {
+      if (this.player && this.player.isAimingWithMouse) {
+        // Obtener la posición del canvas
+        const rect = window.canvas.getBoundingClientRect();
+        // Actualizar la posición del mouse relativa al canvas
+        this.player.mousePosition.x = e.clientX - rect.left;
+        this.player.mousePosition.y = e.clientY - rect.top;
+      }
+    });
+    
     addEventListener("keydown", (e) => {
       const key = e.key.toLowerCase();
 

@@ -38,6 +38,10 @@ export class Player extends AnimatedObject {
     this.keys = [];
     this.previousDirection = "down";
     this.currentDirection = "down";
+    
+    // Mouse aiming properties
+    this.mousePosition = new Vec(0, 0);
+    this.isAimingWithMouse = true; // Habilitamos el apuntado con mouse por defecto
 
     // Dash properties
     this.dashDuration = PLAYER_CONSTANTS.DASH_DURATION;
@@ -781,21 +785,29 @@ export class Player extends AnimatedObject {
             this.position.y + this.height / 2
           );
 
-          // Create a target position based on player's direction
-          let targetPos = new Vec(spawnPos.x, spawnPos.y);
-          switch (this.currentDirection) {
-            case "up":
-              targetPos.y -= 100;
-              break;
-            case "down":
-              targetPos.y += 100;
-              break;
-            case "left":
-              targetPos.x -= 100;
-              break;
-            case "right":
-              targetPos.x += 100;
-              break;
+          // Usar la posición del mouse para apuntar si está habilitado
+          let targetPos;
+          if (this.isAimingWithMouse && this.mousePosition.x !== 0 && this.mousePosition.y !== 0) {
+            // Usar la posición del mouse como objetivo
+            targetPos = new Vec(this.mousePosition.x, this.mousePosition.y);
+            console.log(`Apuntando a: (${targetPos.x}, ${targetPos.y})`);
+          } else {
+            // Fallback al método original basado en la dirección del jugador
+            targetPos = new Vec(spawnPos.x, spawnPos.y);
+            switch (this.currentDirection) {
+              case "up":
+                targetPos.y -= 100;
+                break;
+              case "down":
+                targetPos.y += 100;
+                break;
+              case "left":
+                targetPos.x -= 100;
+                break;
+              case "right":
+                targetPos.x += 100;
+                break;
+            }
           }
 
           // Create a temporary target object for the projectile
