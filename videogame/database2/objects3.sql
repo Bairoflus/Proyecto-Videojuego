@@ -453,6 +453,30 @@ ORDER BY
         ELSE 4
     END;
 
+-- View: Current active games (ENHANCED with run tracking)
+CREATE VIEW vw_current_games AS
+SELECT 
+    rh.run_id as game_id,
+    u.username as player,
+    rh.run_number as run_number,  -- NEW: Run number display
+    rh.started_at as session_start,
+    TIMESTAMPDIFF(MINUTE, rh.started_at, NOW()) as minutes_playing,
+    rh.final_floor as current_level,
+    rh.total_kills as current_kills,
+    rh.gold_spent as spent_this_run,
+    (SELECT gold FROM save_states WHERE user_id = u.user_id AND is_active = TRUE LIMIT 1) as current_gold,
+    CASE 
+        WHEN TIMESTAMPDIFF(MINUTE, rh.started_at, NOW()) <= 30 THEN 'Fresh'
+        WHEN TIMESTAMPDIFF(MINUTE, rh.started_at, NOW()) <= 120 THEN 'Active'
+        ELSE 'Long Session'
+    END as session_duration_type
+FROM run_history rh
+INNER JOIN users u ON rh.user_id = u.user_id
+WHERE rh.ended_at IS NULL
+  AND u.is_active = TRUE
+  AND u.role = 'player'
+ORDER BY rh.started_at;
+
 -- View: Session duration distribution for live games
 CREATE VIEW vw_session_duration_distribution AS
 SELECT 
@@ -493,29 +517,7 @@ LEFT JOIN user_run_progress urp ON u.user_id = urp.user_id
 WHERE u.is_active = TRUE AND u.role = 'player'
 ORDER BY u.last_login DESC;
 
--- View: Current active games (ENHANCED with run tracking)
-CREATE VIEW vw_current_games AS
-SELECT 
-    rh.run_id as game_id,
-    u.username as player,
-    rh.run_number as run_number,  -- NEW: Run number display
-    rh.started_at as session_start,
-    TIMESTAMPDIFF(MINUTE, rh.started_at, NOW()) as minutes_playing,
-    rh.final_floor as current_level,
-    rh.total_kills as current_kills,
-    rh.gold_spent as spent_this_run,
-    (SELECT gold FROM save_states WHERE user_id = u.user_id AND is_active = TRUE LIMIT 1) as current_gold,
-    CASE 
-        WHEN TIMESTAMPDIFF(MINUTE, rh.started_at, NOW()) <= 30 THEN 'Fresh'
-        WHEN TIMESTAMPDIFF(MINUTE, rh.started_at, NOW()) <= 120 THEN 'Active'
-        ELSE 'Long Session'
-    END as session_duration_type
-FROM run_history rh
-INNER JOIN users u ON rh.user_id = u.user_id
-WHERE rh.ended_at IS NULL
-  AND u.is_active = TRUE
-  AND u.role = 'player'
-ORDER BY rh.started_at;
+
 
 -- ===================================================
 -- SPECIALIZED VIEWS FOR API INTEGRATION
