@@ -10,7 +10,7 @@ import { ENEMY_CONSTANTS_V2 } from "../../../constants/gameConstants.js";
 export class SwordGoblin extends MeleeEnemy {
   constructor(position) {
     const config = ENEMY_CONSTANTS_V2.SWORD_GOBLIN;
-    
+
     super(
       position,
       config.size.width,
@@ -47,11 +47,15 @@ export class SwordGoblin extends MeleeEnemy {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
       target.takeDamage(this.baseDamage);
-      console.log(`SwordGoblin dealt ${this.baseDamage} damage to ${target.type || 'player'}`);
+      console.log(
+        `SwordGoblin dealt ${this.baseDamage} damage to ${
+          target.type || "player"
+        }`
+      );
     }
   }
 
   updateAnimation() {
     // TODO: Implement sword goblin specific animations
   }
-} 
+}

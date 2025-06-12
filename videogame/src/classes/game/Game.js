@@ -6,7 +6,14 @@ import { variables, keyDirections } from "../../config.js";
 import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
 import { Boss } from "../entities/Boss.js";
-import { completeRun, createRun, registerEnemyKill, registerBossKill, getPermanentUpgrades, getCurrentRunInfo } from "../../utils/api.js";
+import {
+  completeRun,
+  createRun,
+  registerEnemyKill,
+  registerBossKill,
+  getPermanentUpgrades,
+  getCurrentRunInfo,
+} from "../../utils/api.js";
 import { saveStateManager } from "../../utils/saveStateManager.js";
 import { weaponUpgradeManager } from "../../utils/weaponUpgradeManager.js";
 import { PermanentUpgradePopup } from "../ui/PermanentUpgradePopup.js";
@@ -41,7 +48,7 @@ export class Game {
     // Pause system
     this.isPaused = false;
     this.pauseOverlay = null;
-    this.activeTab = 'controls';
+    this.activeTab = "controls";
 
     // Permanent upgrade popup
     this.permanentUpgradePopup = null;
@@ -59,7 +66,7 @@ export class Game {
     // Run statistics
     this.runStats = {
       goldSpent: 0,
-      totalKills: 0
+      totalKills: 0,
     };
 
     // Event logging state
@@ -68,16 +75,19 @@ export class Game {
     // Initialize game components
     this.globalShop = new Shop();
     this.permanentUpgradePopup = new PermanentUpgradePopup();
-    
+
     // Initialize audio manager for floor music
     this.audioManager = null;
     try {
       this.audioManager = new SimpleAudioManager();
-      console.log('🎵 Audio manager initialized for floor music');
+      console.log("🎵 Audio manager initialized for floor music");
     } catch (error) {
-      console.warn('🎵 Audio manager not available - floor music disabled:', error);
+      console.warn(
+        "🎵 Audio manager not available - floor music disabled:",
+        error
+      );
     }
-    
+
     this.createEventListeners();
     this.floorGenerator = new FloorGenerator();
     this.createPauseSystem();
@@ -105,83 +115,102 @@ export class Game {
    */
   async initializeManagers() {
     try {
-      console.log('Initializing Game Managers v3.0...');
+      console.log("Initializing Game Managers v3.0...");
 
       // Ensure run data exists BEFORE initializing managers
       await this.ensureRunDataExists();
 
       // Get session data for manager initialization
-      const userId = parseInt(localStorage.getItem('currentUserId'));
-      const runId = parseInt(localStorage.getItem('currentRunId'));
+      const userId = parseInt(localStorage.getItem("currentUserId"));
+      const runId = parseInt(localStorage.getItem("currentRunId"));
 
       // NEW v3.0: Use complete player initialization in one call
-      console.log('Loading complete player data (v3.0)...');
-      const { initializePlayerData } = await import('../../utils/api.js');
+      console.log("Loading complete player data (v3.0)...");
+      const { initializePlayerData } = await import("../../utils/api.js");
 
       this.playerInitData = await initializePlayerData(userId);
 
       if (this.playerInitData) {
-        console.log('Player v3.0 initialization data loaded:', this.playerInitData);
+        console.log(
+          "Player v3.0 initialization data loaded:",
+          this.playerInitData
+        );
 
         // Extract and store data for use in initObjects
         this.runNumber = this.playerInitData.run_number;
         this.weaponLevels = {
           melee: this.playerInitData.melee_level || 1,
-          ranged: this.playerInitData.ranged_level || 1
+          ranged: this.playerInitData.ranged_level || 1,
         };
-        this.permanentUpgrades = this.playerInitData.permanent_upgrades_parsed || {};
+        this.permanentUpgrades =
+          this.playerInitData.permanent_upgrades_parsed || {};
         this.hasSaveState = this.playerInitData.has_save_state === 1;
 
-        console.log('EXTRACTED DATA DEBUG:', {
+        console.log("EXTRACTED DATA DEBUG:", {
           rawRunNumber: this.playerInitData.run_number,
           extractedRunNumber: this.runNumber,
           rawPermanentUpgrades: this.playerInitData.permanent_upgrades_parsed,
           extractedPermanentUpgrades: this.permanentUpgrades,
           rawWeaponLevels: {
             melee: this.playerInitData.melee_level,
-            ranged: this.playerInitData.ranged_level
+            ranged: this.playerInitData.ranged_level,
           },
-          extractedWeaponLevels: this.weaponLevels
+          extractedWeaponLevels: this.weaponLevels,
         });
 
         // NEW v3.0: Auto-sync localStorage runId with database if inconsistent
-        const localStorageRunId = parseInt(localStorage.getItem('currentRunId'));
+        const localStorageRunId = parseInt(
+          localStorage.getItem("currentRunId")
+        );
         if (localStorageRunId !== this.runNumber) {
-          console.warn(`Run ID sync issue detected! localStorage: ${localStorageRunId}, Database: ${this.runNumber}`);
-          console.log('Auto-syncing localStorage with database run number...');
+          console.warn(
+            `Run ID sync issue detected! localStorage: ${localStorageRunId}, Database: ${this.runNumber}`
+          );
+          console.log("Auto-syncing localStorage with database run number...");
 
           // FIXED: Don't create new run - sync localStorage to match database
           // The database is the source of truth for run numbers
           try {
             // Check if there's an active run for the current run number
-            const { getCurrentRunInfo } = await import('../../utils/api.js');
+            const { getCurrentRunInfo } = await import("../../utils/api.js");
             const runInfo = await getCurrentRunInfo(userId);
-            
-            if (runInfo && runInfo.current_run_id && runInfo.current_run_id > 0) {
+
+            if (
+              runInfo &&
+              runInfo.current_run_id &&
+              runInfo.current_run_id > 0
+            ) {
               // Use the existing active run
-              localStorage.setItem('currentRunId', runInfo.current_run_id);
-              console.log(`localStorage synced: runId updated to ${runInfo.current_run_id} for run number ${this.runNumber}`);
+              localStorage.setItem("currentRunId", runInfo.current_run_id);
+              console.log(
+                `localStorage synced: runId updated to ${runInfo.current_run_id} for run number ${this.runNumber}`
+              );
             } else {
               // Create a new run only if no active run exists
-              const { createRun } = await import('../../utils/api.js');
+              const { createRun } = await import("../../utils/api.js");
               const newRunResult = await createRun(userId);
               if (newRunResult.success) {
-                localStorage.setItem('currentRunId', newRunResult.runId);
-                console.log(`New run created: runId ${newRunResult.runId} for run number ${this.runNumber}`);
+                localStorage.setItem("currentRunId", newRunResult.runId);
+                console.log(
+                  `New run created: runId ${newRunResult.runId} for run number ${this.runNumber}`
+                );
               }
             }
           } catch (error) {
-            console.error('Failed to sync runId, using database run number as fallback:', error);
+            console.error(
+              "Failed to sync runId, using database run number as fallback:",
+              error
+            );
             // As a last resort, create a placeholder runId based on run number
-            localStorage.setItem('currentRunId', this.runNumber.toString());
+            localStorage.setItem("currentRunId", this.runNumber.toString());
           }
         }
 
-        console.log('v3.0 data extracted:', {
+        console.log("v3.0 data extracted:", {
           runNumber: this.runNumber,
           weaponLevels: this.weaponLevels,
           permanentUpgrades: this.permanentUpgrades,
-          hasSaveState: this.hasSaveState
+          hasSaveState: this.hasSaveState,
         });
 
         // NEW v3.0: Sync run number with FloorGenerator
@@ -190,8 +219,11 @@ export class Game {
           let attempts = 0;
           const maxAttempts = 50; // 5 seconds max wait
 
-          while (!this.floorGenerator.runProgressLoaded && attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+          while (
+            !this.floorGenerator.runProgressLoaded &&
+            attempts < maxAttempts
+          ) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
             attempts++;
           }
 
@@ -200,7 +232,7 @@ export class Game {
           console.log(`FloorGenerator run number synced to: ${this.runNumber}`);
         }
       } else {
-        console.warn('Failed to load player v3.0 data, using fallback values');
+        console.warn("Failed to load player v3.0 data, using fallback values");
         // Use fallback values
         this.runNumber = 1;
         this.weaponLevels = { melee: 1, ranged: 1 };
@@ -209,33 +241,36 @@ export class Game {
       }
 
       // Initialize managers with proper user data
-      console.log('Initializing saveStateManager...');
+      console.log("Initializing saveStateManager...");
       // saveStateManager doesn't need initialize() - it's auto-initialized as singleton
       // Just check if it has save state available
       const hasSavedState = await saveStateManager.loadSaveState(userId);
 
-      console.log('Initializing weaponUpgradeManager...');
+      console.log("Initializing weaponUpgradeManager...");
       // NEW v3.0: Use the corrected/synced runId from localStorage
-      const syncedRunId = parseInt(localStorage.getItem('currentRunId'));
-      await weaponUpgradeManager.initialize(userId, syncedRunId, this.weaponLevels);
+      const syncedRunId = parseInt(localStorage.getItem("currentRunId"));
+      await weaponUpgradeManager.initialize(
+        userId,
+        syncedRunId,
+        this.weaponLevels
+      );
 
       // Check for existing saved state
       this.managersInitializationResult = {
         success: true,
         hasSavedState: !!hasSavedState,
-        userData: { userId, runId: syncedRunId }
+        userData: { userId, runId: syncedRunId },
       };
 
-      console.log('All Game Managers v3.0 initialized successfully');
+      console.log("All Game Managers v3.0 initialized successfully");
       this.managersInitialized = true; // Mark as complete
 
       return this.managersInitializationResult;
-
     } catch (error) {
-      console.error('Failed to initialize managers v3.0:', error);
+      console.error("Failed to initialize managers v3.0:", error);
       this.managersInitializationResult = {
         success: false,
-        error: error.message
+        error: error.message,
       };
       this.managersInitialized = true; // Mark as complete even on error to prevent infinite wait
 
@@ -249,48 +284,47 @@ export class Game {
    */
   async ensureRunDataExists() {
     try {
-      const userId = localStorage.getItem('currentUserId');
-      const sessionId = localStorage.getItem('currentSessionId');
-      const runId = localStorage.getItem('currentRunId');
+      const userId = localStorage.getItem("currentUserId");
+      const sessionId = localStorage.getItem("currentSessionId");
+      const runId = localStorage.getItem("currentRunId");
 
-      console.log('Checking session data:', {
+      console.log("Checking session data:", {
         userId: !!userId,
         sessionId: !!sessionId,
-        runId: !!runId
+        runId: !!runId,
       });
 
       // If we already have all required data, we're good
       if (userId && sessionId && runId) {
-        console.log('All session data present, runId:', runId);
+        console.log("All session data present, runId:", runId);
         return true;
       }
 
       // If missing basic auth data, enable test mode
       if (!userId || !sessionId) {
-        console.warn('Missing basic session data - enabling test mode');
-        localStorage.setItem('testMode', 'true');
+        console.warn("Missing basic session data - enabling test mode");
+        localStorage.setItem("testMode", "true");
         return true;
       }
 
       // We have auth data but missing runId - create one
       if (!runId) {
-        console.log('Creating new run for user:', userId);
+        console.log("Creating new run for user:", userId);
 
         const runResult = await createRun(parseInt(userId));
 
         if (runResult.success) {
-          localStorage.setItem('currentRunId', runResult.runId);
-          console.log('New run created successfully:', runResult.runId);
+          localStorage.setItem("currentRunId", runResult.runId);
+          console.log("New run created successfully:", runResult.runId);
           return true;
         } else {
-          throw new Error(runResult.message || 'Failed to create run');
+          throw new Error(runResult.message || "Failed to create run");
         }
       }
-
     } catch (error) {
-      console.error('Failed to ensure run data:', error);
-      console.warn('Enabling test mode due to run creation failure');
-      localStorage.setItem('testMode', 'true');
+      console.error("Failed to ensure run data:", error);
+      console.warn("Enabling test mode due to run creation failure");
+      localStorage.setItem("testMode", "true");
       return true; // Allow test mode
     }
   }
@@ -300,79 +334,79 @@ export class Game {
    * @private
    */
   initializeSessionDebugCommands() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       // Session data debug commands - ALWAYS AVAILABLE
       window.gameSessionDebug = {
         check: () => {
           const data = {
-            userId: localStorage.getItem('currentUserId'),
-            sessionId: localStorage.getItem('currentSessionId'),
-            runId: localStorage.getItem('currentRunId'),
-            testMode: localStorage.getItem('testMode') === 'true'
+            userId: localStorage.getItem("currentUserId"),
+            sessionId: localStorage.getItem("currentSessionId"),
+            runId: localStorage.getItem("currentRunId"),
+            testMode: localStorage.getItem("testMode") === "true",
           };
-          console.log('📊 Current session data:', data);
+          console.log("📊 Current session data:", data);
           return data;
         },
         createRun: async () => {
           try {
-            const userId = localStorage.getItem('currentUserId');
+            const userId = localStorage.getItem("currentUserId");
             if (!userId) {
-              console.error('Cannot create run: No userId found');
+              console.error("Cannot create run: No userId found");
               return false;
             }
-            console.log('Manually creating run for user:', userId);
+            console.log("Manually creating run for user:", userId);
             const runResult = await createRun(parseInt(userId));
             if (runResult.success) {
-              localStorage.setItem('currentRunId', runResult.runId);
-              console.log('Run created successfully:', runResult.runId);
+              localStorage.setItem("currentRunId", runResult.runId);
+              console.log("Run created successfully:", runResult.runId);
               return runResult;
             } else {
               throw new Error(runResult.message);
             }
           } catch (error) {
-            console.error('Failed to create run:', error);
+            console.error("Failed to create run:", error);
             return false;
           }
         },
         fix: async () => {
-          console.log('Attempting to fix session data...');
-          const userId = localStorage.getItem('currentUserId');
-          const sessionId = localStorage.getItem('currentSessionId');
+          console.log("Attempting to fix session data...");
+          const userId = localStorage.getItem("currentUserId");
+          const sessionId = localStorage.getItem("currentSessionId");
 
           if (!userId || !sessionId) {
-            console.log('Missing basic auth data - enabling test mode');
-            localStorage.setItem('testMode', 'true');
+            console.log("Missing basic auth data - enabling test mode");
+            localStorage.setItem("testMode", "true");
             return { testMode: true };
           }
 
-          const runId = localStorage.getItem('currentRunId');
+          const runId = localStorage.getItem("currentRunId");
           if (!runId) {
             try {
-              console.log('Creating missing runId...');
+              console.log("Creating missing runId...");
               const runResult = await createRun(parseInt(userId));
               if (runResult.success) {
-                localStorage.setItem('currentRunId', runResult.runId);
-                console.log('Session data fixed! runId:', runResult.runId);
-                localStorage.removeItem('testMode');
+                localStorage.setItem("currentRunId", runResult.runId);
+                console.log("Session data fixed! runId:", runResult.runId);
+                localStorage.removeItem("testMode");
                 return { fixed: true, runId: runResult.runId };
               } else {
                 throw new Error(runResult.message);
               }
             } catch (error) {
-              console.error('Failed to create run, enabling test mode');
-              localStorage.setItem('testMode', 'true');
+              console.error("Failed to create run, enabling test mode");
+              localStorage.setItem("testMode", "true");
               return { testMode: true, error: error.message };
             }
           }
 
-          console.log('Session data is already complete');
+          console.log("Session data is already complete");
           return { alreadyComplete: true };
         },
         // SIMPLIFIED: Basic room debugging
         room: {
           current: () => {
             if (!window.game) {
-              console.error('❌ Game instance not found');
+              console.error("❌ Game instance not found");
               return null;
             }
 
@@ -384,62 +418,70 @@ export class Game {
               roomIndex: fg.getCurrentRoomIndex(),
               roomNumber: fg.getCurrentRoomIndex() + 1,
               roomType: fg.getCurrentRoomType(),
-              canTransition: room ? room.canTransition() : 'N/A',
-              enemies: room ? room.objects.enemies.length : 'N/A',
-              aliveEnemies: room ? room.objects.enemies.filter(e => e.state !== 'dead').length : 'N/A',
-              isTransitioning: window.game.isTransitioning
+              canTransition: room ? room.canTransition() : "N/A",
+              enemies: room ? room.objects.enemies.length : "N/A",
+              aliveEnemies: room
+                ? room.objects.enemies.filter((e) => e.state !== "dead").length
+                : "N/A",
+              isTransitioning: window.game.isTransitioning,
             };
 
-            console.log('🎯 CURRENT ROOM STATE:');
+            console.log("🎯 CURRENT ROOM STATE:");
             console.table(data);
             return data;
           },
           forceTransition: () => {
             if (!window.game || !window.game.currentRoom) {
-              console.error('❌ Game or current room not found');
+              console.error("❌ Game or current room not found");
               return false;
             }
 
-            console.log('🔓 FORCING ROOM TRANSITION...');
-            
+            console.log("🔓 FORCING ROOM TRANSITION...");
+
             // Clear transition lock
             window.game.isTransitioning = false;
-            
+
             // Force kill all enemies if in combat room
             if (window.game.currentRoom.isCombatRoom) {
-              window.game.enemies.forEach(enemy => {
-                if (enemy.state !== 'dead') {
-                  enemy.state = 'dead';
+              window.game.enemies.forEach((enemy) => {
+                if (enemy.state !== "dead") {
+                  enemy.state = "dead";
                   console.log(`💀 Force killed: ${enemy.type}`);
                 }
               });
-              
+
               // Clean room enemies array
-              window.game.currentRoom.objects.enemies = window.game.currentRoom.objects.enemies.filter(
-                enemy => enemy.state !== 'dead'
-              );
+              window.game.currentRoom.objects.enemies =
+                window.game.currentRoom.objects.enemies.filter(
+                  (enemy) => enemy.state !== "dead"
+                );
             }
 
-            console.log('✅ Transition forced - try moving to right edge');
+            console.log("✅ Transition forced - try moving to right edge");
             return true;
-          }
-        }
+          },
+        },
       };
 
-      console.log('Debug commands available:');
-      console.log('  gameSessionDebug.check() - Check session data');
-      console.log('  gameSessionDebug.fix() - Auto-fix session issues');
-      console.log('  gameSessionDebug.room.current() - Show room state');
-      console.log('  gameSessionDebug.room.forceTransition() - Force enable transition');
+      console.log("Debug commands available:");
+      console.log("  gameSessionDebug.check() - Check session data");
+      console.log("  gameSessionDebug.fix() - Auto-fix session issues");
+      console.log("  gameSessionDebug.room.current() - Show room state");
+      console.log(
+        "  gameSessionDebug.room.forceTransition() - Force enable transition"
+      );
     }
   }
 
   initObjects() {
     // NEW: Apply saved state if available
     let savedState = null;
-    if (this.managersInitializationResult && this.managersInitializationResult.hasSavedState) {
+    if (
+      this.managersInitializationResult &&
+      this.managersInitializationResult.hasSavedState
+    ) {
       savedState = saveStateManager.getCurrentSaveState();
-      console.log('Applying saved state to game objects:', savedState);
+      console.log("Applying saved state to game objects:", savedState);
     }
 
     // Initialize game objects based on saved state or defaults
@@ -455,66 +497,88 @@ export class Game {
     this.player.setCurrentRoom(this.currentRoom);
 
     // NEW v3.0: Apply permanent upgrades from initialization data BEFORE weapon sync
-    if (this.permanentUpgrades && Object.keys(this.permanentUpgrades).length > 0) {
-      console.log('=== APPLYING PERMANENT UPGRADES ===');
-      console.log('Permanent upgrades data:', this.permanentUpgrades);
-      console.log('Applying permanent upgrades from v3.0 initialization data:', this.permanentUpgrades);
+    if (
+      this.permanentUpgrades &&
+      Object.keys(this.permanentUpgrades).length > 0
+    ) {
+      console.log("=== APPLYING PERMANENT UPGRADES ===");
+      console.log("Permanent upgrades data:", this.permanentUpgrades);
+      console.log(
+        "Applying permanent upgrades from v3.0 initialization data:",
+        this.permanentUpgrades
+      );
 
       // Log player base stats BEFORE applying upgrades
-      console.log('Player BASE stats before permanent upgrades:', {
+      console.log("Player BASE stats before permanent upgrades:", {
         baseHealth: this.player.maxHealth,
         baseStamina: this.player.maxStamina,
-        baseSpeed: this.player.speedMultiplier || 1.0
+        baseSpeed: this.player.speedMultiplier || 1.0,
       });
 
       Object.entries(this.permanentUpgrades).forEach(([type, value]) => {
         console.log(`Applying v3.0 permanent upgrade: ${type} = ${value}`);
 
         switch (type) {
-          case 'health_max':
+          case "health_max":
             this.player.maxHealth = value;
             this.player.health = value; // Start with full health
-            console.log(`✅ Health set from permanent upgrades: ${this.player.maxHealth}`);
+            console.log(
+              `✅ Health set from permanent upgrades: ${this.player.maxHealth}`
+            );
             break;
-          case 'stamina_max':
+          case "stamina_max":
             this.player.maxStamina = value;
             this.player.stamina = value; // Start with full stamina
-            console.log(`✅ Stamina set from permanent upgrades: ${this.player.maxStamina}`);
+            console.log(
+              `✅ Stamina set from permanent upgrades: ${this.player.maxStamina}`
+            );
             break;
-          case 'movement_speed':
+          case "movement_speed":
             this.player.speedMultiplier = value;
-            console.log(`✅ Movement speed set from permanent upgrades: ${(value * 100).toFixed(1)}%`);
+            console.log(
+              `✅ Movement speed set from permanent upgrades: ${(
+                value * 100
+              ).toFixed(1)}%`
+            );
             break;
         }
       });
 
       // Log player FINAL stats AFTER applying upgrades
-      console.log('Player FINAL stats after permanent upgrades:', {
+      console.log("Player FINAL stats after permanent upgrades:", {
         finalHealth: `${this.player.health}/${this.player.maxHealth}`,
         finalStamina: `${this.player.stamina}/${this.player.maxStamina}`,
-        finalSpeed: `${(this.player.speedMultiplier * 100).toFixed(1)}%`
+        finalSpeed: `${(this.player.speedMultiplier * 100).toFixed(1)}%`,
       });
 
-      console.log('✅ All v3.0 permanent upgrades applied during player initialization');
-      console.log('=== PERMANENT UPGRADES COMPLETE ===');
+      console.log(
+        "✅ All v3.0 permanent upgrades applied during player initialization"
+      );
+      console.log("=== PERMANENT UPGRADES COMPLETE ===");
     } else {
-      console.log('⚠️ No permanent upgrades found to apply');
-      console.log('Permanent upgrades data:', this.permanentUpgrades);
-      console.log('Available keys:', Object.keys(this.permanentUpgrades || {}));
+      console.log("⚠️ No permanent upgrades found to apply");
+      console.log("Permanent upgrades data:", this.permanentUpgrades);
+      console.log("Available keys:", Object.keys(this.permanentUpgrades || {}));
     }
 
     // NEW: Critical weapon sync after player creation and save state loading
     if (this.managersInitialized && window.weaponUpgradeManager) {
       // Force reload weapon levels after player is created
       setTimeout(() => {
-        if (this.player && typeof this.player.forceReloadWeaponLevels === 'function') {
+        if (
+          this.player &&
+          typeof this.player.forceReloadWeaponLevels === "function"
+        ) {
           this.player.forceReloadWeaponLevels();
-          console.log('Post-initialization weapon sync completed');
+          console.log("Post-initialization weapon sync completed");
 
           // Also sync the shop to show correct levels
-          if (this.globalShop && typeof this.globalShop.syncWithWeaponUpgradeManager === 'function') {
+          if (
+            this.globalShop &&
+            typeof this.globalShop.syncWithWeaponUpgradeManager === "function"
+          ) {
             this.globalShop.syncWithWeaponUpgradeManager();
-            console.log('Shop weapon levels synchronized');
+            console.log("Shop weapon levels synchronized");
           }
         }
       }, 100); // Small delay to ensure everything is properly initialized
@@ -525,10 +589,10 @@ export class Game {
       this.player.health = savedState.health || this.player.maxHealth;
       this.player.gold = savedState.gold || 0;
 
-      console.log('Saved state applied to player:', {
+      console.log("Saved state applied to player:", {
         health: this.player.health,
         gold: this.player.gold,
-        position: `(${startPos.x}, ${startPos.y})`
+        position: `(${startPos.x}, ${startPos.y})`,
       });
     }
 
@@ -539,7 +603,11 @@ export class Game {
     this.configureShopGameData();
 
     // Now we can safely check currentRoom properties
-    if (this.currentRoom && this.currentRoom.roomType === "shop" && this.currentRoom.objects.shop) {
+    if (
+      this.currentRoom &&
+      this.currentRoom.roomType === "shop" &&
+      this.currentRoom.objects.shop
+    ) {
       this.currentRoom.objects.shop = this.globalShop;
       this.currentRoom.objects.shop.setOnCloseCallback(() => {
         this.currentRoom.shopCanBeOpened = false;
@@ -550,7 +618,7 @@ export class Game {
     this.enemies = this.currentRoom ? this.currentRoom.objects.enemies : [];
 
     // NEW v3.0: Log final player state after complete initialization
-    console.log('Player v3.0 initialization complete:', {
+    console.log("Player v3.0 initialization complete:", {
       runNumber: this.runNumber,
       health: `${this.player.health}/${this.player.maxHealth}`,
       stamina: `${this.player.stamina}/${this.player.maxStamina}`,
@@ -558,7 +626,8 @@ export class Game {
       weaponLevels: this.weaponLevels,
       gold: this.player.gold,
       hasSaveState: this.hasSaveState,
-      permanentUpgradesApplied: Object.keys(this.permanentUpgrades || {}).length
+      permanentUpgradesApplied: Object.keys(this.permanentUpgrades || {})
+        .length,
     });
   }
 
@@ -569,78 +638,89 @@ export class Game {
   configureShopGameData() {
     try {
       // ENHANCED: Debug localStorage values before parsing
-      const userIdRaw = localStorage.getItem('currentUserId');
-      const runIdRaw = localStorage.getItem('currentRunId');
-      const sessionIdRaw = localStorage.getItem('currentSessionId');
+      const userIdRaw = localStorage.getItem("currentUserId");
+      const runIdRaw = localStorage.getItem("currentRunId");
+      const sessionIdRaw = localStorage.getItem("currentSessionId");
 
-      console.log('SHOP CONFIG DEBUG - Raw localStorage values:', {
+      console.log("SHOP CONFIG DEBUG - Raw localStorage values:", {
         userIdRaw,
         runIdRaw,
         sessionIdRaw,
         runIdType: typeof runIdRaw,
-        runIdLength: runIdRaw ? runIdRaw.length : 'N/A'
+        runIdLength: runIdRaw ? runIdRaw.length : "N/A",
       });
 
       const gameData = {
         userId: parseInt(userIdRaw),
         runId: parseInt(runIdRaw),
-        roomId: this.floorGenerator.getCurrentRoomId()
+        roomId: this.floorGenerator.getCurrentRoomId(),
       };
 
       // ENHANCED: Debug parsed values
-      console.log('SHOP CONFIG DEBUG - Parsed values:', {
+      console.log("SHOP CONFIG DEBUG - Parsed values:", {
         userIdParsed: gameData.userId,
         runIdParsed: gameData.runId,
         roomIdParsed: gameData.roomId,
         userIdIsNaN: isNaN(gameData.userId),
         runIdIsNaN: isNaN(gameData.runId),
-        roomIdIsNaN: isNaN(gameData.roomId)
+        roomIdIsNaN: isNaN(gameData.roomId),
       });
 
       // ENHANCED: Try to recover runId if it's missing
       if (isNaN(gameData.runId) || !runIdRaw) {
-        console.warn('SHOP CONFIG - runId is missing or invalid, attempting recovery...');
+        console.warn(
+          "SHOP CONFIG - runId is missing or invalid, attempting recovery..."
+        );
 
         // Try to get runId from other sources
-        const testMode = localStorage.getItem('testMode') === 'true';
+        const testMode = localStorage.getItem("testMode") === "true";
 
         if (testMode) {
-          console.log('Test mode active - using fallback runId');
+          console.log("Test mode active - using fallback runId");
           gameData.runId = 999; // Fallback for test mode
         } else {
           // Try to create a new run if user exists
           if (gameData.userId && !isNaN(gameData.userId)) {
-            console.log('Attempting emergency run creation...');
+            console.log("Attempting emergency run creation...");
             this.createEmergencyRun(gameData.userId);
             gameData.runId = 0; // Temporary placeholder
           } else {
-            console.error('Cannot recover runId - no valid userId');
+            console.error("Cannot recover runId - no valid userId");
             gameData.runId = 0; // Fallback
           }
         }
       }
 
       // Validate that we have the required data
-      if (gameData.userId && gameData.runId && gameData.roomId &&
-        !isNaN(gameData.userId) && !isNaN(gameData.runId) && !isNaN(gameData.roomId)) {
+      if (
+        gameData.userId &&
+        gameData.runId &&
+        gameData.roomId &&
+        !isNaN(gameData.userId) &&
+        !isNaN(gameData.runId) &&
+        !isNaN(gameData.roomId)
+      ) {
         this.globalShop.setGameData(gameData);
-        console.log('Shop configured with valid game data:', gameData);
+        console.log("Shop configured with valid game data:", gameData);
       } else {
-        console.warn('Shop game data incomplete, backend registration may fail:', gameData);
-        console.warn('  Missing data details:', {
+        console.warn(
+          "Shop game data incomplete, backend registration may fail:",
+          gameData
+        );
+        console.warn("  Missing data details:", {
           hasUserId: !!gameData.userId && !isNaN(gameData.userId),
           hasRunId: !!gameData.runId && !isNaN(gameData.runId),
-          hasRoomId: !!gameData.roomId && !isNaN(gameData.roomId)
+          hasRoomId: !!gameData.roomId && !isNaN(gameData.roomId),
         });
 
         // Still set the data - Shop.js will handle missing data gracefully
         this.globalShop.setGameData(gameData);
       }
     } catch (error) {
-      console.error('Failed to configure shop game data:', error);
-      console.error('  Error details:', {
+      console.error("Failed to configure shop game data:", error);
+      console.error("  Error details:", {
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
     }
   }
@@ -650,23 +730,23 @@ export class Game {
    */
   async createEmergencyRun(userId) {
     try {
-      console.log('EMERGENCY RUN CREATION for userId:', userId);
+      console.log("EMERGENCY RUN CREATION for userId:", userId);
 
-      const { createRun } = await import('../../utils/api.js');
+      const { createRun } = await import("../../utils/api.js");
       const runResult = await createRun(userId);
 
       if (runResult.success) {
-        localStorage.setItem('currentRunId', runResult.runId);
-        console.log('Emergency run created successfully:', runResult.runId);
+        localStorage.setItem("currentRunId", runResult.runId);
+        console.log("Emergency run created successfully:", runResult.runId);
         return runResult.runId;
       } else {
-        throw new Error(runResult.message || 'Failed to create emergency run');
+        throw new Error(runResult.message || "Failed to create emergency run");
       }
     } catch (error) {
-      console.error('Emergency run creation failed:', error);
+      console.error("Emergency run creation failed:", error);
       // Enable test mode as fallback
-      localStorage.setItem('testMode', 'true');
-      console.log('Test mode enabled as fallback');
+      localStorage.setItem("testMode", "true");
+      console.log("Test mode enabled as fallback");
       return null;
     }
   }
@@ -681,7 +761,11 @@ export class Game {
       ctx.fillStyle = "white";
       ctx.font = "24px Arial";
       ctx.textAlign = "center";
-      ctx.fillText("Loading game...", ctx.canvas.width / 2, ctx.canvas.height / 2);
+      ctx.fillText(
+        "Loading game...",
+        ctx.canvas.width / 2,
+        ctx.canvas.height / 2
+      );
       return;
     }
 
@@ -705,7 +789,7 @@ export class Game {
 
     if (this.floorGenerator.isBossRoom()) {
       const room = this.floorGenerator.getCurrentRoom();
-      const boss = room.objects.enemies.find(e => e instanceof Boss);
+      const boss = room.objects.enemies.find((e) => e instanceof Boss);
       if (boss && typeof boss.drawUI === "function") {
         boss.drawUI(ctx);
       }
@@ -723,7 +807,8 @@ export class Game {
 
     // Draw Run/Floor/Room info in bottom-right corner
     // FIXED v3.0: Use run number from initialization data with proper fallback
-    const currentRun = this.runNumber || this.floorGenerator.getCurrentRun() || 1; // Fallback to 1
+    const currentRun =
+      this.runNumber || this.floorGenerator.getCurrentRun() || 1; // Fallback to 1
     const currentFloor = this.floorGenerator.getCurrentFloor();
     const currentRoom = this.floorGenerator.getCurrentRoomIndex() + 1; // Convert to 1-based
     const totalRooms = this.floorGenerator.getTotalRooms();
@@ -736,10 +821,18 @@ export class Game {
     // Draw text with outline for better visibility in bottom-right
     ctx.strokeStyle = "black";
     ctx.lineWidth = 3;
-    ctx.strokeText(runFloorRoomText, variables.canvasWidth - 10, variables.canvasHeight - 10);
+    ctx.strokeText(
+      runFloorRoomText,
+      variables.canvasWidth - 10,
+      variables.canvasHeight - 10
+    );
 
     ctx.fillStyle = "white";
-    ctx.fillText(runFloorRoomText, variables.canvasWidth - 10, variables.canvasHeight - 10);
+    ctx.fillText(
+      runFloorRoomText,
+      variables.canvasWidth - 10,
+      variables.canvasHeight - 10
+    );
 
     // Reset text alignment for other UI elements
     ctx.textAlign = "left";
@@ -778,7 +871,11 @@ export class Game {
     ctx.font = "12px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(`HP ${currentHP}/${maxHP}`, 40 + barWidth / 2, 40 + barHeight / 2);
+    ctx.fillText(
+      `HP ${currentHP}/${maxHP}`,
+      40 + barWidth / 2,
+      40 + barHeight / 2
+    );
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
 
@@ -809,7 +906,7 @@ export class Game {
       }
 
       // Draw background box
-      const messageLines = this.transitionZoneActivatedMessage.split('\n');
+      const messageLines = this.transitionZoneActivatedMessage.split("\n");
       const lineHeight = 30;
       const totalHeight = messageLines.length * lineHeight + 20;
       const boxWidth = 500;
@@ -857,7 +954,7 @@ export class Game {
     try {
       // NEW: Clear save state and weapon upgrades using managers
       console.log("Clearing save state...");
-      const userId = parseInt(localStorage.getItem('currentUserId'));
+      const userId = parseInt(localStorage.getItem("currentUserId"));
       await saveStateManager.clearSaveState(userId);
 
       console.log("Resetting weapon upgrades...");
@@ -873,7 +970,9 @@ export class Game {
       await this.floorGenerator.resetToInitialState();
 
       // CRITICAL FIX: Re-initialize managers to load updated permanent upgrades
-      console.log("Re-initializing managers to load updated permanent upgrades...");
+      console.log(
+        "Re-initializing managers to load updated permanent upgrades..."
+      );
       await this.initializeManagers();
       console.log("Managers re-initialized with fresh data from database");
 
@@ -884,12 +983,14 @@ export class Game {
 
       // NEW v3.0: Update localStorage with new runId after death
       try {
-        const newRunId = localStorage.getItem('currentRunId');
+        const newRunId = localStorage.getItem("currentRunId");
         if (newRunId) {
           console.log(`localStorage runId after death: ${newRunId}`);
 
           // Update weaponUpgradeManager with new runId (already done in initializeManagers)
-          console.log("WeaponUpgradeManager already initialized with new runId");
+          console.log(
+            "WeaponUpgradeManager already initialized with new runId"
+          );
         }
       } catch (error) {
         console.error("Failed to sync runId after death:", error);
@@ -900,11 +1001,13 @@ export class Game {
 
       // Reset floor music to Floor 1 after death
       if (this.audioManager) {
-        console.log('🎵 Resetting to Floor 1 music after death');
+        console.log("🎵 Resetting to Floor 1 music after death");
         await this.audioManager.playFloorMusic(1);
       }
 
-      console.log("Game reset completed successfully with updated permanent upgrades");
+      console.log(
+        "Game reset completed successfully with updated permanent upgrades"
+      );
     } catch (error) {
       console.error("Failed to reset game after death:", error);
 
@@ -918,7 +1021,9 @@ export class Game {
 
       // NEW v3.0: Sync run number even in fallback
       this.runNumber = this.floorGenerator.getCurrentRun();
-      console.log(`Fallback: Frontend run number updated to: ${this.runNumber}`);
+      console.log(
+        `Fallback: Frontend run number updated to: ${this.runNumber}`
+      );
 
       // CRITICAL: Try to re-initialize managers even in fallback
       try {
@@ -926,7 +1031,10 @@ export class Game {
         await this.initializeManagers();
         console.log("Managers re-initialized successfully in fallback");
       } catch (managerError) {
-        console.error("Failed to re-initialize managers in fallback:", managerError);
+        console.error(
+          "Failed to re-initialize managers in fallback:",
+          managerError
+        );
         console.log("Using existing permanent upgrades data as final fallback");
       }
 
@@ -952,27 +1060,29 @@ export class Game {
 
       // Determine if this is a boss room
       const wasInBossRoom = this.floorGenerator.isBossRoom();
-      
+
       if (wasInBossRoom) {
         // BOSS ROOM: Advance to next floor
         console.log("🏆 Boss defeated! Advancing to next floor...");
-        
+
         // Critical API call: Auto-save after boss completion
         await this.saveCurrentGameState();
-        
+
         // Reset boss flags
         this.resetBossFlags();
-        
+
         // Advance to next floor
         await this.floorGenerator.nextFloor();
-        
-        console.log(`📍 Advanced to Floor ${this.floorGenerator.getCurrentFloor()}, Room 1`);
-        
+
+        console.log(
+          `📍 Advanced to Floor ${this.floorGenerator.getCurrentFloor()}, Room 1`
+        );
+
         // Play time travel (floor transition) sound effect
         if (this.audioManager) {
           this.audioManager.playTimeTravelSFX();
         }
-        
+
         // Change floor music
         if (this.audioManager) {
           const newFloor = this.floorGenerator.getCurrentFloor();
@@ -985,9 +1095,11 @@ export class Game {
           console.warn("Cannot advance to next room");
           return;
         }
-        
-        console.log(`📍 Advanced to Room ${this.floorGenerator.getCurrentRoomIndex() + 1}`);
-        
+
+        console.log(
+          `📍 Advanced to Room ${this.floorGenerator.getCurrentRoomIndex() + 1}`
+        );
+
         // Critical API call: Auto-save after successful room transition
         await this.saveCurrentGameState();
       }
@@ -995,24 +1107,23 @@ export class Game {
       // Update game state
       this.currentRoom = this.floorGenerator.getCurrentRoom();
       this.currentRoom.resetBossState();
-      
+
       // Update player position
       this.player.setCurrentRoom(this.currentRoom);
       this.player.position = this.currentRoom.getPlayerStartPosition();
       this.player.velocity = new Vec(0, 0);
       this.player.keys = [];
-      
+
       // Update enemies
       this.enemies = this.currentRoom.objects.enemies;
-      
+
       // Critical API call: Update shop data with new room information
       this.configureShopGameData();
-      
-      console.log("✅ Room transition completed successfully");
 
+      console.log("✅ Room transition completed successfully");
     } catch (error) {
       console.error("❌ Room transition failed:", error);
-      
+
       // Simple recovery: try to restore current room state
       try {
         this.currentRoom = this.floorGenerator.getCurrentRoom();
@@ -1021,7 +1132,10 @@ export class Game {
           this.enemies = this.currentRoom.objects.enemies;
         }
       } catch (recoveryError) {
-        console.error("Failed to recover from transition error:", recoveryError);
+        console.error(
+          "Failed to recover from transition error:",
+          recoveryError
+        );
       }
     } finally {
       this.isTransitioning = false;
@@ -1030,7 +1144,7 @@ export class Game {
 
   // SIMPLIFIED: Non-blocking transition starter
   startRoomTransition(direction) {
-    this.handleRoomTransition(direction).catch(error => {
+    this.handleRoomTransition(direction).catch((error) => {
       console.error("Error in room transition:", error);
       this.isTransitioning = false; // Emergency cleanup
     });
@@ -1071,7 +1185,10 @@ export class Game {
       );
 
       // SIMPLIFIED: Check for room transition during upgrade selection
-      if (this.currentRoom.isPlayerAtRightEdge(this.player) && !this.isTransitioning) {
+      if (
+        this.currentRoom.isPlayerAtRightEdge(this.player) &&
+        !this.isTransitioning
+      ) {
         this.startRoomTransition("right");
       }
 
@@ -1093,7 +1210,8 @@ export class Game {
 
     // Show boss defeat message
     if (this.bossJustDefeated && this.floorGenerator.isBossRoom()) {
-      this.transitionZoneActivatedMessage = "BOSS DEFEATED! \nMove to the right edge to advance to next floor!";
+      this.transitionZoneActivatedMessage =
+        "BOSS DEFEATED! \nMove to the right edge to advance to next floor!";
       this.transitionZoneMessageTimer = 3000;
       this.bossJustDefeated = false;
     }
@@ -1151,7 +1269,7 @@ export class Game {
     // Auto-save periodically
     const currentTime = Date.now();
     if (currentTime - this.lastAutoSave >= this.autoSaveInterval) {
-      this.saveCurrentGameState().catch(error => {
+      this.saveCurrentGameState().catch((error) => {
         console.error("Failed to auto-save game state:", error);
       });
       this.lastAutoSave = currentTime;
@@ -1164,7 +1282,7 @@ export class Game {
       const key = e.key.toLowerCase();
 
       // NEW: Handle pause key (P) - always check first
-      if (key === 'p') {
+      if (key === "p") {
         this.togglePause();
         e.preventDefault();
         return;
@@ -1216,12 +1334,16 @@ export class Game {
   // Run statistics tracking methods
   trackGoldSpent(amount) {
     this.runStats.goldSpent += amount;
-    console.log(`Gold spent: +${amount}, Total spent this run: ${this.runStats.goldSpent}`);
+    console.log(
+      `Gold spent: +${amount}, Total spent this run: ${this.runStats.goldSpent}`
+    );
   }
 
   trackKill() {
     this.runStats.totalKills++;
-    console.log(`Enemy killed! Total kills this run: ${this.runStats.totalKills}`);
+    console.log(
+      `Enemy killed! Total kills this run: ${this.runStats.totalKills}`
+    );
 
     // NOTE: Enemy kill registration is handled by Enemy.js to avoid duplicates
     // Each enemy instance registers its own kill with proper type mapping
@@ -1231,7 +1353,7 @@ export class Game {
     console.log("Resetting run statistics...");
     this.runStats = {
       goldSpent: 0,
-      totalKills: 0
+      totalKills: 0,
     };
   }
 
@@ -1248,7 +1370,7 @@ export class Game {
     return {
       goldSpent: this.runStats.goldSpent,
       totalKills: this.runStats.totalKills,
-      goldCollected: this.player ? this.player.getGold() : 0
+      goldCollected: this.player ? this.player.getGold() : 0,
     };
   }
 
@@ -1262,66 +1384,70 @@ export class Game {
   async loadSavedState() {
     try {
       // Get required data from localStorage
-      const userId = localStorage.getItem('currentUserId');
-      const sessionId = localStorage.getItem('currentSessionId');
-      const runId = localStorage.getItem('currentRunId');
-      const testMode = localStorage.getItem('testMode') === 'true';
+      const userId = localStorage.getItem("currentUserId");
+      const sessionId = localStorage.getItem("currentSessionId");
+      const runId = localStorage.getItem("currentRunId");
+      const testMode = localStorage.getItem("testMode") === "true";
 
       // Validate required data exists
       if (!userId || !sessionId || !runId) {
         if (testMode) {
-          console.log('Load state skipped: Running in test mode');
+          console.log("Load state skipped: Running in test mode");
         } else {
-          console.warn('Load state skipped: Missing session data. Starting fresh game.', {
-            userId: !!userId,
-            sessionId: !!sessionId,
-            runId: !!runId
-          });
+          console.warn(
+            "Load state skipped: Missing session data. Starting fresh game.",
+            {
+              userId: !!userId,
+              sessionId: !!sessionId,
+              runId: !!runId,
+            }
+          );
         }
         return false;
       }
 
-      console.log('Session data complete - attempting to load saved state:', {
+      console.log("Session data complete - attempting to load saved state:", {
         userId,
         sessionId,
-        runId
+        runId,
       });
 
       // Use saveStateManager to load saved state
       try {
-        const saveState = await saveStateManager.loadSaveState(parseInt(userId));
+        const saveState = await saveStateManager.loadSaveState(
+          parseInt(userId)
+        );
 
         if (saveState) {
-          console.log('Save state found - restoring game position:', {
+          console.log("Save state found - restoring game position:", {
             floor: saveState.floor || 1,
             room: saveState.roomId,
             gold: saveState.gold,
-            health: saveState.currentHp
+            health: saveState.currentHp,
           });
 
           // Store save state for use in initObjects
           this.savedStateData = {
             hasSaveState: true,
-            floor: saveState.floor || this.calculateFloorFromRoom(saveState.roomId),
+            floor:
+              saveState.floor || this.calculateFloorFromRoom(saveState.roomId),
             room: saveState.roomId,
             roomId: saveState.roomId,
             gold: saveState.gold,
-            currentHealth: saveState.currentHp
+            currentHealth: saveState.currentHp,
           };
           return true;
         } else {
-          console.log('No save state found - starting fresh game');
+          console.log("No save state found - starting fresh game");
           return false;
         }
-
       } catch (error) {
-        console.warn('Failed to load save state from backend:', error);
-        console.log('Starting fresh game due to save state load failure');
+        console.warn("Failed to load save state from backend:", error);
+        console.log("Starting fresh game due to save state load failure");
         return false;
       }
-
     } catch (error) {
-      console.error('Failed to load session data:', error);
+      console.error("Failed to load session data:", error);
       return false;
     }
   }
@@ -1332,16 +1458,16 @@ export class Game {
     this.createPauseOverlay();
 
     // Will add pause event listener in createEventListeners method
-    console.log('Pause system initialized');
+    console.log("Pause system initialized");
   }
 
   //  NEW: Create pause overlay DOM element
   createPauseOverlay() {
     if (this.pauseOverlay) return; // Already exists
 
-    const overlay = document.createElement('div');
-    overlay.id = 'pauseOverlay';
-    overlay.className = 'pause-overlay hidden';
+    const overlay = document.createElement("div");
+    overlay.id = "pauseOverlay";
+    overlay.className = "pause-overlay hidden";
 
     overlay.innerHTML = `
       <div class="pause-container">
@@ -1430,22 +1556,22 @@ export class Game {
     if (!this.pauseOverlay) return;
 
     // Tab switching
-    const tabButtons = this.pauseOverlay.querySelectorAll('.pause-tab-btn');
-    tabButtons.forEach(btn => {
-      btn.addEventListener('click', (e) => {
+    const tabButtons = this.pauseOverlay.querySelectorAll(".pause-tab-btn");
+    tabButtons.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
         this.switchPauseTab(e.target.dataset.tab);
       });
     });
 
     // Resume button
-    const resumeBtn = this.pauseOverlay.querySelector('#resumeBtn');
-    resumeBtn?.addEventListener('click', () => {
+    const resumeBtn = this.pauseOverlay.querySelector("#resumeBtn");
+    resumeBtn?.addEventListener("click", () => {
       this.togglePause();
     });
 
     // Logout button
-    const logoutBtn = this.pauseOverlay.querySelector('#pauseLogoutBtn');
-    logoutBtn?.addEventListener('click', () => {
+    const logoutBtn = this.pauseOverlay.querySelector("#pauseLogoutBtn");
+    logoutBtn?.addEventListener("click", () => {
       this.handlePauseLogout();
     });
 
@@ -1456,22 +1582,22 @@ export class Game {
   // NEW: Setup settings event listeners
   setupSettingsEventListeners() {
     // Volume sliders
-    const musicSlider = this.pauseOverlay.querySelector('#musicVolume');
-    const sfxSlider = this.pauseOverlay.querySelector('#sfxVolume');
-    const musicValue = this.pauseOverlay.querySelector('#musicVolumeValue');
-    const sfxValue = this.pauseOverlay.querySelector('#sfxVolumeValue');
+    const musicSlider = this.pauseOverlay.querySelector("#musicVolume");
+    const sfxSlider = this.pauseOverlay.querySelector("#sfxVolume");
+    const musicValue = this.pauseOverlay.querySelector("#musicVolumeValue");
+    const sfxValue = this.pauseOverlay.querySelector("#sfxVolumeValue");
 
-    musicSlider?.addEventListener('input', (e) => {
-      musicValue.textContent = e.target.value + '%';
+    musicSlider?.addEventListener("input", (e) => {
+      musicValue.textContent = e.target.value + "%";
     });
 
-    sfxSlider?.addEventListener('input', (e) => {
-      sfxValue.textContent = e.target.value + '%';
+    sfxSlider?.addEventListener("input", (e) => {
+      sfxValue.textContent = e.target.value + "%";
     });
 
     // Save settings button
-    const saveBtn = this.pauseOverlay.querySelector('#saveSettings');
-    saveBtn?.addEventListener('click', () => {
+    const saveBtn = this.pauseOverlay.querySelector("#saveSettings");
+    saveBtn?.addEventListener("click", () => {
       this.saveGameSettings();
     });
   }
@@ -1481,43 +1607,45 @@ export class Game {
     this.activeTab = tabName;
 
     // Update tab buttons
-    const tabButtons = this.pauseOverlay.querySelectorAll('.pause-tab-btn');
-    tabButtons.forEach(btn => {
+    const tabButtons = this.pauseOverlay.querySelectorAll(".pause-tab-btn");
+    tabButtons.forEach((btn) => {
       if (btn.dataset.tab === tabName) {
-        btn.classList.add('active');
+        btn.classList.add("active");
       } else {
-        btn.classList.remove('active');
+        btn.classList.remove("active");
       }
     });
 
     // Update content
-    const contents = this.pauseOverlay.querySelectorAll('.tab-content');
-    contents.forEach(content => {
+    const contents = this.pauseOverlay.querySelectorAll(".tab-content");
+    contents.forEach((content) => {
       if (content.id === `${tabName}-content`) {
-        content.classList.add('active');
+        content.classList.add("active");
       } else {
-        content.classList.remove('active');
+        content.classList.remove("active");
       }
     });
 
     // Load stats if stats tab
-    if (tabName === 'stats') {
+    if (tabName === "stats") {
       this.loadStatsData();
     }
   }
 
   // NEW: Load stats data into pause menu
   async loadStatsData() {
-    const statsContainer = this.pauseOverlay.querySelector('#stats-data');
+    const statsContainer = this.pauseOverlay.querySelector("#stats-data");
     if (!statsContainer) return;
 
     try {
       // Show loading state
-      statsContainer.innerHTML = '<div class="loading">Loading statistics...</div>';
+      statsContainer.innerHTML =
+        '<div class="loading">Loading statistics...</div>';
 
       // Get current run stats (local)
       // FIXED v3.0: Use run number from initialization data with proper fallback
-      const currentRun = this.runNumber || this.floorGenerator.getCurrentRun() || 1; // Fallback to 1
+      const currentRun =
+        this.runNumber || this.floorGenerator.getCurrentRun() || 1; // Fallback to 1
       const currentFloor = this.floorGenerator.getCurrentFloor();
       const currentRoom = this.floorGenerator.getCurrentRoomIndex() + 1;
       const totalRooms = this.floorGenerator.getTotalRooms();
@@ -1526,8 +1654,8 @@ export class Game {
       const shopUpgrades = this.globalShop.getUpgradeCounts();
 
       // Get user ID for API calls
-      const userId = localStorage.getItem('currentUserId');
-      const testMode = localStorage.getItem('testMode') === 'true';
+      const userId = localStorage.getItem("currentUserId");
+      const testMode = localStorage.getItem("testMode") === "true";
 
       let historicalStats = null;
       let currentRunStatsAPI = null;
@@ -1536,43 +1664,62 @@ export class Game {
       if (userId && !testMode) {
         try {
           // Import API functions dynamically
-          const { getCompletePlayerStats, getCurrentRunStats } = await import('../../utils/api.js');
+          const { getCompletePlayerStats, getCurrentRunStats } = await import(
+            "../../utils/api.js"
+          );
 
           // Fetch both historical and current run stats
           const [historical, currentAPI] = await Promise.allSettled([
             getCompletePlayerStats(parseInt(userId)),
-            getCurrentRunStats(parseInt(userId))
+            getCurrentRunStats(parseInt(userId)),
           ]);
 
-          console.log('API Stats Results:', {
+          console.log("API Stats Results:", {
             historical: {
               status: historical.status,
-              hasValue: historical.status === 'fulfilled' && historical.value,
-              data: historical.status === 'fulfilled' ? historical.value : historical.reason
+              hasValue: historical.status === "fulfilled" && historical.value,
+              data:
+                historical.status === "fulfilled"
+                  ? historical.value
+                  : historical.reason,
             },
             currentAPI: {
               status: currentAPI.status,
-              hasValue: currentAPI.status === 'fulfilled' && currentAPI.value,
-              data: currentAPI.status === 'fulfilled' ? currentAPI.value : currentAPI.reason
-            }
+              hasValue: currentAPI.status === "fulfilled" && currentAPI.value,
+              data:
+                currentAPI.status === "fulfilled"
+                  ? currentAPI.value
+                  : currentAPI.reason,
+            },
           });
 
-          if (historical.status === 'fulfilled' && historical.value) {
+          if (historical.status === "fulfilled" && historical.value) {
             historicalStats = historical.value;
-            console.log(' Historical stats loaded successfully:', historicalStats);
+            console.log(
+              " Historical stats loaded successfully:",
+              historicalStats
+            );
           } else {
-            console.warn(' Failed to load historical stats:', historical.reason);
+            console.warn(
+              " Failed to load historical stats:",
+              historical.reason
+            );
           }
 
-          if (currentAPI.status === 'fulfilled' && currentAPI.value) {
+          if (currentAPI.status === "fulfilled" && currentAPI.value) {
             currentRunStatsAPI = currentAPI.value;
-            console.log(' Current run stats loaded successfully:', currentRunStatsAPI);
+            console.log(
+              " Current run stats loaded successfully:",
+              currentRunStatsAPI
+            );
           } else {
-            console.warn(' Failed to load current run stats:', currentAPI.reason);
+            console.warn(
+              " Failed to load current run stats:",
+              currentAPI.reason
+            );
           }
-
         } catch (error) {
-          console.warn('Failed to fetch stats from API:', error);
+          console.warn("Failed to fetch stats from API:", error);
         }
       }
 
@@ -1582,18 +1729,34 @@ export class Game {
           <h4>Current Run</h4>
           <div class="stat-item">Run #: <span>${currentRun}</span></div>
           <div class="stat-item">Position: <span>Floor ${currentFloor}, Room ${currentRoom}/${totalRooms}</span></div>
-          <div class="stat-item">Gold: <span>${this.player ? this.player.gold : 0}</span></div>
-          <div class="stat-item">HP: <span>${this.player ? this.player.health : 0}/${this.player ? this.player.maxHealth : 100}</span></div>
-          <div class="stat-item">Stamina: <span>${this.player ? this.player.stamina : 0}/${this.player ? this.player.maxStamina : 100}</span></div>
-          <div class="stat-item">Kills this run: <span>${runStats.totalKills}</span></div>
-          <div class="stat-item">Gold spent: <span>${runStats.goldSpent}</span></div>
-          <div class="stat-item">Weapon upgrades: <span>Melee +${shopUpgrades.melee}, Ranged +${shopUpgrades.ranged}</span></div>
+          <div class="stat-item">Gold: <span>${
+            this.player ? this.player.gold : 0
+          }</span></div>
+          <div class="stat-item">HP: <span>${
+            this.player ? this.player.health : 0
+          }/${this.player ? this.player.maxHealth : 100}</span></div>
+          <div class="stat-item">Stamina: <span>${
+            this.player ? this.player.stamina : 0
+          }/${this.player ? this.player.maxStamina : 100}</span></div>
+          <div class="stat-item">Kills this run: <span>${
+            runStats.totalKills
+          }</span></div>
+          <div class="stat-item">Gold spent: <span>${
+            runStats.goldSpent
+          }</span></div>
+          <div class="stat-item">Weapon upgrades: <span>Melee +${
+            shopUpgrades.melee
+          }, Ranged +${shopUpgrades.ranged}</span></div>
         </div>
       `;
 
       // Add historical stats if available
-      if (historicalStats && typeof historicalStats === 'object' && historicalStats.totalRuns !== undefined) {
-        console.log(' Rendering historical stats:', historicalStats);
+      if (
+        historicalStats &&
+        typeof historicalStats === "object" &&
+        historicalStats.totalRuns !== undefined
+      ) {
+        console.log(" Rendering historical stats:", historicalStats);
         statsHTML += `
           <div class="stats-section">
             <h4> Player History</h4>
@@ -1610,7 +1773,7 @@ export class Game {
           </div>
         `;
       } else if (testMode) {
-        console.log(' Test mode - showing test mode message');
+        console.log(" Test mode - showing test mode message");
         statsHTML += `
           <div class="stats-section">
             <h4> Player History</h4>
@@ -1618,12 +1781,12 @@ export class Game {
           </div>
         `;
       } else {
-        console.warn(' Unable to load historical data:', {
+        console.warn(" Unable to load historical data:", {
           hasHistoricalStats: !!historicalStats,
           historicalStatsType: typeof historicalStats,
           historicalStatsContent: historicalStats,
           userId: userId,
-          testMode: testMode
+          testMode: testMode,
         });
         statsHTML += `
           <div class="stats-section">
@@ -1634,32 +1797,35 @@ export class Game {
       }
 
       statsContainer.innerHTML = statsHTML;
-
     } catch (error) {
-      console.error('Error loading stats:', error);
-      statsContainer.innerHTML = '<div class="error">Error loading statistics</div>';
+      console.error("Error loading stats:", error);
+      statsContainer.innerHTML =
+        '<div class="error">Error loading statistics</div>';
     }
   }
 
   // NEW: Save game settings
   saveGameSettings() {
-    const musicVolume = this.pauseOverlay.querySelector('#musicVolume').value;
-    const sfxVolume = this.pauseOverlay.querySelector('#sfxVolume').value;
-    const autoSave = this.pauseOverlay.querySelector('#autoSave').checked;
+    const musicVolume = this.pauseOverlay.querySelector("#musicVolume").value;
+    const sfxVolume = this.pauseOverlay.querySelector("#sfxVolume").value;
+    const autoSave = this.pauseOverlay.querySelector("#autoSave").checked;
 
     // Save to localStorage for now (Phase 2 will add backend integration)
-    localStorage.setItem('gameSettings', JSON.stringify({
-      musicVolume: parseInt(musicVolume),
-      sfxVolume: parseInt(sfxVolume),
-      autoSave: autoSave
-    }));
+    localStorage.setItem(
+      "gameSettings",
+      JSON.stringify({
+        musicVolume: parseInt(musicVolume),
+        sfxVolume: parseInt(sfxVolume),
+        autoSave: autoSave,
+      })
+    );
 
-    console.log(' Game settings saved');
+    console.log(" Game settings saved");
 
     // Show feedback
-    const saveBtn = this.pauseOverlay.querySelector('#saveSettings');
+    const saveBtn = this.pauseOverlay.querySelector("#saveSettings");
     const originalText = saveBtn.textContent;
-    saveBtn.textContent = 'Saved!';
+    saveBtn.textContent = "Saved!";
     saveBtn.disabled = true;
 
     setTimeout(() => {
@@ -1670,7 +1836,9 @@ export class Game {
 
   // NEW: Handle logout from pause menu
   async handlePauseLogout() {
-    const confirmed = confirm('Are you sure you want to logout? Any unsaved progress may be lost.');
+    const confirmed = confirm(
+      "Are you sure you want to logout? Any unsaved progress may be lost."
+    );
     if (!confirmed) return;
 
     try {
@@ -1678,35 +1846,34 @@ export class Game {
       this.hidePause();
 
       // Save current state before logout
-      console.log('Saving state before logout...');
+      console.log("Saving state before logout...");
       await this.saveCurrentState();
 
       // Import enhanced logout function
-      const { enhancedLogout } = await import('../../utils/api.js');
+      const { enhancedLogout } = await import("../../utils/api.js");
 
       // Get session data
-      const sessionToken = localStorage.getItem('sessionToken');
+      const sessionToken = localStorage.getItem("sessionToken");
 
       // Use centralized enhanced logout
-      console.log('Using enhanced logout for complete session cleanup...');
+      console.log("Using enhanced logout for complete session cleanup...");
       const logoutSuccess = await enhancedLogout(sessionToken);
-      
+
       if (!logoutSuccess) {
-        console.warn('Backend logout failed, but localStorage was cleared');
+        console.warn("Backend logout failed, but localStorage was cleared");
       }
 
       // Redirect to landing
-      window.location.href = 'landing.html';
-
+      window.location.href = "landing.html";
     } catch (error) {
-      console.error('Logout error:', error);
-      
+      console.error("Logout error:", error);
+
       // Force logout even if save/logout API fails
-      console.log('Force logout with emergency localStorage cleanup...');
-      const { clearSessionLocalStorage } = await import('../../utils/api.js');
+      console.log("Force logout with emergency localStorage cleanup...");
+      const { clearSessionLocalStorage } = await import("../../utils/api.js");
       clearSessionLocalStorage();
-      
-      window.location.href = 'landing.html';
+
+      window.location.href = "landing.html";
     }
   }
 
@@ -1720,15 +1887,15 @@ export class Game {
       this.hidePause();
     }
 
-    console.log(` Game ${this.isPaused ? 'PAUSED' : 'RESUMED'}`);
+    console.log(` Game ${this.isPaused ? "PAUSED" : "RESUMED"}`);
   }
 
   // NEW: Show pause overlay
   showPause() {
     if (this.pauseOverlay) {
-      this.pauseOverlay.classList.remove('hidden');
+      this.pauseOverlay.classList.remove("hidden");
       // Load current stats
-      if (this.activeTab === 'stats') {
+      if (this.activeTab === "stats") {
         this.loadStatsData();
       }
     }
@@ -1737,32 +1904,34 @@ export class Game {
   // NEW: Hide pause overlay
   hidePause() {
     if (this.pauseOverlay) {
-      this.pauseOverlay.classList.add('hidden');
+      this.pauseOverlay.classList.add("hidden");
     }
   }
 
   // NEW: Async initialization method
   async initializeGameAsync() {
     try {
-      console.log('Starting game initialization...');
+      console.log("Starting game initialization...");
 
       // CRITICAL FIX: Wait for managers to initialize FIRST
       await this.initializeManagers();
-      console.log('Managers initialization complete');
+      console.log("Managers initialization complete");
 
       // THEN load saved state
-      await this.loadSavedState().then(() => {
-        // FINALLY initialize objects with all data available
-        this.initObjects(); 
-      }).catch(error => {
-        console.error("Failed to load saved state, starting fresh:", error);
-        this.initObjects(); // Fallback to fresh start
-      });
+      await this.loadSavedState()
+        .then(() => {
+          // FINALLY initialize objects with all data available
+          this.initObjects();
+        })
+        .catch((error) => {
+          console.error("Failed to load saved state, starting fresh:", error);
+          this.initObjects(); // Fallback to fresh start
+        });
 
       // Mark game as ready
       this.isReady = true;
       this.gameState = "playing";
-      console.log('Game initialization complete - ready to start');
+      console.log("Game initialization complete - ready to start");
 
       // Initialize floor music when game is ready
       if (this.audioManager) {
@@ -1775,9 +1944,8 @@ export class Game {
       if (this.gameReadyCallback) {
         this.gameReadyCallback();
       }
-
     } catch (error) {
-      console.error('Game initialization failed:', error);
+      console.error("Game initialization failed:", error);
       this.gameState = "error";
     }
   }
@@ -1799,9 +1967,9 @@ export class Game {
    */
   getCurrentGameState() {
     // Get localStorage values
-    const userIdRaw = localStorage.getItem('currentUserId');
-    const sessionIdRaw = localStorage.getItem('currentSessionId');
-    const runIdRaw = localStorage.getItem('currentRunId');
+    const userIdRaw = localStorage.getItem("currentUserId");
+    const sessionIdRaw = localStorage.getItem("currentSessionId");
+    const runIdRaw = localStorage.getItem("currentRunId");
 
     const roomId = this.floorGenerator?.getCurrentRoomId() || 1;
 
@@ -1812,13 +1980,13 @@ export class Game {
 
     // Only log warnings for NaN values (potential issues)
     if (isNaN(userId) && userIdRaw) {
-      console.warn('⚠️ Invalid userId in localStorage:', userIdRaw);
+      console.warn("⚠️ Invalid userId in localStorage:", userIdRaw);
     }
     if (isNaN(sessionId) && sessionIdRaw) {
-      console.warn('⚠️ Invalid sessionId in localStorage:', sessionIdRaw);
+      console.warn("⚠️ Invalid sessionId in localStorage:", sessionIdRaw);
     }
     if (isNaN(runId) && runIdRaw) {
-      console.warn('⚠️ Invalid runId in localStorage:', runIdRaw);
+      console.warn("⚠️ Invalid runId in localStorage:", runIdRaw);
     }
 
     const gameState = {
@@ -1828,7 +1996,7 @@ export class Game {
       floorId: this.calculateFloorFromRoom(roomId),
       roomId: roomId,
       currentHp: this.player?.health || 100,
-      gold: this.player?.gold || 0
+      gold: this.player?.gold || 0,
     };
 
     return gameState;
@@ -1842,7 +2010,7 @@ export class Game {
       const gameState = this.getCurrentGameState();
       return await saveStateManager.saveCurrentState(gameState, isLogout);
     } catch (error) {
-      console.error('Failed to save current game state:', error);
+      console.error("Failed to save current game state:", error);
       return false;
     }
   }
@@ -1859,51 +2027,62 @@ export class Game {
   // NEW: Load and apply permanent upgrades to player (ENHANCED v3.0)
   async loadPermanentUpgrades(userId) {
     try {
-      console.log('Loading permanent upgrades for player...');
+      console.log("Loading permanent upgrades for player...");
 
       // Fetch permanent upgrades from backend
       const upgrades = await getPermanentUpgrades(userId);
 
       if (upgrades && upgrades.length > 0) {
-        console.log('Permanent upgrades loaded successfully:', upgrades);
+        console.log("Permanent upgrades loaded successfully:", upgrades);
 
         // Apply upgrades to player
-        upgrades.forEach(upgrade => {
+        upgrades.forEach((upgrade) => {
           this.player.applyUpgrade(upgrade);
         });
 
-        console.log('Permanent upgrades applied to player');
+        console.log("Permanent upgrades applied to player");
       } else {
-        console.log('No permanent upgrades found for player');
+        console.log("No permanent upgrades found for player");
       }
-
     } catch (error) {
-      console.error('Failed to load permanent upgrades v3.0:', error);
+      console.error("Failed to load permanent upgrades v3.0:", error);
 
       // Fallback: Try to use locally stored permanent upgrades from initialization
-      if (this.permanentUpgrades && Object.keys(this.permanentUpgrades).length > 0) {
-        console.log('Using fallback permanent upgrades from initialization data:', this.permanentUpgrades);
+      if (
+        this.permanentUpgrades &&
+        Object.keys(this.permanentUpgrades).length > 0
+      ) {
+        console.log(
+          "Using fallback permanent upgrades from initialization data:",
+          this.permanentUpgrades
+        );
 
         // Apply fallback upgrades if available
         Object.entries(this.permanentUpgrades).forEach(([type, value]) => {
           console.log(`Applying fallback upgrade: ${type} = ${value}`);
 
           switch (type) {
-            case 'health_max':
+            case "health_max":
               this.player.maxHealth = value;
-              this.player.health = Math.min(this.player.health, this.player.maxHealth);
+              this.player.health = Math.min(
+                this.player.health,
+                this.player.maxHealth
+              );
               break;
-            case 'stamina_max':
+            case "stamina_max":
               this.player.maxStamina = value;
-              this.player.stamina = Math.min(this.player.stamina, this.player.maxStamina);
+              this.player.stamina = Math.min(
+                this.player.stamina,
+                this.player.maxStamina
+              );
               break;
-            case 'movement_speed':
+            case "movement_speed":
               this.player.speedMultiplier = value;
               break;
           }
         });
 
-        console.log('Fallback permanent upgrades applied successfully');
+        console.log("Fallback permanent upgrades applied successfully");
       }
     }
   }
@@ -1918,7 +2097,9 @@ export class Game {
     ctx.fillRect(0, 0, variables.canvasWidth, variables.canvasHeight);
 
     // Calculate elapsed time for animation
-    const elapsed = this.transitionStartTime ? Date.now() - this.transitionStartTime : 0;
+    const elapsed = this.transitionStartTime
+      ? Date.now() - this.transitionStartTime
+      : 0;
     const progress = Math.min(elapsed / 1000, 1); // 1 second max for full animation
 
     // Animated progress bar
@@ -1933,9 +2114,9 @@ export class Game {
 
     // Progress bar fill with color based on state
     let barColor = "#4CAF50"; // Green for normal
-    if (this.transitionState === 'error') {
+    if (this.transitionState === "error") {
       barColor = "#F44336"; // Red for error
-    } else if (this.transitionState === 'completing') {
+    } else if (this.transitionState === "completing") {
       barColor = "#2196F3"; // Blue for completing
     }
 
@@ -1952,7 +2133,10 @@ export class Game {
     ctx.fillText(this.transitionMessage, variables.canvasWidth / 2, messageY);
 
     // Animated dots for "in progress" states
-    if (this.transitionState === 'starting' || this.transitionState === 'in_progress') {
+    if (
+      this.transitionState === "starting" ||
+      this.transitionState === "in_progress"
+    ) {
       const dotCount = Math.floor(elapsed / 200) % 4; // Cycle every 800ms
       const dots = ".".repeat(dotCount);
 
@@ -1966,16 +2150,16 @@ export class Game {
 
     let statusText = "";
     switch (this.transitionState) {
-      case 'starting':
+      case "starting":
         statusText = "Saving game state...";
         break;
-      case 'in_progress':
+      case "in_progress":
         statusText = "Loading next room...";
         break;
-      case 'completing':
+      case "completing":
         statusText = "Ready to continue!";
         break;
-      case 'error':
+      case "error":
         statusText = "Something went wrong";
         break;
     }

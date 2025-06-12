@@ -82,7 +82,10 @@ export class Enemy extends AnimatedObject {
     }
 
     // Return true if we moved at all
-    return this.position.x !== originalPosition.x || this.position.y !== originalPosition.y;
+    return (
+      this.position.x !== originalPosition.x ||
+      this.position.y !== originalPosition.y
+    );
   }
 
   takeDamage(amount) {
@@ -99,26 +102,26 @@ export class Enemy extends AnimatedObject {
   die() {
     this.state = "dead";
     log.debug(`${this.type} died`);
-    
+
     // Play enemy death SFX
     if (window.game && window.game.audioManager) {
       window.game.audioManager.playEnemyDeathSFX();
     }
-    
+
     // Track kill in global game statistics
-    if (window.game && typeof window.game.trackKill === 'function') {
-        window.game.trackKill();
+    if (window.game && typeof window.game.trackKill === "function") {
+      window.game.trackKill();
     }
 
     // Register enemy kill with backend (non-blocking)
-    this.registerKill().catch(error => {
-      console.error('Failed to register enemy kill:', error);
+    this.registerKill().catch((error) => {
+      console.error("Failed to register enemy kill:", error);
     });
 
     // EVENT-DRIVEN UPDATE: Update room state when enemy dies
     if (this.currentRoom) {
       log.verbose("Updating room after enemy death");
-      
+
       // Update the room state in floor generator
       if (window.game && window.game.floorGenerator) {
         window.game.floorGenerator.updateRoomState(undefined, this.currentRoom);
@@ -126,23 +129,30 @@ export class Enemy extends AnimatedObject {
       }
 
       // FIX: Check if this was the last enemy in boss room to activate transition zone immediately
-      const aliveEnemies = this.currentRoom.objects.enemies.filter(e => e.state !== 'dead');
-      if (this.currentRoom.roomType === 'boss' && aliveEnemies.length === 0) {
-        console.log('BOSS DEFEATED! Transition zone activated immediately');
-        
+      const aliveEnemies = this.currentRoom.objects.enemies.filter(
+        (e) => e.state !== "dead"
+      );
+      if (this.currentRoom.roomType === "boss" && aliveEnemies.length === 0) {
+        console.log("BOSS DEFEATED! Transition zone activated immediately");
+
         // Mark room as immediately available for transition
         this.currentRoom.bossDefeated = true;
         console.log(`Boss room marked as defeated (bossDefeated = true)`);
-        
+
         // Notify game that boss room is cleared
         if (window.game) {
-          console.log('Boss room cleared - player can now transition to next floor');
+          console.log(
+            "Boss room cleared - player can now transition to next floor"
+          );
           // Set a flag that boss was just defeated for immediate feedback
           window.game.bossJustDefeated = true;
-          
+
           // FIX: Show permanent upgrade popup immediately when boss is defeated (ONLY ONCE)
-          if (window.game.permanentUpgradePopup && !window.game.bossUpgradeShown) {
-            console.log('Showing permanent upgrade popup after boss defeat');
+          if (
+            window.game.permanentUpgradePopup &&
+            !window.game.bossUpgradeShown
+          ) {
+            console.log("Showing permanent upgrade popup after boss defeat");
             window.game.permanentUpgradePopup.show();
             window.game.gameState = "upgradeSelection";
             window.game.bossUpgradeShown = true; // Mark as shown to prevent multiple displays
@@ -150,7 +160,7 @@ export class Enemy extends AnimatedObject {
         }
       }
     }
-    
+
     // TODO: Add death animation and effects
   }
 
@@ -161,17 +171,19 @@ export class Enemy extends AnimatedObject {
   async registerKill() {
     try {
       // Get required data from localStorage and game state
-      const userId = localStorage.getItem('currentUserId');
-      const runId = localStorage.getItem('currentRunId');
-      const testMode = localStorage.getItem('testMode') === 'true';
-      
+      const userId = localStorage.getItem("currentUserId");
+      const runId = localStorage.getItem("currentRunId");
+      const testMode = localStorage.getItem("testMode") === "true";
+
       // Validate required data exists
       if (!userId || !runId) {
         if (testMode) {
           // Don't log anything in test mode to reduce console spam
           return false;
         } else {
-          console.log('Kill tracking: Requires active session (use gameSessionDebug.fix())');
+          console.log(
+            "Kill tracking: Requires active session (use gameSessionDebug.fix())"
+          );
           return false;
         }
       }
@@ -179,39 +191,45 @@ export class Enemy extends AnimatedObject {
       // Get current room ID and floor from floor generator
       const roomId = window.game?.floorGenerator?.getCurrentRoomId();
       const floor = window.game?.floorGenerator?.getCurrentFloor();
-      
+
       if (!roomId) {
-        console.warn('Kill registration skipped: Could not determine current room ID');
+        console.warn(
+          "Kill registration skipped: Could not determine current room ID"
+        );
         return false;
       }
 
       // ✅ MAPEO INTELIGENTE V2 - CONSERVADOR
-      let enemyType = 'common'; // Por defecto para melee
-      
+      let enemyType = "common"; // Por defecto para melee
+
       // RANGED ENEMIES → 'rare'
-      if (this.enemyTypeName === 'goblin_archer' || 
-          this.enemyTypeName === 'GoblinArcher' ||
-          this.enemyTypeName === 'mage_goblin' ||
-          this.enemyTypeName === 'MageGoblin' ||
-          this.enemyTypeName === 'great_bow_goblin' ||
-          this.enemyTypeName === 'GreatBowGoblin' ||
-          this.enemyTypeName.toLowerCase().includes('archer') ||
-          this.enemyTypeName.toLowerCase().includes('mage') ||
-          this.enemyTypeName.toLowerCase().includes('bow') ||
-          this.enemyTypeName.toLowerCase().includes('ranged')) {
-        enemyType = 'rare';
+      if (
+        this.enemyTypeName === "goblin_archer" ||
+        this.enemyTypeName === "GoblinArcher" ||
+        this.enemyTypeName === "mage_goblin" ||
+        this.enemyTypeName === "MageGoblin" ||
+        this.enemyTypeName === "great_bow_goblin" ||
+        this.enemyTypeName === "GreatBowGoblin" ||
+        this.enemyTypeName.toLowerCase().includes("archer") ||
+        this.enemyTypeName.toLowerCase().includes("mage") ||
+        this.enemyTypeName.toLowerCase().includes("bow") ||
+        this.enemyTypeName.toLowerCase().includes("ranged")
+      ) {
+        enemyType = "rare";
       }
-      
+
       // MELEE ENEMIES → 'common' (already default, but explicit for clarity)
-      if (this.enemyTypeName === 'goblin_dagger' || 
-          this.enemyTypeName === 'GoblinDagger' ||
-          this.enemyTypeName === 'sword_goblin' ||
-          this.enemyTypeName === 'SwordGoblin' ||
-          this.enemyTypeName === 'goblin' ||
-          this.enemyTypeName.toLowerCase().includes('melee') ||
-          this.enemyTypeName.toLowerCase().includes('dagger') ||
-          this.enemyTypeName.toLowerCase().includes('sword')) {
-        enemyType = 'common';
+      if (
+        this.enemyTypeName === "goblin_dagger" ||
+        this.enemyTypeName === "GoblinDagger" ||
+        this.enemyTypeName === "sword_goblin" ||
+        this.enemyTypeName === "SwordGoblin" ||
+        this.enemyTypeName === "goblin" ||
+        this.enemyTypeName.toLowerCase().includes("melee") ||
+        this.enemyTypeName.toLowerCase().includes("dagger") ||
+        this.enemyTypeName.toLowerCase().includes("sword")
+      ) {
+        enemyType = "common";
       }
 
       // Prepare kill data in the format the backend expects
@@ -219,7 +237,7 @@ export class Enemy extends AnimatedObject {
         userId: parseInt(userId),
         enemyType: enemyType, // Send 'common' or 'rare' instead of numeric ID
         roomId: roomId,
-        floor: floor || 1
+        floor: floor || 1,
       };
 
       console.log(`Registering enemy kill:`, {
@@ -227,17 +245,16 @@ export class Enemy extends AnimatedObject {
         mappedTo: enemyType,
         roomId: roomId,
         floor: floor,
-        userId: parseInt(userId)
+        userId: parseInt(userId),
       });
 
       // Call backend API to register kill
       const result = await registerEnemyKill(runId, killData);
-      
-      console.log('Enemy kill registered successfully:', result);
-      return true;
 
+      console.log("Enemy kill registered successfully:", result);
+      return true;
     } catch (error) {
-      console.error('Failed to register enemy kill:', error);
+      console.error("Failed to register enemy kill:", error);
       // Don't throw error to prevent game disruption
       return false;
     }
@@ -346,17 +363,23 @@ export class Enemy extends AnimatedObject {
     ctx.strokeStyle = "white";
     ctx.lineWidth = 1;
     ctx.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-    
+
     // Draw projectiles if they exist
     if (this.projectiles) {
-      this.projectiles.forEach(projectile => {
+      this.projectiles.forEach((projectile) => {
         if (projectile.isActive) {
           // Draw projectile as a simple circle
           ctx.fillStyle = "red";
           ctx.beginPath();
-          ctx.arc(projectile.position.x, projectile.position.y, projectile.radius, 0, 2 * Math.PI);
+          ctx.arc(
+            projectile.position.x,
+            projectile.position.y,
+            projectile.radius,
+            0,
+            2 * Math.PI
+          );
           ctx.fill();
-          
+
           // Add a white border
           ctx.strokeStyle = "white";
           ctx.lineWidth = 1;
@@ -410,7 +433,7 @@ export class Enemy extends AnimatedObject {
       radius: 5,
       isActive: true,
       lifetime: 5000, // 5 seconds max lifetime
-      timeAlive: 0
+      timeAlive: 0,
     };
 
     this.projectiles.push(projectile);
@@ -427,7 +450,7 @@ export class Enemy extends AnimatedObject {
 
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const projectile = this.projectiles[i];
-      
+
       if (!projectile.isActive) {
         this.projectiles.splice(i, 1);
         continue;
@@ -466,8 +489,8 @@ export class Enemy extends AnimatedObject {
             x: projectile.position.x - projectile.radius,
             y: projectile.position.y - projectile.radius,
             width: projectile.radius * 2,
-            height: projectile.radius * 2
-          })
+            height: projectile.radius * 2,
+          }),
         };
 
         if (this.currentRoom.checkWallCollision(tempProjectile)) {
@@ -483,20 +506,24 @@ export class Enemy extends AnimatedObject {
           x: projectile.position.x - projectile.radius,
           y: projectile.position.y - projectile.radius,
           width: projectile.radius * 2,
-          height: projectile.radius * 2
+          height: projectile.radius * 2,
         };
 
-        if (this.checkProjectilePlayerCollision(projectileHitbox, playerHitbox)) {
+        if (
+          this.checkProjectilePlayerCollision(projectileHitbox, playerHitbox)
+        ) {
           // Hit player
           player.takeDamage(projectile.damage);
           projectile.isActive = false;
-          console.log(`${this.type} projectile hit player for ${projectile.damage} damage`);
+          console.log(
+            `${this.type} projectile hit player for ${projectile.damage} damage`
+          );
         }
       }
     }
 
     // Clean up inactive projectiles
-    this.projectiles = this.projectiles.filter(p => p.isActive);
+    this.projectiles = this.projectiles.filter((p) => p.isActive);
   }
 
   /**

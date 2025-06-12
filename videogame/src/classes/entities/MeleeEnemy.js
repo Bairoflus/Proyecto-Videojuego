@@ -40,8 +40,10 @@ export class MeleeEnemy extends Enemy {
     if (this.state === "dead") return;
 
     // Check if we received a player object or just a position
-    const isPlayerObject = playerOrPosition && typeof playerOrPosition.getHitboxBounds === 'function';
-    
+    const isPlayerObject =
+      playerOrPosition &&
+      typeof playerOrPosition.getHitboxBounds === "function";
+
     if (isPlayerObject) {
       // We have a player object - check for overlap
       if (boxOverlap(this, playerOrPosition)) {
@@ -49,7 +51,7 @@ export class MeleeEnemy extends Enemy {
         this.velocity = new Vec(0, 0);
         return;
       }
-      
+
       // Calculate centers for more accurate targeting
       const enemyHitbox = this.getHitboxBounds();
       const enemyCenter = new Vec(
@@ -65,7 +67,7 @@ export class MeleeEnemy extends Enemy {
 
       // Calculate direction and move towards player
       const direction = playerCenter.minus(enemyCenter);
-      
+
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
 
@@ -74,7 +76,7 @@ export class MeleeEnemy extends Enemy {
     } else {
       // We have just a position (Vec) - simpler logic for compatibility
       const direction = playerOrPosition.minus(this.position);
-      
+
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
 
@@ -82,4 +84,4 @@ export class MeleeEnemy extends Enemy {
       this.moveToPosition(newPosition);
     }
   }
-} 
+}
