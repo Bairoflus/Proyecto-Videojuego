@@ -968,6 +968,11 @@ export class Game {
         
         console.log(`📍 Advanced to Floor ${this.floorGenerator.getCurrentFloor()}, Room 1`);
         
+        // Play time travel (floor transition) sound effect
+        if (this.audioManager) {
+          this.audioManager.playTimeTravelSFX();
+        }
+        
         // Change floor music
         if (this.audioManager) {
           const newFloor = this.floorGenerator.getCurrentFloor();
