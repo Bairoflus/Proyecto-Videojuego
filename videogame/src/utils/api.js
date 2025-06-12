@@ -2,7 +2,7 @@
  * API utility for handling HTTP requests to the backend
  */
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = "http://localhost:3000/api";
 
 /**
  * Generic function to make API requests with new response format handling
@@ -11,33 +11,33 @@ const API_BASE_URL = 'http://localhost:3000/api';
  * @returns {Promise<Object>} Response data
  */
 export async function apiRequest(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
-    
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
+  const url = `${API_BASE_URL}${endpoint}`;
 
-        // Handle 204 No Content responses
-        if (response.status === 204) {
-            return { success: true };
-        }
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.message || `HTTP error! status: ${response.status}`);
-        }
-
-        return data;
-    } catch (error) {
-        console.error('API request failed:', error);
-        throw error;
+    // Handle 204 No Content responses
+    if (response.status === 204) {
+      return { success: true };
     }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error("API request failed:", error);
+    throw error;
+  }
 }
 
 /**
@@ -48,11 +48,11 @@ export async function apiRequest(endpoint, options = {}) {
  * @returns {Promise<Object>} User data with userId
  */
 export async function registerUser(username, email, password) {
-    const response = await apiRequest('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ username, email, password })
-    });
-    return response; // {success: true, userId: X, message: "..."}
+  const response = await apiRequest("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ username, email, password }),
+  });
+  return response; // {success: true, userId: X, message: "..."}
 }
 
 /**
@@ -62,11 +62,11 @@ export async function registerUser(username, email, password) {
  * @returns {Promise<Object>} Session data with sessionToken
  */
 export async function loginUser(username, password) {
-    const response = await apiRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ username, password })
-    });
-    return response; // {success: true, userId: X, sessionToken: "...", sessionId: Y, expiresAt: "..."}
+  const response = await apiRequest("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+  return response; // {success: true, userId: X, sessionToken: "...", sessionId: Y, expiresAt: "..."}
 }
 
 /**
@@ -75,11 +75,11 @@ export async function loginUser(username, password) {
  * @returns {Promise<Object>} Success confirmation
  */
 export async function logoutUser(sessionToken) {
-    const response = await apiRequest('/auth/logout', {
-        method: 'POST',
-        body: JSON.stringify({ sessionToken })
-    });
-    return response; // {success: true, message: "Logged out successfully"}
+  const response = await apiRequest("/auth/logout", {
+    method: "POST",
+    body: JSON.stringify({ sessionToken }),
+  });
+  return response; // {success: true, message: "Logged out successfully"}
 }
 
 /**
@@ -88,8 +88,8 @@ export async function logoutUser(sessionToken) {
  * @returns {Promise<Object>} User stats data
  */
 export async function getUserStats(userId) {
-    const response = await apiRequest(`/users/${userId}/stats`);
-    return response.data; // Extract data from {success: true, data: {...}}
+  const response = await apiRequest(`/users/${userId}/stats`);
+  return response.data; // Extract data from {success: true, data: {...}}
 }
 
 /**
@@ -98,8 +98,8 @@ export async function getUserStats(userId) {
  * @returns {Promise<Object>} Complete player stats data
  */
 export async function getCompletePlayerStats(userId) {
-    const response = await apiRequest(`/users/${userId}/complete-stats`);
-    return response.data; // Extract data from {success: true, data: {...}}
+  const response = await apiRequest(`/users/${userId}/complete-stats`);
+  return response.data; // Extract data from {success: true, data: {...}}
 }
 
 /**
@@ -108,8 +108,8 @@ export async function getCompletePlayerStats(userId) {
  * @returns {Promise<Object>} Current run stats data
  */
 export async function getCurrentRunStats(userId) {
-    const response = await apiRequest(`/users/${userId}/current-run`);
-    return response.data; // Extract data from {success: true, data: {...}}
+  const response = await apiRequest(`/users/${userId}/current-run`);
+  return response.data; // Extract data from {success: true, data: {...}}
 }
 
 /**
@@ -118,8 +118,8 @@ export async function getCurrentRunStats(userId) {
  * @returns {Promise<Object>} Player settings data
  */
 export async function getPlayerSettings(userId) {
-    const response = await apiRequest(`/users/${userId}/settings`);
-    return response.data; // Extract data from {success: true, data: {...}}
+  const response = await apiRequest(`/users/${userId}/settings`);
+  return response.data; // Extract data from {success: true, data: {...}}
 }
 
 /**
@@ -133,11 +133,11 @@ export async function getPlayerSettings(userId) {
  * @returns {Promise<Object>} Update confirmation
  */
 export async function updatePlayerSettings(userId, settingsData) {
-    const response = await apiRequest(`/users/${userId}/settings`, {
-        method: 'PUT',
-        body: JSON.stringify(settingsData)
-    });
-    return response; // {success: true, message: "Settings updated successfully"}
+  const response = await apiRequest(`/users/${userId}/settings`, {
+    method: "PUT",
+    body: JSON.stringify(settingsData),
+  });
+  return response; // {success: true, message: "Settings updated successfully"}
 }
 
 /**
@@ -146,11 +146,11 @@ export async function updatePlayerSettings(userId, settingsData) {
  * @returns {Promise<Object>} Run data with runId
  */
 export async function createRun(userId) {
-    const response = await apiRequest('/runs', {
-        method: 'POST',
-        body: JSON.stringify({ userId })
-    });
-    return response; // {success: true, runId: X, message: "Run created successfully"}
+  const response = await apiRequest("/runs", {
+    method: "POST",
+    body: JSON.stringify({ userId }),
+  });
+  return response; // {success: true, runId: X, message: "Run created successfully"}
 }
 
 /**
@@ -166,11 +166,11 @@ export async function createRun(userId) {
  * @returns {Promise<Object>} Completion confirmation
  */
 export async function completeRun(runId, completionData) {
-    const response = await apiRequest(`/runs/${runId}/complete`, {
-        method: 'PUT',
-        body: JSON.stringify(completionData)
-    });
-    return response; // {success: true, message: "Run completed successfully"}
+  const response = await apiRequest(`/runs/${runId}/complete`, {
+    method: "PUT",
+    body: JSON.stringify(completionData),
+  });
+  return response; // {success: true, message: "Run completed successfully"}
 }
 
 /**
@@ -184,11 +184,11 @@ export async function completeRun(runId, completionData) {
  * @returns {Promise<Object>} Kill registration confirmation
  */
 export async function registerEnemyKill(runId, killData) {
-    const response = await apiRequest(`/runs/${runId}/enemy-kill`, {
-        method: 'POST',
-        body: JSON.stringify(killData)
-    });
-    return response; // {success: true, message: "Enemy kill registered"}
+  const response = await apiRequest(`/runs/${runId}/enemy-kill`, {
+    method: "POST",
+    body: JSON.stringify(killData),
+  });
+  return response; // {success: true, message: "Enemy kill registered"}
 }
 
 /**
@@ -203,11 +203,11 @@ export async function registerEnemyKill(runId, killData) {
  * @returns {Promise<Object>} Boss kill registration confirmation
  */
 export async function registerBossKill(runId, killData) {
-    const response = await apiRequest(`/runs/${runId}/boss-kill`, {
-        method: 'POST',
-        body: JSON.stringify(killData)
-    });
-    return response; // {success: true, message: "Boss kill registered"}
+  const response = await apiRequest(`/runs/${runId}/boss-kill`, {
+    method: "POST",
+    body: JSON.stringify(killData),
+  });
+  return response; // {success: true, message: "Boss kill registered"}
 }
 
 /**
@@ -221,11 +221,11 @@ export async function registerBossKill(runId, killData) {
  * @returns {Promise<Object>} Purchase registration confirmation
  */
 export async function registerWeaponPurchase(runId, purchaseData) {
-    const response = await apiRequest(`/runs/${runId}/weapon-purchase`, {
-        method: 'POST',
-        body: JSON.stringify(purchaseData)
-    });
-    return response; // {success: true, message: "Weapon purchase registered"}
+  const response = await apiRequest(`/runs/${runId}/weapon-purchase`, {
+    method: "POST",
+    body: JSON.stringify(purchaseData),
+  });
+  return response; // {success: true, message: "Weapon purchase registered"}
 }
 
 /**
@@ -234,8 +234,8 @@ export async function registerWeaponPurchase(runId, purchaseData) {
  * @returns {Promise<Array>} Array of permanent upgrades
  */
 export async function getPermanentUpgrades(userId) {
-    const response = await apiRequest(`/users/${userId}/permanent-upgrades`);
-    return response.data; // Extract data from {success: true, data: [...]}
+  const response = await apiRequest(`/users/${userId}/permanent-upgrades`);
+  return response.data; // Extract data from {success: true, data: [...]}
 }
 
 /**
@@ -245,11 +245,11 @@ export async function getPermanentUpgrades(userId) {
  * @returns {Promise<Object>} Application confirmation
  */
 export async function applyPermanentUpgrade(userId, upgradeType) {
-    const response = await apiRequest(`/users/${userId}/permanent-upgrade`, {
-        method: 'POST',
-        body: JSON.stringify({ upgradeType })
-    });
-    return response; // {success: true, message: "Permanent upgrade applied successfully"}
+  const response = await apiRequest(`/users/${userId}/permanent-upgrade`, {
+    method: "POST",
+    body: JSON.stringify({ upgradeType }),
+  });
+  return response; // {success: true, message: "Permanent upgrade applied successfully"}
 }
 
 /**
@@ -259,8 +259,10 @@ export async function applyPermanentUpgrade(userId, upgradeType) {
  * @returns {Promise<Object>} Weapon upgrade levels
  */
 export async function getWeaponUpgrades(userId, runId) {
-    const response = await apiRequest(`/users/${userId}/weapon-upgrades/${runId}`);
-    return response.data; // Extract data from {success: true, data: {close_combat: X, distance_combat: Y}}
+  const response = await apiRequest(
+    `/users/${userId}/weapon-upgrades/${runId}`
+  );
+  return response.data; // Extract data from {success: true, data: {close_combat: X, distance_combat: Y}}
 }
 
 /**
@@ -271,12 +273,20 @@ export async function getWeaponUpgrades(userId, runId) {
  * @param {number} rangedLevel - Ranged weapon level
  * @returns {Promise<Object>} Update confirmation
  */
-export async function updateWeaponUpgrades(userId, runId, meleeLevel, rangedLevel) {
-    const response = await apiRequest(`/users/${userId}/weapon-upgrades/${runId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ meleeLevel, rangedLevel })
-    });
-    return response; // {success: true, message: "Weapon upgrades updated successfully"}
+export async function updateWeaponUpgrades(
+  userId,
+  runId,
+  meleeLevel,
+  rangedLevel
+) {
+  const response = await apiRequest(
+    `/users/${userId}/weapon-upgrades/${runId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ meleeLevel, rangedLevel }),
+    }
+  );
+  return response; // {success: true, message: "Weapon upgrades updated successfully"}
 }
 
 /**
@@ -286,10 +296,13 @@ export async function updateWeaponUpgrades(userId, runId, meleeLevel, rangedLeve
  * @returns {Promise<Object>} Reset confirmation
  */
 export async function resetWeaponUpgrades(userId, runId) {
-    const response = await apiRequest(`/users/${userId}/weapon-upgrades/${runId}`, {
-        method: 'DELETE'
-    });
-    return response; // {success: true, message: "Weapon upgrades reset successfully"}
+  const response = await apiRequest(
+    `/users/${userId}/weapon-upgrades/${runId}`,
+    {
+      method: "DELETE",
+    }
+  );
+  return response; // {success: true, message: "Weapon upgrades reset successfully"}
 }
 
 /**
@@ -298,8 +311,8 @@ export async function resetWeaponUpgrades(userId, runId) {
  * @returns {Promise<Object|null>} Save state data or null
  */
 export async function getSaveState(userId) {
-    const response = await apiRequest(`/users/${userId}/save-state`);
-    return response.data; // Extract data from {success: true, data: {...}} or null
+  const response = await apiRequest(`/users/${userId}/save-state`);
+  return response.data; // Extract data from {success: true, data: {...}} or null
 }
 
 /**
@@ -315,10 +328,10 @@ export async function getSaveState(userId) {
  * @returns {Promise<Object>} Save operation result
  */
 export async function saveGameState(userId, saveData) {
-    return apiRequest(`/users/${userId}/save-state`, {
-        method: 'POST',
-        body: JSON.stringify(saveData)
-    });
+  return apiRequest(`/users/${userId}/save-state`, {
+    method: "POST",
+    body: JSON.stringify(saveData),
+  });
 }
 
 /**
@@ -327,10 +340,10 @@ export async function saveGameState(userId, saveData) {
  * @returns {Promise<Object>} Clear confirmation
  */
 export async function clearSaveState(userId) {
-    const response = await apiRequest(`/users/${userId}/save-state`, {
-        method: 'DELETE'
-    });
-    return response; // {success: true, message: "Save state cleared successfully"}
+  const response = await apiRequest(`/users/${userId}/save-state`, {
+    method: "DELETE",
+  });
+  return response; // {success: true, message: "Save state cleared successfully"}
 }
 
 /**
@@ -339,8 +352,8 @@ export async function clearSaveState(userId) {
  * @returns {Promise<Array>} Leaderboard data
  */
 export async function getLeaderboard(type) {
-    const response = await apiRequest(`/leaderboards/${type}`);
-    return response.data; // Extract data from {success: true, data: [...]}
+  const response = await apiRequest(`/leaderboards/${type}`);
+  return response.data; // Extract data from {success: true, data: [...]}
 }
 
 /**
@@ -348,8 +361,8 @@ export async function getLeaderboard(type) {
  * @returns {Promise<Array>} Economy statistics
  */
 export async function getEconomyAnalytics() {
-    const response = await apiRequest('/analytics/economy');
-    return response.data; // Extract data from {success: true, data: [...]}
+  const response = await apiRequest("/analytics/economy");
+  return response.data; // Extract data from {success: true, data: [...]}
 }
 
 /**
@@ -357,8 +370,8 @@ export async function getEconomyAnalytics() {
  * @returns {Promise<Array>} Player progression data
  */
 export async function getPlayerProgression() {
-    const response = await apiRequest('/analytics/player-progression');
-    return response.data; // Extract data from {success: true, data: [...]}
+  const response = await apiRequest("/analytics/player-progression");
+  return response.data; // Extract data from {success: true, data: [...]}
 }
 
 /**
@@ -366,8 +379,8 @@ export async function getPlayerProgression() {
  * @returns {Promise<Array>} Active players data
  */
 export async function getActivePlayers() {
-    const response = await apiRequest('/status/active-players');
-    return response.data; // Extract data from {success: true, data: [...]}
+  const response = await apiRequest("/status/active-players");
+  return response.data; // Extract data from {success: true, data: [...]}
 }
 
 /**
@@ -375,8 +388,8 @@ export async function getActivePlayers() {
  * @returns {Promise<Array>} Current games data
  */
 export async function getCurrentGames() {
-    const response = await apiRequest('/status/current-games');
-    return response.data; // Extract data from {success: true, data: [...]}
+  const response = await apiRequest("/status/current-games");
+  return response.data; // Extract data from {success: true, data: [...]}
 }
 
 // ===================================================
@@ -389,8 +402,8 @@ export async function getCurrentGames() {
  * @returns {Promise<Object>} Run progress data with current run number and achievements
  */
 export async function getUserRunProgress(userId) {
-    const response = await apiRequest(`/users/${userId}/run-progress`);
-    return response.data; // Extract data from {success: true, data: {current_run: X, best_floor: Y, finished_runs: Z}}
+  const response = await apiRequest(`/users/${userId}/run-progress`);
+  return response.data; // Extract data from {success: true, data: {current_run: X, best_floor: Y, finished_runs: Z}}
 }
 
 /**
@@ -399,8 +412,8 @@ export async function getUserRunProgress(userId) {
  * @returns {Promise<Object>} Current run information with status and stats
  */
 export async function getCurrentRunInfo(userId) {
-    const response = await apiRequest(`/users/${userId}/current-run-info`);
-    return response.data; // Extract data from {success: true, data: {run_number: X, run_status: 'active'/'none', ...}}
+  const response = await apiRequest(`/users/${userId}/current-run-info`);
+  return response.data; // Extract data from {success: true, data: {run_number: X, run_status: 'active'/'none', ...}}
 }
 
 /**
@@ -409,8 +422,8 @@ export async function getCurrentRunInfo(userId) {
  * @returns {Promise<Object>} Complete initialization data including run number, permanent upgrades, weapon levels, save state, etc.
  */
 export async function getPlayerInitializationData(userId) {
-    const response = await apiRequest(`/users/${userId}/initialization-data`);
-    return response.data; // Extract data with run_number, permanent_upgrades_parsed, melee_level, ranged_level, has_save_state, etc.
+  const response = await apiRequest(`/users/${userId}/initialization-data`);
+  return response.data; // Extract data with run_number, permanent_upgrades_parsed, melee_level, ranged_level, has_save_state, etc.
 }
 
 /**
@@ -419,8 +432,8 @@ export async function getPlayerInitializationData(userId) {
  * @returns {Promise<Object>} Active weapon upgrade levels
  */
 export async function getActiveWeaponUpgrades(userId) {
-    const response = await apiRequest(`/users/${userId}/active-weapon-upgrades`);
-    return response.data; // Extract data from {success: true, data: {close_combat: X, distance_combat: Y, upgrade_status: true/false}}
+  const response = await apiRequest(`/users/${userId}/active-weapon-upgrades`);
+  return response.data; // Extract data from {success: true, data: {close_combat: X, distance_combat: Y, upgrade_status: true/false}}
 }
 
 // ===================================================
@@ -446,25 +459,25 @@ export async function getActiveWeaponUpgrades(userId) {
  * @returns {Promise<Object>} Complete player initialization data
  */
 export async function initializePlayerData(userId) {
-    try {
-        // Use the new one-query initialization endpoint
-        const initData = await getPlayerInitializationData(userId);
-        
-        console.log('Player initialization v3.0 data loaded successfully:', {
-            runNumber: initData.run_number,
-            hasActivePermanentUpgrades: initData.has_permanent_upgrades,
-            hasActiveWeaponUpgrades: initData.has_temp_upgrades,
-            hasSaveState: initData.has_save_state,
-            permanentUpgrades: Object.keys(initData.permanent_upgrades_parsed || {}).length
-        });
-        
-        // Return data directly (no wrapper) for easy access in Game.js
-        return initData;
-        
-    } catch (error) {
-        console.error('Failed to initialize player data v3.0:', error);
-        return null; // Return null on failure for easy checking
-    }
+  try {
+    // Use the new one-query initialization endpoint
+    const initData = await getPlayerInitializationData(userId);
+
+    console.log("Player initialization v3.0 data loaded successfully:", {
+      runNumber: initData.run_number,
+      hasActivePermanentUpgrades: initData.has_permanent_upgrades,
+      hasActiveWeaponUpgrades: initData.has_temp_upgrades,
+      hasSaveState: initData.has_save_state,
+      permanentUpgrades: Object.keys(initData.permanent_upgrades_parsed || {})
+        .length,
+    });
+
+    // Return data directly (no wrapper) for easy access in Game.js
+    return initData;
+  } catch (error) {
+    console.error("Failed to initialize player data v3.0:", error);
+    return null; // Return null on failure for easy checking
+  }
 }
 
 /**
@@ -473,13 +486,13 @@ export async function initializePlayerData(userId) {
  * @returns {Promise<boolean>} True if user has active temporary upgrades
  */
 export async function hasActiveTemporaryUpgrades(userId) {
-    try {
-        const upgrades = await getActiveWeaponUpgrades(userId);
-        return upgrades.upgrade_status === true;
-    } catch (error) {
-        console.error('Failed to check active temporary upgrades:', error);
-        return false;
-    }
+  try {
+    const upgrades = await getActiveWeaponUpgrades(userId);
+    return upgrades.upgrade_status === true;
+  } catch (error) {
+    console.error("Failed to check active temporary upgrades:", error);
+    return false;
+  }
 }
 
 /**
@@ -488,34 +501,34 @@ export async function hasActiveTemporaryUpgrades(userId) {
  * CRITICAL: Must be called on ALL logout scenarios to prevent data contamination
  */
 export function clearSessionLocalStorage() {
-    console.log('Clearing all session localStorage data...');
-    
-    // Complete list of all session-related keys
-    const sessionKeys = [
-        'sessionToken',
-        'currentUserId', 
-        'currentSessionId',
-        'currentRunId',
-        'testMode',
-        'runCreationFailed',
-        'username',
-        'userRole',
-        'weaponUpgradeManagerState',
-        'saveStateManagerState',
-        'lastAutoSave',
-        'gameSettings',
-        'debugFlags'
-    ];
-    
-    // Clear each key
-    sessionKeys.forEach(key => {
-        if (localStorage.getItem(key) !== null) {
-            localStorage.removeItem(key);
-            console.log(`  Cleared: ${key}`);
-        }
-    });
-    
-    console.log('All session localStorage cleared');
+  console.log("Clearing all session localStorage data...");
+
+  // Complete list of all session-related keys
+  const sessionKeys = [
+    "sessionToken",
+    "currentUserId",
+    "currentSessionId",
+    "currentRunId",
+    "testMode",
+    "runCreationFailed",
+    "username",
+    "userRole",
+    "weaponUpgradeManagerState",
+    "saveStateManagerState",
+    "lastAutoSave",
+    "gameSettings",
+    "debugFlags",
+  ];
+
+  // Clear each key
+  sessionKeys.forEach((key) => {
+    if (localStorage.getItem(key) !== null) {
+      localStorage.removeItem(key);
+      console.log(`  Cleared: ${key}`);
+    }
+  });
+
+  console.log("All session localStorage cleared");
 }
 
 /**
@@ -524,38 +537,40 @@ export function clearSessionLocalStorage() {
  * @returns {Promise<boolean>} Success status
  */
 export async function enhancedLogout(sessionToken = null) {
-    try {
-        console.log('Starting enhanced logout process...');
-        
-        // Get session token if not provided
-        if (!sessionToken) {
-            sessionToken = localStorage.getItem('sessionToken');
-        }
-        
-        // Call backend logout if we have a token
-        if (sessionToken) {
-            try {
-                await logoutUser(sessionToken);
-                console.log('Backend logout successful');
-            } catch (error) {
-                console.warn('Backend logout failed, but continuing with cleanup:', error);
-            }
-        }
-        
-        // CRITICAL: Always clear localStorage regardless of backend success
-        clearSessionLocalStorage();
-        
-        console.log('Enhanced logout completed successfully');
-        return true;
-        
-    } catch (error) {
-        console.error('Enhanced logout error:', error);
-        
-        // Emergency cleanup even on error
-        clearSessionLocalStorage();
-        
-        return false;
+  try {
+    console.log("Starting enhanced logout process...");
+
+    // Get session token if not provided
+    if (!sessionToken) {
+      sessionToken = localStorage.getItem("sessionToken");
     }
+
+    // Call backend logout if we have a token
+    if (sessionToken) {
+      try {
+        await logoutUser(sessionToken);
+        console.log("Backend logout successful");
+      } catch (error) {
+        console.warn(
+          "Backend logout failed, but continuing with cleanup:",
+          error
+        );
+      }
+    }
+
+    // CRITICAL: Always clear localStorage regardless of backend success
+    clearSessionLocalStorage();
+
+    console.log("Enhanced logout completed successfully");
+    return true;
+  } catch (error) {
+    console.error("Enhanced logout error:", error);
+
+    // Emergency cleanup even on error
+    clearSessionLocalStorage();
+
+    return false;
+  }
 }
 
 // ===================================================
@@ -569,11 +584,11 @@ export async function enhancedLogout(sessionToken = null) {
  * @returns {Promise<Object>} Admin session data
  */
 export async function adminLogin(username, password) {
-    const response = await apiRequest('/admin/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ username, password })
-    });
-    return response;
+  const response = await apiRequest("/admin/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+  return response;
 }
 
 /**
@@ -582,13 +597,13 @@ export async function adminLogin(username, password) {
  * @returns {Promise<Object>} Logout confirmation
  */
 export async function adminLogout(sessionToken) {
-    const response = await apiRequest('/admin/auth/logout', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response;
+  const response = await apiRequest("/admin/auth/logout", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response;
 }
 
 /**
@@ -597,13 +612,13 @@ export async function adminLogout(sessionToken) {
  * @returns {Promise<Object>} Verification result
  */
 export async function verifyAdminSession(sessionToken) {
-    const response = await apiRequest('/admin/auth/verify', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response;
+  const response = await apiRequest("/admin/auth/verify", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response;
 }
 
 /**
@@ -612,13 +627,13 @@ export async function verifyAdminSession(sessionToken) {
  * @returns {Promise<Array>} Playtime leaderboard data
  */
 export async function getAdminPlaytimeLeaderboard(sessionToken) {
-    const response = await apiRequest('/admin/leaderboards/playtime', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest("/admin/leaderboards/playtime", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response.data;
 }
 
 /**
@@ -627,13 +642,13 @@ export async function getAdminPlaytimeLeaderboard(sessionToken) {
  * @returns {Promise<Array>} Player progression data
  */
 export async function getAdminPlayerProgression(sessionToken) {
-    const response = await apiRequest('/admin/analytics/player-progression', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest("/admin/analytics/player-progression", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response.data;
 }
 
 /**
@@ -642,13 +657,13 @@ export async function getAdminPlayerProgression(sessionToken) {
  * @returns {Promise<Array>} First run masters data
  */
 export async function getAdminFirstRunMasters(sessionToken) {
-    const response = await apiRequest('/admin/analytics/first-run-masters', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest("/admin/analytics/first-run-masters", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response.data;
 }
 
 /**
@@ -657,13 +672,16 @@ export async function getAdminFirstRunMasters(sessionToken) {
  * @returns {Promise<Array>} Permanent upgrades adoption data
  */
 export async function getAdminUpgradeAdoption(sessionToken) {
-    const response = await apiRequest('/admin/analytics/permanent-upgrades-adoption', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest(
+    "/admin/analytics/permanent-upgrades-adoption",
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+    }
+  );
+  return response.data;
 }
 
 /**
@@ -672,13 +690,13 @@ export async function getAdminUpgradeAdoption(sessionToken) {
  * @returns {Promise<Array>} Active players data
  */
 export async function getAdminActivePlayers(sessionToken) {
-    const response = await apiRequest('/admin/status/active-players', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest("/admin/status/active-players", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response.data;
 }
 
 /**
@@ -687,13 +705,13 @@ export async function getAdminActivePlayers(sessionToken) {
  * @returns {Promise<Array>} Current games data
  */
 export async function getAdminCurrentGames(sessionToken) {
-    const response = await apiRequest('/admin/status/current-games', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest("/admin/status/current-games", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response.data;
 }
 
 // ===================================================
@@ -706,13 +724,13 @@ export async function getAdminCurrentGames(sessionToken) {
  * @returns {Promise<Object>} Activity trends chart data
  */
 export async function getAdminActivityTrends(sessionToken) {
-    const response = await apiRequest('/admin/charts/activity-trends', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest("/admin/charts/activity-trends", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response.data;
 }
 
 /**
@@ -721,13 +739,13 @@ export async function getAdminActivityTrends(sessionToken) {
  * @returns {Promise<Array>} Playtime distribution data
  */
 export async function getAdminPlaytimeDistribution(sessionToken) {
-    const response = await apiRequest('/admin/charts/playtime-distribution', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest("/admin/charts/playtime-distribution", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response.data;
 }
 
 /**
@@ -736,13 +754,13 @@ export async function getAdminPlaytimeDistribution(sessionToken) {
  * @returns {Promise<Array>} Run experience distribution data
  */
 export async function getAdminRunExperience(sessionToken) {
-    const response = await apiRequest('/admin/charts/run-experience', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest("/admin/charts/run-experience", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response.data;
 }
 
 /**
@@ -751,13 +769,13 @@ export async function getAdminRunExperience(sessionToken) {
  * @returns {Promise<Array>} Session duration distribution data
  */
 export async function getAdminSessionDuration(sessionToken) {
-    const response = await apiRequest('/admin/charts/session-duration', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest("/admin/charts/session-duration", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response.data;
 }
 
 /**
@@ -766,13 +784,13 @@ export async function getAdminSessionDuration(sessionToken) {
  * @returns {Promise<Object>} Upgrade adoption chart data
  */
 export async function getAdminUpgradeAdoptionChart(sessionToken) {
-    const response = await apiRequest('/admin/charts/upgrade-adoption', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`
-        }
-    });
-    return response.data;
+  const response = await apiRequest("/admin/charts/upgrade-adoption", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+  return response.data;
 }
 
 // ===================================================
@@ -787,13 +805,13 @@ export async function getAdminUpgradeAdoptionChart(sessionToken) {
  * @returns {Promise<Object>} API response
  */
 export async function adminApiRequest(endpoint, sessionToken, options = {}) {
-    return await apiRequest(`/admin${endpoint}`, {
-        ...options,
-        headers: {
-            'Authorization': `Bearer ${sessionToken}`,
-            ...options.headers
-        }
-    });
+  return await apiRequest(`/admin${endpoint}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+      ...options.headers,
+    },
+  });
 }
 
 /**
@@ -801,32 +819,28 @@ export async function adminApiRequest(endpoint, sessionToken, options = {}) {
  * @returns {boolean} True if current user is admin
  */
 export function isAdmin() {
-    const userRole = localStorage.getItem('userRole');
-    const sessionToken = localStorage.getItem('adminSessionToken');
-    
-    return userRole === 'admin' && !!sessionToken;
+  const userRole = localStorage.getItem("userRole");
+  const sessionToken = localStorage.getItem("adminSessionToken");
+
+  return userRole === "admin" && !!sessionToken;
 }
 
 /**
  * Clear admin session data
  */
 export function clearAdminSession() {
-    console.log('🔐 Clearing admin session data...');
-    
-    const adminKeys = [
-        'adminSessionToken',
-        'userRole',
-        'adminUser'
-    ];
-    
-    adminKeys.forEach(key => {
-        if (localStorage.getItem(key) !== null) {
-            localStorage.removeItem(key);
-            console.log(`  Cleared admin key: ${key}`);
-        }
-    });
-    
-    console.log('✅ Admin session cleared');
+  console.log("🔐 Clearing admin session data...");
+
+  const adminKeys = ["adminSessionToken", "userRole", "adminUser"];
+
+  adminKeys.forEach((key) => {
+    if (localStorage.getItem(key) !== null) {
+      localStorage.removeItem(key);
+      console.log(`  Cleared admin key: ${key}`);
+    }
+  });
+
+  console.log("✅ Admin session cleared");
 }
 
 /**
@@ -834,33 +848,35 @@ export function clearAdminSession() {
  * @returns {Promise<boolean>} Success status
  */
 export async function enhancedAdminLogout() {
-    try {
-        console.log('🚪 Starting enhanced admin logout...');
-        
-        const sessionToken = localStorage.getItem('adminSessionToken');
-        
-        // Call backend admin logout if we have a token
-        if (sessionToken) {
-            try {
-                await adminLogout(sessionToken);
-                console.log('✅ Admin backend logout successful');
-            } catch (error) {
-                console.warn('⚠️ Admin backend logout failed, but continuing with cleanup:', error);
-            }
-        }
-        
-        // Clear admin session data
-        clearAdminSession();
-        
-        console.log('✅ Enhanced admin logout completed successfully');
-        return true;
-        
-    } catch (error) {
-        console.error('❌ Enhanced admin logout error:', error);
-        
-        // Emergency cleanup even on error
-        clearAdminSession();
-        
-        return false;
+  try {
+    console.log("🚪 Starting enhanced admin logout...");
+
+    const sessionToken = localStorage.getItem("adminSessionToken");
+
+    // Call backend admin logout if we have a token
+    if (sessionToken) {
+      try {
+        await adminLogout(sessionToken);
+        console.log("✅ Admin backend logout successful");
+      } catch (error) {
+        console.warn(
+          "⚠️ Admin backend logout failed, but continuing with cleanup:",
+          error
+        );
+      }
     }
-} 
+
+    // Clear admin session data
+    clearAdminSession();
+
+    console.log("✅ Enhanced admin logout completed successfully");
+    return true;
+  } catch (error) {
+    console.error("❌ Enhanced admin logout error:", error);
+
+    // Emergency cleanup even on error
+    clearAdminSession();
+
+    return false;
+  }
+}

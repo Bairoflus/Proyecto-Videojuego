@@ -6,7 +6,7 @@
 // Version: 3.1 - Performance Optimized
 // ===================================================
 
-import { saveGameState, getSaveState, clearSaveState } from './api.js';
+import { saveGameState, getSaveState, clearSaveState } from "./api.js";
 
 export class SaveStateManager {
   constructor() {
@@ -15,21 +15,21 @@ export class SaveStateManager {
     this.baseAutoSaveFrequency = 30000; // 30 seconds default
     this.adaptiveFrequency = 30000;
     this.lastSaveTime = 0;
-    this.gameActivity = 'normal';
+    this.gameActivity = "normal";
     this.savePerformanceMetrics = {
       averageSaveTime: 0,
       saveCount: 0,
-      failedSaves: 0
+      failedSaves: 0,
     };
-    
+
     // Performance optimization: Debounce rapid saves
     this.saveDebounceTimeout = null;
     this.pendingSaveState = null;
-    
+
     // Memory leak prevention
     this.eventListeners = new Set();
     this.cleanupTasks = new Set();
-    
+
     // Setup automatic cleanup on page unload
     this.setupCleanupListeners();
   }
@@ -49,11 +49,15 @@ export class SaveStateManager {
       }
     };
 
-    window.addEventListener('beforeunload', beforeUnloadHandler);
-    document.addEventListener('visibilitychange', visibilityChangeHandler);
-    
-    this.eventListeners.add(() => window.removeEventListener('beforeunload', beforeUnloadHandler));
-    this.eventListeners.add(() => document.removeEventListener('visibilitychange', visibilityChangeHandler));
+    window.addEventListener("beforeunload", beforeUnloadHandler);
+    document.addEventListener("visibilitychange", visibilityChangeHandler);
+
+    this.eventListeners.add(() =>
+      window.removeEventListener("beforeunload", beforeUnloadHandler)
+    );
+    this.eventListeners.add(() =>
+      document.removeEventListener("visibilitychange", visibilityChangeHandler)
+    );
   }
 
   /**
@@ -70,25 +74,25 @@ export class SaveStateManager {
    * Cleanup all resources to prevent memory leaks
    */
   cleanup() {
-    console.log('Cleaning up SaveStateManager resources...');
-    
+    console.log("Cleaning up SaveStateManager resources...");
+
     // Stop auto-save
     this.stopAutoSave();
-    
+
     // Clear debounce timeout
     if (this.saveDebounceTimeout) {
       clearTimeout(this.saveDebounceTimeout);
       this.saveDebounceTimeout = null;
     }
-    
+
     // Remove all event listeners
-    this.eventListeners.forEach(cleanup => cleanup());
+    this.eventListeners.forEach((cleanup) => cleanup());
     this.eventListeners.clear();
-    
+
     // Execute cleanup tasks
-    this.cleanupTasks.forEach(task => task());
+    this.cleanupTasks.forEach((task) => task());
     this.cleanupTasks.clear();
-    
+
     // Clear references
     this.currentSaveState = null;
     this.pendingSaveState = null;
@@ -104,22 +108,22 @@ export class SaveStateManager {
    */
   calculateOptimalFrequency(gameState) {
     const baseFreq = this.baseAutoSaveFrequency / 1000; // Convert to seconds
-    
+
     // High-priority situations (more frequent saves)
     if (gameState.inCombat || gameState.inBossRoom) {
       return Math.max(15, baseFreq / 2) * 1000;
     }
-    
+
     // Medium-priority situations
     if (gameState.playerHealthLow || gameState.hasValuableItems) {
       return Math.max(20, baseFreq * 0.75) * 1000;
     }
-    
+
     // Low-priority situations (less frequent saves)
     if (gameState.inMenu || gameState.inShop || gameState.inBackground) {
       return Math.min(60, baseFreq * 2) * 1000;
     }
-    
+
     // Default frequency
     return this.baseAutoSaveFrequency;
   }
@@ -130,16 +134,19 @@ export class SaveStateManager {
    */
   setAdaptiveFrequency(gameContext) {
     const newFrequency = this.calculateOptimalFrequency(gameContext);
-    
+
     if (newFrequency !== this.adaptiveFrequency) {
       this.adaptiveFrequency = newFrequency;
-      
+
       // Restart auto-save with new frequency if active
       if (this.autoSaveInterval) {
         this.restartAutoSaveWithNewFrequency();
       }
-      
-      console.log(`Auto-save frequency adapted to ${newFrequency / 1000}s for context:`, gameContext);
+
+      console.log(
+        `Auto-save frequency adapted to ${newFrequency / 1000}s for context:`,
+        gameContext
+      );
     }
   }
 
@@ -165,7 +172,7 @@ export class SaveStateManager {
    */
   async saveCurrentState(gameState, isLogout = false, force = false) {
     const startTime = performance.now();
-    
+
     try {
       // Performance optimization: Debounce rapid saves unless forced or logout
       if (!force && !isLogout) {
@@ -174,19 +181,20 @@ export class SaveStateManager {
 
       // Validate game state
       if (!this.validateGameState(gameState)) {
-        console.warn('Invalid game state, skipping save');
+        console.warn("Invalid game state, skipping save");
         return false;
       }
 
-      const { userId, sessionId, runId, floorId, roomId, currentHp, gold } = gameState;
-      
+      const { userId, sessionId, runId, floorId, roomId, currentHp, gold } =
+        gameState;
+
       const response = await saveGameState(userId, {
         sessionId,
         runId,
         floorId: floorId || this.calculateFloorFromRoom(roomId),
         roomId,
         currentHp,
-        gold
+        gold,
       });
 
       const endTime = performance.now();
@@ -194,28 +202,38 @@ export class SaveStateManager {
       this.updatePerformanceMetrics(saveTime, response.success);
 
       if (response.success) {
-        this.currentSaveState = { ...gameState, savedAt: new Date().toISOString() };
+        this.currentSaveState = {
+          ...gameState,
+          savedAt: new Date().toISOString(),
+        };
         this.lastSaveTime = Date.now();
-        
+
         // Log the save with timing info
         if (isLogout || force) {
-          console.log(`💾 Game state saved successfully ${isLogout ? '(logout)' : '(forced)'} in ${saveTime.toFixed(2)}ms`);
+          console.log(
+            `💾 Game state saved successfully ${
+              isLogout ? "(logout)" : "(forced)"
+            } in ${saveTime.toFixed(2)}ms`
+          );
         } else {
           // Reduced logging for auto-saves - only show timing for slow saves
-          if (saveTime > 50) { // Only log if save took more than 50ms
-            console.log(`⚠️ Slow auto-save completed in ${saveTime.toFixed(2)}ms`);
+          if (saveTime > 50) {
+            // Only log if save took more than 50ms
+            console.log(
+              `⚠️ Slow auto-save completed in ${saveTime.toFixed(2)}ms`
+            );
           }
         }
         return true;
       } else {
         this.updatePerformanceMetrics(saveTime, false);
-        console.error('Failed to save game state:', response.message);
+        console.error("Failed to save game state:", response.message);
         return false;
       }
     } catch (error) {
       const saveTime = performance.now() - startTime;
       this.updatePerformanceMetrics(saveTime, false);
-      console.error('Error saving game state:', error);
+      console.error("Error saving game state:", error);
       return false;
     }
   }
@@ -226,15 +244,19 @@ export class SaveStateManager {
    */
   async debouncedSave(gameState) {
     this.pendingSaveState = gameState;
-    
+
     if (this.saveDebounceTimeout) {
       clearTimeout(this.saveDebounceTimeout);
     }
-    
+
     return new Promise((resolve) => {
       this.saveDebounceTimeout = setTimeout(async () => {
         if (this.pendingSaveState) {
-          const result = await this.saveCurrentState(this.pendingSaveState, false, true);
+          const result = await this.saveCurrentState(
+            this.pendingSaveState,
+            false,
+            true
+          );
           this.pendingSaveState = null;
           resolve(result);
         }
@@ -247,30 +269,39 @@ export class SaveStateManager {
    * @param {Object} gameState - Game state to validate
    */
   validateGameState(gameState) {
-    const required = ['userId', 'sessionId', 'runId', 'roomId', 'currentHp', 'gold'];
-    const missing = required.filter(field => gameState[field] === undefined || gameState[field] === null);
-    
+    const required = [
+      "userId",
+      "sessionId",
+      "runId",
+      "roomId",
+      "currentHp",
+      "gold",
+    ];
+    const missing = required.filter(
+      (field) => gameState[field] === undefined || gameState[field] === null
+    );
+
     if (missing.length > 0) {
-      console.error('Missing required fields for save state:', missing);
+      console.error("Missing required fields for save state:", missing);
       return false;
     }
-    
+
     // Validate data types and ranges
-    if (typeof gameState.currentHp !== 'number' || gameState.currentHp < 0) {
-      console.error('Invalid currentHp value:', gameState.currentHp);
+    if (typeof gameState.currentHp !== "number" || gameState.currentHp < 0) {
+      console.error("Invalid currentHp value:", gameState.currentHp);
       return false;
     }
-    
-    if (typeof gameState.gold !== 'number' || gameState.gold < 0) {
-      console.error('Invalid gold value:', gameState.gold);
+
+    if (typeof gameState.gold !== "number" || gameState.gold < 0) {
+      console.error("Invalid gold value:", gameState.gold);
       return false;
     }
-    
-    if (typeof gameState.roomId !== 'number' || gameState.roomId < 1) {
-      console.error('Invalid roomId value:', gameState.roomId);
+
+    if (typeof gameState.roomId !== "number" || gameState.roomId < 1) {
+      console.error("Invalid roomId value:", gameState.roomId);
       return false;
     }
-    
+
     return true;
   }
 
@@ -281,11 +312,12 @@ export class SaveStateManager {
    */
   updatePerformanceMetrics(saveTime, success) {
     this.savePerformanceMetrics.saveCount++;
-    
+
     if (success) {
       const count = this.savePerformanceMetrics.saveCount;
-      this.savePerformanceMetrics.averageSaveTime = 
-        ((this.savePerformanceMetrics.averageSaveTime * (count - 1)) + saveTime) / count;
+      this.savePerformanceMetrics.averageSaveTime =
+        (this.savePerformanceMetrics.averageSaveTime * (count - 1) + saveTime) /
+        count;
     } else {
       this.savePerformanceMetrics.failedSaves++;
     }
@@ -311,14 +343,18 @@ export class SaveStateManager {
       if (gameState && gameState.userId) {
         // Update adaptive frequency based on current game state
         this.setAdaptiveFrequency(gameState);
-        
+
         // Perform save
         await this.saveCurrentState(gameState, false);
       }
     }, this.adaptiveFrequency);
 
-    console.log(`Enhanced auto-save started (adaptive frequency: ${this.adaptiveFrequency / 1000}s)`);
-    
+    console.log(
+      `Enhanced auto-save started (adaptive frequency: ${
+        this.adaptiveFrequency / 1000
+      }s)`
+    );
+
     // Add to cleanup tasks
     this.cleanupTasks.add(() => this.stopAutoSave());
   }
@@ -331,7 +367,7 @@ export class SaveStateManager {
       clearInterval(this.autoSaveInterval);
       this.autoSaveInterval = null;
       this.getGameStateCallback = null;
-      console.log('Auto-save stopped');
+      console.log("Auto-save stopped");
     }
   }
 
@@ -372,7 +408,9 @@ export class SaveStateManager {
       currentFrequency: this.adaptiveFrequency / 1000,
       baseFrequency: this.baseAutoSaveFrequency / 1000,
       lastSaveTime: this.lastSaveTime,
-      timeSinceLastSave: this.lastSaveTime ? Date.now() - this.lastSaveTime : null
+      timeSinceLastSave: this.lastSaveTime
+        ? Date.now() - this.lastSaveTime
+        : null,
     };
   }
 
@@ -383,7 +421,7 @@ export class SaveStateManager {
   async loadSaveState(userId) {
     try {
       const response = await getSaveState(userId);
-      
+
       if (response && response.success && response.data) {
         this.currentSaveState = {
           userId: userId,
@@ -392,17 +430,17 @@ export class SaveStateManager {
           roomId: response.data.location,
           currentHp: response.data.health,
           gold: response.data.coins,
-          savedAt: response.data.timestamp
+          savedAt: response.data.timestamp,
         };
-        
-        console.log('Save state loaded successfully:', this.currentSaveState);
+
+        console.log("Save state loaded successfully:", this.currentSaveState);
         return this.currentSaveState;
       } else {
-        console.log('No save state found for user');
+        console.log("No save state found for user");
         return null;
       }
     } catch (error) {
-      console.error('Error loading save state:', error);
+      console.error("Error loading save state:", error);
       return null;
     }
   }
@@ -418,14 +456,14 @@ export class SaveStateManager {
       if (response.success) {
         this.currentSaveState = null;
         this.lastSaveTime = 0;
-        console.log('Save state cleared (player died)');
+        console.log("Save state cleared (player died)");
         return true;
       } else {
-        console.error('Failed to clear save state:', response.message);
+        console.error("Failed to clear save state:", response.message);
         return false;
       }
     } catch (error) {
-      console.error('Error clearing save state:', error);
+      console.error("Error clearing save state:", error);
       return false;
     }
   }
@@ -439,15 +477,15 @@ export class SaveStateManager {
    * @param {Object} gameState - Current game state
    */
   async handleLogout(gameState) {
-    console.log('Handling user logout...');
-    
+    console.log("Handling user logout...");
+
     // Force immediate save for logout
     await this.saveCurrentState(gameState, true, true);
-    
+
     // Cleanup resources
     this.cleanup();
-    
-    console.log('Logout handled successfully');
+
+    console.log("Logout handled successfully");
   }
 
   /**
@@ -455,22 +493,22 @@ export class SaveStateManager {
    * @param {number} userId - User ID
    */
   async handlePlayerDeath(userId) {
-    console.log('Handling player death...');
-    
+    console.log("Handling player death...");
+
     // Stop auto-save
     this.stopAutoSave();
-    
+
     // Clear save state
     await this.clearSaveState(userId);
-    
+
     // Reset performance metrics
     this.savePerformanceMetrics = {
       averageSaveTime: 0,
       saveCount: 0,
-      failedSaves: 0
+      failedSaves: 0,
     };
-    
-    console.log('Player death handled successfully');
+
+    console.log("Player death handled successfully");
   }
 
   /**
@@ -493,7 +531,7 @@ export class SaveStateManager {
     const savedTime = new Date(this.currentSaveState.savedAt);
     const currentTime = new Date();
     const hoursSinceLastSave = (currentTime - savedTime) / (1000 * 60 * 60);
-    
+
     return hoursSinceLastSave < 1;
   }
 
@@ -503,13 +541,13 @@ export class SaveStateManager {
    */
   applySaveStateToGame(game) {
     if (!this.currentSaveState) {
-      console.warn('No save state to apply');
+      console.warn("No save state to apply");
       return false;
     }
 
     try {
       const state = this.currentSaveState;
-      
+
       // Apply state to player
       if (game.player) {
         game.player.hp = state.currentHp;
@@ -521,10 +559,10 @@ export class SaveStateManager {
         game.floorGenerator.currentRoom = state.roomId;
       }
 
-      console.log('Save state applied to game successfully');
+      console.log("Save state applied to game successfully");
       return true;
     } catch (error) {
-      console.error('Error applying save state to game:', error);
+      console.error("Error applying save state to game:", error);
       return false;
     }
   }
@@ -536,23 +574,27 @@ export class SaveStateManager {
    */
   calculateFloorFromRoom(roomId) {
     // ENHANCED: Validate input
-    if (!roomId || typeof roomId !== 'number' || roomId < 1) {
+    if (!roomId || typeof roomId !== "number" || roomId < 1) {
       console.warn(`Invalid room ID: ${roomId}, defaulting to Floor 1`);
       return 1;
     }
-    
+
     // ENHANCED: Calculate with proper bounds checking
     const floor = Math.ceil(roomId / 6);
-    
+
     // ENHANCED: Ensure floor is within valid range (1-3)
     if (floor < 1) {
-      console.warn(`Calculated floor ${floor} is too low for room ${roomId}, using Floor 1`);
+      console.warn(
+        `Calculated floor ${floor} is too low for room ${roomId}, using Floor 1`
+      );
       return 1;
     } else if (floor > 3) {
-      console.warn(`Calculated floor ${floor} is too high for room ${roomId}, using Floor 3`);
+      console.warn(
+        `Calculated floor ${floor} is too high for room ${roomId}, using Floor 3`
+      );
       return 3;
     }
-    
+
     // ENHANCED: Logging for debugging
     console.log(`🗺️ Room ${roomId} mapped to Floor ${floor}`);
     return floor;
@@ -568,39 +610,46 @@ export class SaveStateManager {
       // Check if we have FloorGenerator available for validation
       if (window.game && window.game.floorGenerator) {
         const fg = window.game.floorGenerator;
-        
+
         // Compare save state with current floor generator state
         const currentFloor = fg.getCurrentFloor();
         const currentRoomIndex = fg.getCurrentRoomIndex();
         const currentRoomId = fg.validateRoomMapping(); // Use enhanced validation
-        
+
         // Calculate expected values
         const expectedFloor = this.calculateFloorFromRoom(gameState.roomId);
-        const expectedRoomIndex = ((gameState.roomId - 1) % 6);
-        
+        const expectedRoomIndex = (gameState.roomId - 1) % 6;
+
         // Check for inconsistencies
         const floorMismatch = currentFloor !== expectedFloor;
         const roomMismatch = currentRoomId !== gameState.roomId;
-        
+
         if (floorMismatch || roomMismatch) {
-          console.warn('🚨 SAVE STATE SYNC ISSUE DETECTED:');
-          console.warn(`  Current FloorGenerator: Floor ${currentFloor}, Room ${currentRoomIndex + 1}, ID ${currentRoomId}`);
-          console.warn(`  Save State: Floor ${expectedFloor}, Room ID ${gameState.roomId}`);
-          console.warn(`  Mismatch: Floor=${floorMismatch}, Room=${roomMismatch}`);
-          
+          console.warn("🚨 SAVE STATE SYNC ISSUE DETECTED:");
+          console.warn(
+            `  Current FloorGenerator: Floor ${currentFloor}, Room ${
+              currentRoomIndex + 1
+            }, ID ${currentRoomId}`
+          );
+          console.warn(
+            `  Save State: Floor ${expectedFloor}, Room ID ${gameState.roomId}`
+          );
+          console.warn(
+            `  Mismatch: Floor=${floorMismatch}, Room=${roomMismatch}`
+          );
+
           // Return false to indicate sync issues
           return false;
         }
-        
-        console.log('✅ Save state synchronized with FloorGenerator');
+
+        console.log("✅ Save state synchronized with FloorGenerator");
         return true;
       }
-      
+
       // If no FloorGenerator available, just validate the save state format
       return this.validateGameState(gameState);
-      
     } catch (error) {
-      console.error('Error validating game state sync:', error);
+      console.error("Error validating game state sync:", error);
       return false;
     }
   }
@@ -611,4 +660,4 @@ export class SaveStateManager {
 // ===================================================
 
 export const saveStateManager = new SaveStateManager();
-export default saveStateManager; 
+export default saveStateManager;

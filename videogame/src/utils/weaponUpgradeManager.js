@@ -6,28 +6,28 @@
 // Version: 3.1 - Performance Optimized
 // ===================================================
 
-import { apiRequest } from './api.js';
-import { EnumUtils } from '../constants/gameEnums.js';
+import { apiRequest } from "./api.js";
+import { EnumUtils } from "../constants/gameEnums.js";
 
 export class WeaponUpgradeManager {
   constructor() {
     this.currentUpgrades = {
       melee: 1,
-      ranged: 1
+      ranged: 1,
     };
     this.userId = null;
     this.runId = null;
-    
+
     // Performance optimization: Cache calculated values
     this.damageCache = new Map();
     this.costCache = new Map();
     this.lastCacheUpdate = 0;
     this.cacheTimeout = 30000; // 30 seconds
-    
+
     // Debouncing for save operations
     this.saveDebounceTimeout = null;
     this.pendingSave = false;
-    
+
     // Performance metrics
     this.performanceMetrics = {
       saveCount: 0,
@@ -35,13 +35,13 @@ export class WeaponUpgradeManager {
       averageSaveTime: 0,
       averageLoadTime: 0,
       cacheHits: 0,
-      cacheMisses: 0
+      cacheMisses: 0,
     };
-    
+
     // Memory leak prevention
     this.cleanupTasks = new Set();
     this.eventListeners = new Set();
-    
+
     // Setup cleanup listeners
     this.setupCleanupListeners();
   }
@@ -55,42 +55,44 @@ export class WeaponUpgradeManager {
    */
   setupCleanupListeners() {
     const beforeUnloadHandler = () => this.cleanup();
-    window.addEventListener('beforeunload', beforeUnloadHandler);
-    
-    this.eventListeners.add(() => window.removeEventListener('beforeunload', beforeUnloadHandler));
+    window.addEventListener("beforeunload", beforeUnloadHandler);
+
+    this.eventListeners.add(() =>
+      window.removeEventListener("beforeunload", beforeUnloadHandler)
+    );
   }
 
   /**
    * Cleanup all resources to prevent memory leaks
    */
   cleanup() {
-    console.log('Cleaning up WeaponUpgradeManager resources...');
-    
+    console.log("Cleaning up WeaponUpgradeManager resources...");
+
     // Clear debounce timeout
     if (this.saveDebounceTimeout) {
       clearTimeout(this.saveDebounceTimeout);
       this.saveDebounceTimeout = null;
     }
-    
+
     // Clear caches
     this.damageCache.clear();
     this.costCache.clear();
-    
+
     // Remove event listeners
-    this.eventListeners.forEach(cleanup => cleanup());
+    this.eventListeners.forEach((cleanup) => cleanup());
     this.eventListeners.clear();
-    
+
     // Execute cleanup tasks
-    this.cleanupTasks.forEach(task => task());
+    this.cleanupTasks.forEach((task) => task());
     this.cleanupTasks.clear();
-    
+
     // Reset state
     this.currentUpgrades = { melee: 1, ranged: 1 };
     this.userId = null;
     this.runId = null;
     this.pendingSave = false;
-    
-    console.log('Weapon upgrade manager cleaned up');
+
+    console.log("Weapon upgrade manager cleaned up");
   }
 
   // ===================================================
@@ -110,7 +112,7 @@ export class WeaponUpgradeManager {
    * Check if cache is still valid
    */
   isCacheValid() {
-    return (Date.now() - this.lastCacheUpdate) < this.cacheTimeout;
+    return Date.now() - this.lastCacheUpdate < this.cacheTimeout;
   }
 
   /**
@@ -131,18 +133,18 @@ export class WeaponUpgradeManager {
    */
   getCachedDamage(weaponType, level) {
     this.clearExpiredCache();
-    
+
     const key = this.generateCacheKey(weaponType, level);
-    
+
     if (this.damageCache.has(key)) {
       this.performanceMetrics.cacheHits++;
       return this.damageCache.get(key);
     }
-    
+
     this.performanceMetrics.cacheMisses++;
     const damage = EnumUtils.calculateWeaponDamage(weaponType, level);
     this.damageCache.set(key, damage);
-    
+
     return damage;
   }
 
@@ -153,18 +155,18 @@ export class WeaponUpgradeManager {
    */
   getCachedCost(weaponType, level) {
     this.clearExpiredCache();
-    
+
     const key = this.generateCacheKey(weaponType, level);
-    
+
     if (this.costCache.has(key)) {
       this.performanceMetrics.cacheHits++;
       return this.costCache.get(key);
     }
-    
+
     this.performanceMetrics.cacheMisses++;
     const cost = EnumUtils.calculateUpgradeCost(weaponType, level);
     this.costCache.set(key, cost);
-    
+
     return cost;
   }
 
@@ -179,19 +181,20 @@ export class WeaponUpgradeManager {
    */
   async initialize(userId, runId) {
     const startTime = performance.now();
-    
+
     try {
       this.userId = userId;
       this.runId = runId;
-      
+
       // Cargar upgrades existentes para este run
       await this.loadCurrentUpgrades();
-      
+
       const initTime = performance.now() - startTime;
-      console.log(`WeaponUpgradeManager initialized in ${initTime.toFixed(2)}ms`);
-      
+      console.log(
+        `WeaponUpgradeManager initialized in ${initTime.toFixed(2)}ms`
+      );
     } catch (error) {
-      console.error('Error initializing WeaponUpgradeManager:', error);
+      console.error("Error initializing WeaponUpgradeManager:", error);
       throw error;
     }
   }
@@ -201,24 +204,26 @@ export class WeaponUpgradeManager {
    */
   async loadCurrentUpgrades() {
     const startTime = performance.now();
-    
+
     try {
       if (!this.userId || !this.runId) {
-        console.warn('Cannot load upgrades: missing userId or runId');
+        console.warn("Cannot load upgrades: missing userId or runId");
         return;
       }
 
-      const response = await apiRequest(`/users/${this.userId}/weapon-upgrades/${this.runId}`);
-      
+      const response = await apiRequest(
+        `/users/${this.userId}/weapon-upgrades/${this.runId}`
+      );
+
       const loadTime = performance.now() - startTime;
       this.updateLoadMetrics(loadTime, true);
-      
+
       if (response.success && response.data) {
         this.currentUpgrades = {
           melee: response.data.close_combat || 1,
-          ranged: response.data.distance_combat || 1
+          ranged: response.data.distance_combat || 1,
         };
-        
+
         // Only log during initial load or significant events
         // console.log(`Weapon upgrades loaded in ${loadTime.toFixed(2)}ms:`, this.currentUpgrades);
       } else {
@@ -226,16 +231,15 @@ export class WeaponUpgradeManager {
         this.currentUpgrades = { melee: 1, ranged: 1 };
         // console.log('Using default weapon levels');
       }
-      
+
       // Clear cache since levels may have changed
       this.damageCache.clear();
       this.costCache.clear();
       this.lastCacheUpdate = Date.now();
-      
     } catch (error) {
       const loadTime = performance.now() - startTime;
       this.updateLoadMetrics(loadTime, false);
-      console.error('Error loading weapon upgrades:', error);
+      console.error("Error loading weapon upgrades:", error);
       this.currentUpgrades = { melee: 1, ranged: 1 };
     }
   }
@@ -251,10 +255,10 @@ export class WeaponUpgradeManager {
    */
   async upgradeWeapon(weaponType) {
     if (!this.isValidWeaponType(weaponType)) {
-      console.error('Invalid weapon type:', weaponType);
+      console.error("Invalid weapon type:", weaponType);
       return {
         success: false,
-        message: `Invalid weapon type: ${weaponType}`
+        message: `Invalid weapon type: ${weaponType}`,
       };
     }
 
@@ -265,28 +269,28 @@ export class WeaponUpgradeManager {
       console.warn(`${weaponType} weapon already at max level (${maxLevel})`);
       return {
         success: false,
-        message: `${weaponType} weapon already at max level (${maxLevel})`
+        message: `${weaponType} weapon already at max level (${maxLevel})`,
       };
     }
 
     // Store original level for rollback
     const originalLevel = currentLevel;
-    
+
     // Incrementar nivel localmente
     this.currentUpgrades[weaponType] = currentLevel + 1;
-    
+
     // Clear cache for this weapon type
     this.invalidateWeaponCache(weaponType);
-    
+
     // Sync with database using debounced save
     const success = await this.debouncedSave();
-    
+
     if (success) {
       // Only log significant weapon upgrades, not every level change
       // console.log(`${weaponType} weapon upgraded to level ${this.currentUpgrades[weaponType]}`);
       return {
         success: true,
-        newLevel: this.currentUpgrades[weaponType]
+        newLevel: this.currentUpgrades[weaponType],
       };
     } else {
       // Rollback local change if sync failed
@@ -294,7 +298,7 @@ export class WeaponUpgradeManager {
       this.invalidateWeaponCache(weaponType);
       return {
         success: false,
-        message: 'Failed to save upgrade to database'
+        message: "Failed to save upgrade to database",
       };
     }
   }
@@ -306,29 +310,29 @@ export class WeaponUpgradeManager {
    */
   async setWeaponLevel(weaponType, level) {
     if (!this.isValidWeaponType(weaponType)) {
-      console.error('Invalid weapon type:', weaponType);
+      console.error("Invalid weapon type:", weaponType);
       return false;
     }
 
     if (level < 1 || level > 15) {
-      console.error('Invalid weapon level:', level);
+      console.error("Invalid weapon level:", level);
       return false;
     }
 
     const originalLevel = this.currentUpgrades[weaponType];
     this.currentUpgrades[weaponType] = level;
-    
+
     // Clear cache for this weapon type
     this.invalidateWeaponCache(weaponType);
-    
+
     const success = await this.debouncedSave();
-    
+
     if (!success) {
       // Rollback on failure
       this.currentUpgrades[weaponType] = originalLevel;
       this.invalidateWeaponCache(weaponType);
     }
-    
+
     return success;
   }
 
@@ -352,18 +356,18 @@ export class WeaponUpgradeManager {
     if (this.pendingSave) {
       return true; // Already saving
     }
-    
+
     return new Promise((resolve) => {
       if (this.saveDebounceTimeout) {
         clearTimeout(this.saveDebounceTimeout);
       }
-      
+
       this.saveDebounceTimeout = setTimeout(async () => {
         const result = await this.saveUpgrades();
         this.pendingSave = false;
         resolve(result);
       }, 1000); // 1 second debounce
-      
+
       this.pendingSave = true;
     });
   }
@@ -373,35 +377,40 @@ export class WeaponUpgradeManager {
    */
   async saveUpgrades() {
     const startTime = performance.now();
-    
+
     try {
       if (!this.userId || !this.runId) {
-        console.warn('Cannot save upgrades: missing userId or runId');
+        console.warn("Cannot save upgrades: missing userId or runId");
         return false;
       }
 
-      const response = await apiRequest(`/users/${this.userId}/weapon-upgrades/${this.runId}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          meleeLevel: this.currentUpgrades.melee,
-          rangedLevel: this.currentUpgrades.ranged
-        })
-      });
+      const response = await apiRequest(
+        `/users/${this.userId}/weapon-upgrades/${this.runId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            meleeLevel: this.currentUpgrades.melee,
+            rangedLevel: this.currentUpgrades.ranged,
+          }),
+        }
+      );
 
       const saveTime = performance.now() - startTime;
       this.updateSaveMetrics(saveTime, response.success);
 
       if (response.success) {
-        console.log(`Weapon upgrades saved successfully in ${saveTime.toFixed(2)}ms`);
+        console.log(
+          `Weapon upgrades saved successfully in ${saveTime.toFixed(2)}ms`
+        );
         return true;
       } else {
-        console.error('Failed to save weapon upgrades:', response.message);
+        console.error("Failed to save weapon upgrades:", response.message);
         return false;
       }
     } catch (error) {
       const saveTime = performance.now() - startTime;
       this.updateSaveMetrics(saveTime, false);
-      console.error('Error saving weapon upgrades:', error);
+      console.error("Error saving weapon upgrades:", error);
       return false;
     }
   }
@@ -415,26 +424,29 @@ export class WeaponUpgradeManager {
    */
   async resetOnDeath() {
     try {
-      console.log('Resetting weapon upgrades due to player death...');
-      
+      console.log("Resetting weapon upgrades due to player death...");
+
       if (!this.userId || !this.runId) {
-        console.warn('Cannot reset upgrades: missing userId or runId');
+        console.warn("Cannot reset upgrades: missing userId or runId");
         return false;
       }
 
-      const response = await apiRequest(`/users/${this.userId}/weapon-upgrades/${this.runId}`, {
-        method: 'DELETE'
-      });
+      const response = await apiRequest(
+        `/users/${this.userId}/weapon-upgrades/${this.runId}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (response.success) {
         // Resetear valores locales
         this.currentUpgrades = { melee: 1, ranged: 1 };
-        
+
         // Clear all caches
         this.damageCache.clear();
         this.costCache.clear();
         this.lastCacheUpdate = Date.now();
-        
+
         // Reset performance metrics
         this.performanceMetrics = {
           saveCount: 0,
@@ -442,17 +454,17 @@ export class WeaponUpgradeManager {
           averageSaveTime: 0,
           averageLoadTime: 0,
           cacheHits: 0,
-          cacheMisses: 0
+          cacheMisses: 0,
         };
-        
-        console.log('Weapon upgrades reset successfully');
+
+        console.log("Weapon upgrades reset successfully");
         return true;
       } else {
-        console.error('Failed to reset weapon upgrades:', response.message);
+        console.error("Failed to reset weapon upgrades:", response.message);
         return false;
       }
     } catch (error) {
-      console.error('Error resetting weapon upgrades:', error);
+      console.error("Error resetting weapon upgrades:", error);
       return false;
     }
   }
@@ -466,14 +478,14 @@ export class WeaponUpgradeManager {
       clearTimeout(this.saveDebounceTimeout);
       this.saveDebounceTimeout = null;
     }
-    
+
     // Force immediate save
     const success = await this.saveUpgrades();
-    
+
     if (success) {
-      console.log('🚪 Weapon upgrades preserved for logout');
+      console.log("🚪 Weapon upgrades preserved for logout");
     }
-    
+
     return success;
   }
 
@@ -488,7 +500,7 @@ export class WeaponUpgradeManager {
   getWeaponLevels() {
     return {
       melee: this.currentUpgrades.melee,
-      ranged: this.currentUpgrades.ranged
+      ranged: this.currentUpgrades.ranged,
     };
   }
 
@@ -499,10 +511,10 @@ export class WeaponUpgradeManager {
    */
   getWeaponLevel(weaponType) {
     if (!this.isValidWeaponType(weaponType)) {
-      console.error('Invalid weapon type:', weaponType);
+      console.error("Invalid weapon type:", weaponType);
       return 1;
     }
-    
+
     return this.currentUpgrades[weaponType];
   }
 
@@ -524,11 +536,11 @@ export class WeaponUpgradeManager {
   getUpgradeCost(weaponType) {
     const currentLevel = this.getWeaponLevel(weaponType);
     const nextLevel = currentLevel + 1;
-    
+
     if (nextLevel > 15) {
       return 0; // Ya está al máximo
     }
-    
+
     return this.getCachedCost(weaponType, nextLevel);
   }
 
@@ -541,7 +553,7 @@ export class WeaponUpgradeManager {
     if (!this.isValidWeaponType(weaponType)) {
       return false;
     }
-    
+
     return this.getWeaponLevel(weaponType) < 15;
   }
 
@@ -552,17 +564,17 @@ export class WeaponUpgradeManager {
   getAllWeaponsInfo() {
     return {
       melee: {
-        level: this.getWeaponLevel('melee'),
-        damage: this.getWeaponDamage('melee'),
-        upgradeCost: this.getUpgradeCost('melee'),
-        canUpgrade: this.canUpgradeWeapon('melee')
+        level: this.getWeaponLevel("melee"),
+        damage: this.getWeaponDamage("melee"),
+        upgradeCost: this.getUpgradeCost("melee"),
+        canUpgrade: this.canUpgradeWeapon("melee"),
       },
       ranged: {
-        level: this.getWeaponLevel('ranged'),
-        damage: this.getWeaponDamage('ranged'),
-        upgradeCost: this.getUpgradeCost('ranged'),
-        canUpgrade: this.canUpgradeWeapon('ranged')
-      }
+        level: this.getWeaponLevel("ranged"),
+        damage: this.getWeaponDamage("ranged"),
+        upgradeCost: this.getUpgradeCost("ranged"),
+        canUpgrade: this.canUpgradeWeapon("ranged"),
+      },
     };
   }
 
@@ -576,7 +588,7 @@ export class WeaponUpgradeManager {
    * @returns {boolean} - True si es válido
    */
   isValidWeaponType(weaponType) {
-    return ['melee', 'ranged'].includes(weaponType);
+    return ["melee", "ranged"].includes(weaponType);
   }
 
   // ===================================================
@@ -592,8 +604,9 @@ export class WeaponUpgradeManager {
     if (success) {
       this.performanceMetrics.saveCount++;
       const count = this.performanceMetrics.saveCount;
-      this.performanceMetrics.averageSaveTime = 
-        ((this.performanceMetrics.averageSaveTime * (count - 1)) + saveTime) / count;
+      this.performanceMetrics.averageSaveTime =
+        (this.performanceMetrics.averageSaveTime * (count - 1) + saveTime) /
+        count;
     }
   }
 
@@ -606,8 +619,9 @@ export class WeaponUpgradeManager {
     if (success) {
       this.performanceMetrics.loadCount++;
       const count = this.performanceMetrics.loadCount;
-      this.performanceMetrics.averageLoadTime = 
-        ((this.performanceMetrics.averageLoadTime * (count - 1)) + loadTime) / count;
+      this.performanceMetrics.averageLoadTime =
+        (this.performanceMetrics.averageLoadTime * (count - 1) + loadTime) /
+        count;
     }
   }
 
@@ -615,14 +629,20 @@ export class WeaponUpgradeManager {
    * Get performance metrics for monitoring
    */
   getPerformanceMetrics() {
-    const cacheTotal = this.performanceMetrics.cacheHits + this.performanceMetrics.cacheMisses;
-    const cacheHitRate = cacheTotal > 0 ? (this.performanceMetrics.cacheHits / cacheTotal) * 100 : 0;
-    
+    const cacheTotal =
+      this.performanceMetrics.cacheHits + this.performanceMetrics.cacheMisses;
+    const cacheHitRate =
+      cacheTotal > 0
+        ? (this.performanceMetrics.cacheHits / cacheTotal) * 100
+        : 0;
+
     return {
       ...this.performanceMetrics,
-      cacheHitRate: cacheHitRate.toFixed(1) + '%',
+      cacheHitRate: cacheHitRate.toFixed(1) + "%",
       cacheSize: this.damageCache.size + this.costCache.size,
-      cacheValidUntil: new Date(this.lastCacheUpdate + this.cacheTimeout).toISOString()
+      cacheValidUntil: new Date(
+        this.lastCacheUpdate + this.cacheTimeout
+      ).toISOString(),
     };
   }
 
@@ -635,8 +655,9 @@ export class WeaponUpgradeManager {
       userId: this.userId,
       runId: this.runId,
       upgrades: { ...this.currentUpgrades },
-      totalDamage: this.getWeaponDamage('melee') + this.getWeaponDamage('ranged'),
-      performance: this.getPerformanceMetrics()
+      totalDamage:
+        this.getWeaponDamage("melee") + this.getWeaponDamage("ranged"),
+      performance: this.getPerformanceMetrics(),
     };
   }
 }
@@ -646,4 +667,4 @@ export class WeaponUpgradeManager {
 // ===================================================
 
 export const weaponUpgradeManager = new WeaponUpgradeManager();
-export default weaponUpgradeManager; 
+export default weaponUpgradeManager;

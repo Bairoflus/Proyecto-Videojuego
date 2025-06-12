@@ -21,7 +21,7 @@
 
   <script type="module">
     import { createRun } from '../../utils/api.js';
-    
+
     const status = document.getElementById('status');
 
     /**
@@ -31,13 +31,13 @@
     function clearAllSessionData() {
       console.log('Clearing all session data...');
       const sessionKeys = [
-        'sessionToken', 
-        'currentUserId', 
-        'currentSessionId', 
+        'sessionToken',
+        'currentUserId',
+        'currentSessionId',
         'currentRunId',
         'runCreationFailed'
       ];
-      
+
       sessionKeys.forEach(key => {
         const value = localStorage.getItem(key);
         if (value) {
@@ -45,7 +45,7 @@
           console.log(`  Cleared ${key}: ${value}`);
         }
       });
-      
+
       console.log('Session data cleanup complete');
     }
 
@@ -55,23 +55,23 @@
     async function ensureRunData() {
       const userId = localStorage.getItem('currentUserId');
       const runId = localStorage.getItem('currentRunId');
-      
+
       if (runId) {
         console.log('Run data exists:', runId);
         return true;
       }
-      
+
       console.log('No run data found, creating new run...');
-      
+
       try {
         const runData = await createRun(parseInt(userId));
         localStorage.setItem('currentRunId', runData.runId);
         console.log('New run created successfully:', runData.runId);
         return true;
-        
+
       } catch (error) {
         console.error('Failed to create run:', error);
-        
+
         // Set test mode flag
         localStorage.setItem('testMode', 'true');
         console.warn('Running in test mode - some features may be limited');
@@ -86,7 +86,7 @@
       const sessionToken = localStorage.getItem('sessionToken');
       const userId = localStorage.getItem('currentUserId');
       const sessionId = localStorage.getItem('currentSessionId');
-      
+
       if (!sessionToken || !userId || !sessionId) {
         console.warn('Incomplete session data detected, redirecting to login');
         console.log('Session validation failed:', {
@@ -94,15 +94,15 @@
           hasUserId: !!userId,
           hasSessionId: !!sessionId
         });
-        
+
         // Clear any partial session data
         clearAllSessionData();
-        
+
         // Redirect to login
         window.location.href = 'login.html';
         return false;
       }
-      
+
       console.log('Session validation passed');
       return true;
     }
@@ -113,13 +113,13 @@
       async function initializeGame() {
         try {
           status.textContent = 'Validating session...';
-          
+
           // Ensure run data exists
           const runDataReady = await ensureRunData();
           if (!runDataReady) {
             throw new Error('Failed to initialize run data');
           }
-          
+
           status.textContent = 'Loading modules...';
 
           // Import main game module
@@ -134,7 +134,7 @@
           console.error('Game initialization error:', error);
         }
       }
-      
+
       // Start game initialization
       initializeGame();
     }

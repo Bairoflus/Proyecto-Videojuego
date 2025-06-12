@@ -10,7 +10,7 @@ import { ENEMY_CONSTANTS_V2 } from "../../../constants/gameConstants.js";
 export class MageGoblin extends RangedEnemy {
   constructor(position) {
     const config = ENEMY_CONSTANTS_V2.MAGE_GOBLIN;
-    
+
     super(
       position,
       config.size.width,
@@ -48,7 +48,9 @@ export class MageGoblin extends RangedEnemy {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
       this.fireProjectile(target);
-      console.log(`MageGoblin cast magic missile at ${target.type || 'player'}`);
+      console.log(
+        `MageGoblin cast magic missile at ${target.type || "player"}`
+      );
     }
   }
 
@@ -81,7 +83,7 @@ export class MageGoblin extends RangedEnemy {
       isActive: true,
       lifetime: 5000,
       timeAlive: 0,
-      color: "#9932CC" // Purple magic color
+      color: "#9932CC", // Purple magic color
     };
 
     this.projectiles.push(projectile);
@@ -90,4 +92,4 @@ export class MageGoblin extends RangedEnemy {
   updateAnimation() {
     // TODO: Implement mage goblin specific animations with magical effects
   }
-} 
+}

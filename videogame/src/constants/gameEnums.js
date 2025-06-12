@@ -10,101 +10,101 @@ export const GAME_ENUMS = {
   // TIPOS DE EVENTOS DEL JUEGO
   // ===================================================
   EVENT_TYPES: [
-    'game_start',        // Inicio de nueva partida
-    'game_resume',       // Reanudar partida guardada
-    'room_enter',        // Entrar a habitación
-    'room_exit',         // Salir de habitación
-    'enemy_kill',        // Eliminar enemigo
-    'boss_encounter',    // Encuentro con jefe
-    'boss_kill',         // Eliminar jefe
-    'player_death',      // Muerte del jugador
-    'shop_open',         // Abrir tienda
-    'shop_close',        // Cerrar tienda
-    'weapon_switch',     // Cambiar arma
-    'weapon_upgrade',    // Mejorar arma
-    'chest_open',        // Abrir cofre
-    'floor_transition'   // Transición de piso
+    "game_start", // Inicio de nueva partida
+    "game_resume", // Reanudar partida guardada
+    "room_enter", // Entrar a habitación
+    "room_exit", // Salir de habitación
+    "enemy_kill", // Eliminar enemigo
+    "boss_encounter", // Encuentro con jefe
+    "boss_kill", // Eliminar jefe
+    "player_death", // Muerte del jugador
+    "shop_open", // Abrir tienda
+    "shop_close", // Cerrar tienda
+    "weapon_switch", // Cambiar arma
+    "weapon_upgrade", // Mejorar arma
+    "chest_open", // Abrir cofre
+    "floor_transition", // Transición de piso
   ],
-  
+
   // ===================================================
   // TIPOS DE MEJORAS PERMANENTES
   // ===================================================
   UPGRADE_TYPES: [
-    'health_max',        // Mejora HP máximo
-    'stamina_max',       // Mejora Stamina máximo
-    'movement_speed'     // Mejora velocidad de movimiento
+    "health_max", // Mejora HP máximo
+    "stamina_max", // Mejora Stamina máximo
+    "movement_speed", // Mejora velocidad de movimiento
   ],
-  
+
   // ===================================================
   // TIPOS DE ARMAS
   // ===================================================
-  WEAPON_SLOTS: ['melee', 'ranged'],
-  
+  WEAPON_SLOTS: ["melee", "ranged"],
+
   // ===================================================
   // RESULTADOS DE COMBATE CON JEFES
   // ===================================================
   BOSS_RESULTS: [
-    'victory',           // Victoria
-    'defeat',            // Derrota
-    'escape',            // Escape
-    'timeout'            // Tiempo agotado
+    "victory", // Victoria
+    "defeat", // Derrota
+    "escape", // Escape
+    "timeout", // Tiempo agotado
   ],
-  
+
   // ===================================================
   // TIPOS DE HABITACIONES
   // ===================================================
-  ROOM_TYPES: ['combat', 'shop', 'boss'],
-  
+  ROOM_TYPES: ["combat", "shop", "boss"],
+
   // ===================================================
   // CAUSAS DE MUERTE
   // ===================================================
   DEATH_CAUSES: [
-    'enemy_kill',        // Muerto por enemigo
-    'boss_kill',         // Muerto por jefe
-    'timeout',           // Timeout de sesión
-    'disconnect',        // Desconexión
-    'active'             // Run activo (no muerto)
+    "enemy_kill", // Muerto por enemigo
+    "boss_kill", // Muerto por jefe
+    "timeout", // Timeout de sesión
+    "disconnect", // Desconexión
+    "active", // Run activo (no muerto)
   ],
-  
+
   // ===================================================
   // TIPOS DE ENEMIGOS
   // ===================================================
   ENEMY_TYPES: [
-    'basic',             // Enemigo básico
-    'strong'             // Enemigo fuerte
+    "basic", // Enemigo básico
+    "strong", // Enemigo fuerte
   ],
-  
+
   // ===================================================
   // TIPOS DE JEFES
   // ===================================================
   BOSS_TYPES: [
-    'dragon'             // Jefe dragón (único actual)
+    "dragon", // Jefe dragón (único actual)
   ],
-  
+
   // ===================================================
   // CONFIGURACIÓN DE MEJORAS PERMANENTES
   // ===================================================
   PERMANENT_UPGRADES: {
     health_max: {
-      name: 'Health Boost',
+      name: "Health Boost",
       value: 15,
-      description: '+15 Maximum Health',
-      icon: '❤️'
+      description: "+15 Maximum Health",
+      icon: "❤️",
     },
     stamina_max: {
-      name: 'Stamina Boost', 
+      name: "Stamina Boost",
       value: 20,
-      description: '+20 Maximum Stamina',
-      icon: '💪'
+      description: "+20 Maximum Stamina",
+      icon: "💪",
     },
     movement_speed: {
-      name: 'Speed Boost',
+      name: "Speed Boost",
       value: 0.1,
-      description: '+10% Movement Speed',
-      icon: '💨'
-    }
+      description: "+10% Movement Speed",
+      icon: "💨",
+    },
   },
-  
+
   // ===================================================
   // CONFIGURACIÓN DE NIVELES DE ARMAS
   // ===================================================
@@ -113,14 +113,14 @@ export const GAME_ENUMS = {
     MAX_LEVEL: 15,
     BASE_DAMAGE: {
       melee: 25,
-      ranged: 20
+      ranged: 20,
     },
     DAMAGE_INCREMENT: {
       melee: 5,
-      ranged: 4
-    }
+      ranged: 4,
+    },
   },
-  
+
   // ===================================================
   // CONFIGURACIÓN DE COSTOS DE TIENDA
   // ===================================================
@@ -128,11 +128,11 @@ export const GAME_ENUMS = {
     // Costo base para nivel 1, se incrementa por nivel
     BASE_COST: {
       melee: 10,
-      ranged: 12
+      ranged: 12,
     },
-    COST_MULTIPLIER: 1.5  // Multiplicador por nivel
+    COST_MULTIPLIER: 1.5, // Multiplicador por nivel
   },
-  
+
   // ===================================================
   // CONFIGURACIÓN DE JUEGO
   // ===================================================
@@ -142,8 +142,8 @@ export const GAME_ENUMS = {
     STARTING_GOLD: 0,
     STARTING_HP: 100,
     STARTING_STAMINA: 100,
-    CHEST_GOLD_REWARD: 5
-  }
+    CHEST_GOLD_REWARD: 5,
+  },
 };
 
 // ===================================================
@@ -181,7 +181,7 @@ export const EnumUtils = {
     const { BASE_DAMAGE, DAMAGE_INCREMENT } = GAME_ENUMS.WEAPON_LEVELS;
     const baseDamage = BASE_DAMAGE[weaponType] || 0;
     const increment = DAMAGE_INCREMENT[weaponType] || 0;
-    return baseDamage + (increment * (level - 1));
+    return baseDamage + increment * (level - 1);
   },
 
   /**
@@ -203,14 +203,14 @@ export const EnumUtils = {
    */
   getDeathCauseDescription(deathCause) {
     const descriptions = {
-      'enemy_kill': 'Defeated by enemy',
-      'boss_kill': 'Defeated by boss',
-      'timeout': 'Session timeout',
-      'disconnect': 'Connection lost',
-      'active': 'Still alive'
+      enemy_kill: "Defeated by enemy",
+      boss_kill: "Defeated by boss",
+      timeout: "Session timeout",
+      disconnect: "Connection lost",
+      active: "Still alive",
     };
-    return descriptions[deathCause] || 'Unknown';
-  }
+    return descriptions[deathCause] || "Unknown";
+  },
 };
 
 // ===================================================
@@ -230,8 +230,8 @@ export const {
   PERMANENT_UPGRADES,
   WEAPON_LEVELS,
   SHOP_COSTS,
-  GAME_CONFIG
+  GAME_CONFIG,
 } = GAME_ENUMS;
 
 // Exportar por defecto
-export default GAME_ENUMS; 
+export default GAME_ENUMS;

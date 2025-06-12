@@ -6,8 +6,8 @@
 // Options: Health (+15), Stamina (+20), MovementSpeed (+10%)
 // ===================================================
 
-import { PERMANENT_UPGRADES } from '../../constants/gameEnums.js';
-import { applyPermanentUpgrade } from '../../utils/api.js';
+import { PERMANENT_UPGRADES } from "../../constants/gameEnums.js";
+import { applyPermanentUpgrade } from "../../utils/api.js";
 
 export class PermanentUpgradePopup {
   constructor() {
@@ -15,7 +15,7 @@ export class PermanentUpgradePopup {
     this.selectedUpgrade = null;
     this.userId = null;
     this.onUpgradeSelected = null;
-    
+
     // DOM elements
     this.overlay = null;
     this.popup = null;
@@ -31,8 +31,8 @@ export class PermanentUpgradePopup {
    */
   createPopupElements() {
     // Background overlay
-    this.overlay = document.createElement('div');
-    this.overlay.className = 'permanent-upgrade-overlay';
+    this.overlay = document.createElement("div");
+    this.overlay.className = "permanent-upgrade-overlay";
     this.overlay.style.cssText = `
       position: fixed;
       top: 0;
@@ -48,8 +48,8 @@ export class PermanentUpgradePopup {
     `;
 
     // Popup principal
-    this.popup = document.createElement('div');
-    this.popup.className = 'permanent-upgrade-popup';
+    this.popup = document.createElement("div");
+    this.popup.className = "permanent-upgrade-popup";
     this.popup.style.cssText = `
       background: linear-gradient(135deg, #2c1810, #4a2c1a);
       border: 3px solid #d4af37;
@@ -63,8 +63,8 @@ export class PermanentUpgradePopup {
     `;
 
     // Title
-    const title = document.createElement('h1');
-    title.textContent = '🏆 BOSS DEFEATED! 🏆';
+    const title = document.createElement("h1");
+    title.textContent = "🏆 BOSS DEFEATED! 🏆";
     title.style.cssText = `
       color: #d4af37;
       font-size: 2.5em;
@@ -74,8 +74,8 @@ export class PermanentUpgradePopup {
     `;
 
     // Subtitle
-    const subtitle = document.createElement('h2');
-    subtitle.textContent = 'Choose a Permanent Upgrade';
+    const subtitle = document.createElement("h2");
+    subtitle.textContent = "Choose a Permanent Upgrade";
     subtitle.style.cssText = `
       color: #fff;
       font-size: 1.3em;
@@ -84,8 +84,8 @@ export class PermanentUpgradePopup {
     `;
 
     // Options container
-    const optionsContainer = document.createElement('div');
-    optionsContainer.className = 'upgrade-options';
+    const optionsContainer = document.createElement("div");
+    optionsContainer.className = "upgrade-options";
     optionsContainer.style.cssText = `
       display: flex;
       gap: 20px;
@@ -98,8 +98,9 @@ export class PermanentUpgradePopup {
     this.createUpgradeButtons(optionsContainer);
 
     // Warning
-    const warning = document.createElement('p');
-    warning.textContent = '⚠️ Choose wisely! This upgrade is permanent and cannot be changed.';
+    const warning = document.createElement("p");
+    warning.textContent =
+      "⚠️ Choose wisely! This upgrade is permanent and cannot be changed.";
     warning.style.cssText = `
       color: #ff9800;
       font-size: 0.9em;
@@ -112,7 +113,7 @@ export class PermanentUpgradePopup {
     this.popup.appendChild(subtitle);
     this.popup.appendChild(optionsContainer);
     this.popup.appendChild(warning);
-    
+
     this.overlay.appendChild(this.popup);
 
     // Add CSS animation
@@ -123,15 +124,15 @@ export class PermanentUpgradePopup {
    * Creates the upgrade selection buttons
    */
   createUpgradeButtons(container) {
-    const upgradeTypes = ['health_max', 'stamina_max', 'movement_speed'];
-    
-    upgradeTypes.forEach(upgradeType => {
+    const upgradeTypes = ["health_max", "stamina_max", "movement_speed"];
+
+    upgradeTypes.forEach((upgradeType) => {
       const upgradeInfo = PERMANENT_UPGRADES[upgradeType];
-      
-      const button = document.createElement('button');
-      button.className = 'upgrade-button';
+
+      const button = document.createElement("button");
+      button.className = "upgrade-button";
       button.dataset.upgradeType = upgradeType;
-      
+
       button.style.cssText = `
         background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
         border: 2px solid #555;
@@ -146,7 +147,7 @@ export class PermanentUpgradePopup {
       `;
 
       // Icon
-      const icon = document.createElement('div');
+      const icon = document.createElement("div");
       icon.textContent = upgradeInfo.icon;
       icon.style.cssText = `
         font-size: 3em;
@@ -154,7 +155,7 @@ export class PermanentUpgradePopup {
       `;
 
       // Name
-      const name = document.createElement('div');
+      const name = document.createElement("div");
       name.textContent = upgradeInfo.name;
       name.style.cssText = `
         font-size: 1.1em;
@@ -164,7 +165,7 @@ export class PermanentUpgradePopup {
       `;
 
       // Description
-      const description = document.createElement('div');
+      const description = document.createElement("div");
       description.textContent = upgradeInfo.description;
       description.style.cssText = `
         font-size: 0.9em;
@@ -177,23 +178,23 @@ export class PermanentUpgradePopup {
       button.appendChild(description);
 
       // Event listeners
-      button.addEventListener('mouseenter', () => {
-        button.style.borderColor = '#d4af37';
-        button.style.background = 'linear-gradient(135deg, #2d2d2d, #3d3d3d)';
-        button.style.transform = 'translateY(-3px)';
-        button.style.boxShadow = '0 5px 15px rgba(212, 175, 55, 0.3)';
+      button.addEventListener("mouseenter", () => {
+        button.style.borderColor = "#d4af37";
+        button.style.background = "linear-gradient(135deg, #2d2d2d, #3d3d3d)";
+        button.style.transform = "translateY(-3px)";
+        button.style.boxShadow = "0 5px 15px rgba(212, 175, 55, 0.3)";
       });
 
-      button.addEventListener('mouseleave', () => {
+      button.addEventListener("mouseleave", () => {
         if (this.selectedUpgrade !== upgradeType) {
-          button.style.borderColor = '#555';
-          button.style.background = 'linear-gradient(135deg, #1a1a1a, #2d2d2d)';
-          button.style.transform = 'translateY(0)';
-          button.style.boxShadow = 'none';
+          button.style.borderColor = "#555";
+          button.style.background = "linear-gradient(135deg, #1a1a1a, #2d2d2d)";
+          button.style.transform = "translateY(0)";
+          button.style.boxShadow = "none";
         }
       });
 
-      button.addEventListener('click', () => {
+      button.addEventListener("click", () => {
         this.selectUpgrade(upgradeType);
       });
 
@@ -206,9 +207,9 @@ export class PermanentUpgradePopup {
    * Adds CSS animation styles
    */
   addAnimationStyles() {
-    if (!document.getElementById('permanent-upgrade-styles')) {
-      const styles = document.createElement('style');
-      styles.id = 'permanent-upgrade-styles';
+    if (!document.getElementById("permanent-upgrade-styles")) {
+      const styles = document.createElement("style");
+      styles.id = "permanent-upgrade-styles";
       styles.textContent = `
         @keyframes popup-appear {
           from {
@@ -238,25 +239,26 @@ export class PermanentUpgradePopup {
    */
   selectUpgrade(upgradeType) {
     // Clear previous selection
-    this.upgradeButtons.forEach(button => {
+    this.upgradeButtons.forEach((button) => {
       if (button.dataset.upgradeType !== upgradeType) {
-        button.style.borderColor = '#555';
-        button.style.background = 'linear-gradient(135deg, #1a1a1a, #2d2d2d)';
-        button.style.transform = 'translateY(0)';
-        button.style.boxShadow = 'none';
+        button.style.borderColor = "#555";
+        button.style.background = "linear-gradient(135deg, #1a1a1a, #2d2d2d)";
+        button.style.transform = "translateY(0)";
+        button.style.boxShadow = "none";
       }
     });
 
     // Mark new upgrade selected
     const selectedButton = this.upgradeButtons.find(
-      button => button.dataset.upgradeType === upgradeType
+      (button) => button.dataset.upgradeType === upgradeType
     );
-    
+
     if (selectedButton) {
-      selectedButton.style.borderColor = '#4caf50';
-      selectedButton.style.background = 'linear-gradient(135deg, #1b5e20, #2e7d32)';
-      selectedButton.style.transform = 'translateY(-3px)';
-      selectedButton.style.boxShadow = '0 5px 15px rgba(76, 175, 80, 0.4)';
+      selectedButton.style.borderColor = "#4caf50";
+      selectedButton.style.background =
+        "linear-gradient(135deg, #1b5e20, #2e7d32)";
+      selectedButton.style.transform = "translateY(-3px)";
+      selectedButton.style.boxShadow = "0 5px 15px rgba(76, 175, 80, 0.4)";
     }
 
     this.selectedUpgrade = upgradeType;
@@ -270,14 +272,14 @@ export class PermanentUpgradePopup {
    */
   createConfirmButton() {
     // Remove previous button if it exists
-    const existingButton = this.popup.querySelector('.confirm-button');
+    const existingButton = this.popup.querySelector(".confirm-button");
     if (existingButton) {
       existingButton.remove();
     }
 
-    const confirmButton = document.createElement('button');
-    confirmButton.className = 'confirm-button';
-    confirmButton.textContent = 'Confirm Selection';
+    const confirmButton = document.createElement("button");
+    confirmButton.className = "confirm-button";
+    confirmButton.textContent = "Confirm Selection";
     confirmButton.style.cssText = `
       background: linear-gradient(135deg, #4caf50, #66bb6a);
       border: none;
@@ -291,17 +293,19 @@ export class PermanentUpgradePopup {
       transition: all 0.3s ease;
     `;
 
-    confirmButton.addEventListener('mouseenter', () => {
-      confirmButton.style.background = 'linear-gradient(135deg, #66bb6a, #81c784)';
-      confirmButton.style.transform = 'translateY(-2px)';
+    confirmButton.addEventListener("mouseenter", () => {
+      confirmButton.style.background =
+        "linear-gradient(135deg, #66bb6a, #81c784)";
+      confirmButton.style.transform = "translateY(-2px)";
     });
 
-    confirmButton.addEventListener('mouseleave', () => {
-      confirmButton.style.background = 'linear-gradient(135deg, #4caf50, #66bb6a)';
-      confirmButton.style.transform = 'translateY(0)';
+    confirmButton.addEventListener("mouseleave", () => {
+      confirmButton.style.background =
+        "linear-gradient(135deg, #4caf50, #66bb6a)";
+      confirmButton.style.transform = "translateY(0)";
     });
 
-    confirmButton.addEventListener('click', () => {
+    confirmButton.addEventListener("click", () => {
       this.confirmSelection();
     });
 
@@ -319,12 +323,12 @@ export class PermanentUpgradePopup {
   show(callback = null) {
     if (this.isActive) return;
 
-    this.userId = localStorage.getItem('currentUserId');
+    this.userId = localStorage.getItem("currentUserId");
     this.onUpgradeSelected = callback;
     this.selectedUpgrade = null;
 
     if (!this.userId) {
-      console.warn('No userId found for permanent upgrade popup');
+      console.warn("No userId found for permanent upgrade popup");
       return;
     }
 
@@ -342,7 +346,7 @@ export class PermanentUpgradePopup {
     document.body.appendChild(this.overlay);
     this.isActive = true;
 
-    console.log('Permanent upgrade popup shown');
+    console.log("Permanent upgrade popup shown");
   }
 
   /**
@@ -350,7 +354,7 @@ export class PermanentUpgradePopup {
    */
   async confirmSelection() {
     if (!this.selectedUpgrade || !this.userId) {
-      console.error('Cannot confirm: no upgrade selected or missing userId');
+      console.error("Cannot confirm: no upgrade selected or missing userId");
       return;
     }
 
@@ -358,16 +362,19 @@ export class PermanentUpgradePopup {
       console.log(`Applying permanent upgrade: ${this.selectedUpgrade}`);
 
       // NEW: Use specific API function
-      const response = await applyPermanentUpgrade(parseInt(this.userId), this.selectedUpgrade);
+      const response = await applyPermanentUpgrade(
+        parseInt(this.userId),
+        this.selectedUpgrade
+      );
 
       if (response.success) {
         console.log(`Permanent upgrade applied: ${this.selectedUpgrade}`);
-        
+
         // NEW: Apply upgrade to player immediately for visual feedback
         if (window.game && window.game.player) {
           this.applyUpgradeToPlayer(this.selectedUpgrade, window.game.player);
         }
-        
+
         // Llamar callback si existe
         if (this.onUpgradeSelected) {
           this.onUpgradeSelected(this.selectedUpgrade);
@@ -378,15 +385,16 @@ export class PermanentUpgradePopup {
 
         // REMOVED: Automatic floor transition - let player move manually
         // Player must now move to the edge to trigger floor transition
-        console.log('Upgrade complete - player can now move to next floor manually');
-
+        console.log(
+          "Upgrade complete - player can now move to next floor manually"
+        );
       } else {
-        console.error('Failed to apply permanent upgrade:', response.message);
-        alert('Error applying upgrade. Please try again.');
+        console.error("Failed to apply permanent upgrade:", response.message);
+        alert("Error applying upgrade. Please try again.");
       }
     } catch (error) {
-      console.error('Error confirming selection:', error);
-      alert('Network error. Please try again.');
+      console.error("Error confirming selection:", error);
+      alert("Network error. Please try again.");
     }
   }
 
@@ -411,7 +419,7 @@ export class PermanentUpgradePopup {
     this.userId = null;
     this.onUpgradeSelected = null;
 
-    console.log('Permanent upgrade popup hidden');
+    console.log("Permanent upgrade popup hidden");
   }
 
   /**
@@ -435,29 +443,37 @@ export class PermanentUpgradePopup {
     }
 
     switch (upgradeType) {
-      case 'health_max':
+      case "health_max":
         const oldMaxHealth = player.maxHealth;
         player.maxHealth += upgradeInfo.value;
         // Also increase current health
         player.health += upgradeInfo.value;
-        console.log(`Health upgraded: ${oldMaxHealth} → ${player.maxHealth} (${upgradeInfo.description})`);
+        console.log(
+          `Health upgraded: ${oldMaxHealth} → ${player.maxHealth} (${upgradeInfo.description})`
+        );
         break;
-        
-      case 'stamina_max':
+
+      case "stamina_max":
         const oldMaxStamina = player.maxStamina;
         player.maxStamina += upgradeInfo.value;
         // Also increase current stamina
         player.stamina += upgradeInfo.value;
-        console.log(`Stamina upgraded: ${oldMaxStamina} → ${player.maxStamina} (${upgradeInfo.description})`);
+        console.log(
+          `Stamina upgraded: ${oldMaxStamina} → ${player.maxStamina} (${upgradeInfo.description})`
+        );
         break;
-        
-      case 'movement_speed':
+
+      case "movement_speed":
         // Movement speed upgrade would need to be applied in player movement logic
         // For now, just log it - this would need more complex implementation
-        console.log(`Movement speed upgraded by ${upgradeInfo.value * 100}% (${upgradeInfo.description})`);
+        console.log(
+          `Movement speed upgraded by ${upgradeInfo.value * 100}% (${
+            upgradeInfo.description
+          })`
+        );
         // TODO: Implement movement speed boost in player movement
         break;
-        
+
       default:
         console.warn(`Unhandled upgrade type: ${upgradeType}`);
     }
@@ -475,4 +491,4 @@ export class PermanentUpgradePopup {
   }
 }
 
-export default PermanentUpgradePopup; 
+export default PermanentUpgradePopup;
