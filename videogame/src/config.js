@@ -20,7 +20,40 @@ export const variables = {
   backgroundImage: new Image(),
   showHitboxes: true, // Enable hitbox visualization for debugging
 };
-variables.backgroundImage.src = "/assets/backgrounds/backgroundfloor1.jpg";
+
+// Background system for different floors and rooms
+export const BACKGROUND_CONFIG = {
+  // Floor 1 backgrounds (6 different backgrounds for 6 rooms)
+  floor1: [
+    "/assets/backgrounds/grass.png",     // Room 1 (Combat)
+    "/assets/backgrounds/woods.png",     // Room 2 (Combat)  
+    "/assets/backgrounds/swamp.png",     // Room 3 (Combat)
+    "/assets/backgrounds/cave.png",      // Room 4 (Combat)
+    "/assets/backgrounds/store.png",     // Room 5 (Shop)
+    "/assets/backgrounds/volcano.png"    // Room 6 (Boss)
+  ],
+  // Floor 2 backgrounds (can be added later)
+  floor2: [
+    "/assets/backgrounds/grass.png",     // Fallback for now
+    "/assets/backgrounds/woods.png",
+    "/assets/backgrounds/swamp.png", 
+    "/assets/backgrounds/cave.png",
+    "/assets/backgrounds/store.png",
+    "/assets/backgrounds/volcano.png"
+  ],
+  // Floor 3 backgrounds (can be added later)
+  floor3: [
+    "/assets/backgrounds/grass.png",     // Fallback for now
+    "/assets/backgrounds/woods.png",
+    "/assets/backgrounds/swamp.png",
+    "/assets/backgrounds/cave.png", 
+    "/assets/backgrounds/store.png",
+    "/assets/backgrounds/volcano.png"
+  ]
+};
+
+// Initialize with default background (will be updated dynamically)
+variables.backgroundImage.src = BACKGROUND_CONFIG.floor1[0];
 
 // Base walking animations (shared between weapons)
 // All walk.png sprites have 9 columns, 4 rows
@@ -157,3 +190,70 @@ export const playerAttack = {
   cooldown: 500, // 500ms cooldown between attacks
   repeat: false,
 };
+
+// Background management functions
+export function updateBackgroundForRoom(floor, roomIndex) {
+  try {
+    const floorKey = `floor${floor}`;
+    const backgroundsForFloor = BACKGROUND_CONFIG[floorKey];
+    
+    if (!backgroundsForFloor) {
+      console.warn(`No backgrounds configured for floor ${floor}, using floor 1 backgrounds`);
+      const fallbackBackground = BACKGROUND_CONFIG.floor1[roomIndex] || BACKGROUND_CONFIG.floor1[0];
+      variables.backgroundImage.src = fallbackBackground;
+      return;
+    }
+    
+    // Ensure roomIndex is within bounds
+    const backgroundIndex = Math.min(roomIndex, backgroundsForFloor.length - 1);
+    const newBackgroundSrc = backgroundsForFloor[backgroundIndex];
+    
+    // Only update if it's a different background
+    if (variables.backgroundImage.src !== newBackgroundSrc) {
+      console.log(`Changing background for Floor ${floor}, Room ${roomIndex + 1}: ${newBackgroundSrc}`);
+      variables.backgroundImage.src = newBackgroundSrc;
+      
+      // Ensure the new background loads properly
+      variables.backgroundImage.onload = () => {
+        console.log(`Background loaded successfully: ${newBackgroundSrc}`);
+      };
+      
+      variables.backgroundImage.onerror = () => {
+        console.error(`Failed to load background: ${newBackgroundSrc}, using fallback`);
+        variables.backgroundImage.src = BACKGROUND_CONFIG.floor1[0]; // Fallback to first background
+      };
+    }
+  } catch (error) {
+    console.error(`Error updating background for Floor ${floor}, Room ${roomIndex}:`, error);
+    // Fallback to default background
+    variables.backgroundImage.src = BACKGROUND_CONFIG.floor1[0];
+  }
+}
+
+export function preloadBackgrounds() {
+  console.log('Preloading all background images...');
+  const allBackgrounds = new Set();
+  
+  // Collect all unique background paths
+  Object.values(BACKGROUND_CONFIG).forEach(floorBackgrounds => {
+    floorBackgrounds.forEach(bgPath => allBackgrounds.add(bgPath));
+  });
+  
+  // Preload each unique background
+  const preloadPromises = Array.from(allBackgrounds).map(bgPath => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        console.log(`Preloaded background: ${bgPath}`);
+        resolve(bgPath);
+      };
+      img.onerror = () => {
+        console.warn(`Failed to preload background: ${bgPath}`);
+        reject(bgPath);
+      };
+      img.src = bgPath;
+    });
+  });
+  
+  return Promise.allSettled(preloadPromises);
+}

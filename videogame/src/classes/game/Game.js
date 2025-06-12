@@ -2,7 +2,7 @@
 import { Vec } from "../../utils/Vec.js";
 import { Rect } from "../../utils/Rect.js";
 import { Player } from "../entities/Player.js";
-import { variables, keyDirections } from "../../config.js";
+import { variables, keyDirections, preloadBackgrounds } from "../../config.js";
 import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
 import { Boss } from "../entities/Boss.js";
@@ -941,16 +941,18 @@ export class Game {
         // BOSS ROOM: Advance to next floor
         console.log("🏆 Boss defeated! Advancing to next floor...");
         
-        // Critical API call: Auto-save after boss completion
-        await this.saveCurrentGameState();
-        
-        // Reset boss flags
+        // Reset boss flags immediately
         this.resetBossFlags();
         
-        // Advance to next floor
+        // Advance to next floor immediately
         await this.floorGenerator.nextFloor();
         
         console.log(`📍 Advanced to Floor ${this.floorGenerator.getCurrentFloor()}, Room 1`);
+        
+        // Save after boss completion (can be async since transition is visually complete)
+        this.saveCurrentGameState().catch(error => {
+          console.error("Failed to auto-save after boss completion:", error);
+        });
       } else {
         // NORMAL ROOM: Advance to next room
         if (!this.floorGenerator.nextRoom()) {
@@ -959,28 +961,33 @@ export class Game {
         }
         
         console.log(`📍 Advanced to Room ${this.floorGenerator.getCurrentRoomIndex() + 1}`);
-        
-        // Critical API call: Auto-save after successful room transition
-        await this.saveCurrentGameState();
       }
 
-      // Update game state
+      // Update game state IMMEDIATELY for instant transition
       this.currentRoom = this.floorGenerator.getCurrentRoom();
       this.currentRoom.resetBossState();
       
-      // Update player position
+      // Update player position IMMEDIATELY
       this.player.setCurrentRoom(this.currentRoom);
       this.player.position = this.currentRoom.getPlayerStartPosition();
       this.player.velocity = new Vec(0, 0);
       this.player.keys = [];
       
-      // Update enemies
+      // Update enemies IMMEDIATELY
       this.enemies = this.currentRoom.objects.enemies;
       
-      // Critical API call: Update shop data with new room information
+      // Update shop data IMMEDIATELY
       this.configureShopGameData();
       
       console.log("✅ Room transition completed successfully");
+
+      // Save game state AFTER visual transition is complete (non-blocking)
+      if (!wasInBossRoom) {
+        // For normal rooms, save asynchronously without blocking
+        this.saveCurrentGameState().catch(error => {
+          console.error("Failed to auto-save after room transition:", error);
+        });
+      }
 
     } catch (error) {
       console.error("❌ Room transition failed:", error);
@@ -1721,6 +1728,11 @@ export class Game {
       // CRITICAL FIX: Wait for managers to initialize FIRST
       await this.initializeManagers();
       console.log('Managers initialization complete');
+
+      // Preload all background images
+      console.log('Preloading background images...');
+      await preloadBackgrounds();
+      console.log('Background preloading complete');
 
       // THEN load saved state
       await this.loadSavedState().then(() => {

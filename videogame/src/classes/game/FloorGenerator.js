@@ -12,6 +12,7 @@ import { Supersoldier } from "../enemies/floor2/SupersoldierBoss.js";
 import { Vec } from '../../utils/Vec.js';
 import { createRun, completeRun } from '../../utils/api.js';
 import { roomMapping } from '../../utils/roomMapping.js';
+import { updateBackgroundForRoom } from '../../config.js';
 
 export class FloorGenerator {
     constructor() {
@@ -38,6 +39,9 @@ export class FloorGenerator {
 
         this.generateFloor();
         this.initializeRoomMapping(); // Initialize room mapping service
+        
+        // Initialize background for the starting room
+        this.updateBackgroundForCurrentRoom();
     }
 
     /**
@@ -281,6 +285,10 @@ export class FloorGenerator {
             }
 
             console.log(`ROOM PROGRESSION: ${beforeIndex} → ${this.currentRoomIndex} (${this.currentRoomIndex + 1}/${this.currentFloor.length})`);
+            
+            // Update background for the new room
+            this.updateBackgroundForCurrentRoom();
+            
             return true;
         }
 
@@ -387,6 +395,9 @@ export class FloorGenerator {
 
         // Generate fresh floor
         this.generateFloor();
+        
+        // Update background for the reset state
+        this.updateBackgroundForCurrentRoom();
 
         log.info("Floor generator reset after death complete");
     }
@@ -470,6 +481,10 @@ export class FloorGenerator {
             // Generate new floor and reset room index
             console.log(`Generating new floor ${this.floorCount}...`);
             this.generateFloor();
+            
+            // Update background for the new floor's first room
+            this.updateBackgroundForCurrentRoom();
+            
             console.log(`FLOOR TRANSITION COMPLETE: Now at Floor ${this.floorCount}, Room ${this.currentRoomIndex + 1}`);
         } else {
             // Floor 3 completed - start new run
@@ -538,6 +553,10 @@ export class FloorGenerator {
             // Generate new floor and reset room index
             console.log(`Generating new floor ${this.floorCount}...`);
             this.generateFloor();
+            
+            // Update background for the new run's first room
+            this.updateBackgroundForCurrentRoom();
+            
             console.log(`NEW RUN STARTED: Now at Run ${this.runCount}, Floor ${this.floorCount}, Room ${this.currentRoomIndex + 1}`);
         }
     }
@@ -564,6 +583,9 @@ export class FloorGenerator {
 
             // FIXED: Generate floor using existing method instead of non-existent generateFloorRooms
             this.generateFloor();
+            
+            // Update background after setting position
+            this.updateBackgroundForCurrentRoom();
 
             // FIXED: Validate against currentFloor (which exists) instead of currentFloorRooms (which doesn't)
             if (this.currentRoomIndex >= this.currentFloor.length) {
@@ -605,6 +627,15 @@ export class FloorGenerator {
         } catch (error) {
             console.error('Room mapping validation failed:', error);
             return this.getExpectedRoomId(); // Fallback to calculated ID
+        }
+    }
+
+    // Update background for current room
+    updateBackgroundForCurrentRoom() {
+        try {
+            updateBackgroundForRoom(this.floorCount, this.currentRoomIndex);
+        } catch (error) {
+            console.error('Failed to update background for current room:', error);
         }
     }
 } 
