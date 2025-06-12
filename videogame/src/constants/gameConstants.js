@@ -166,6 +166,59 @@ export const ENEMY_CONSTANTS_V2 = {
     projectileSpeed: 350,
     retreatDistance: 120,
     backendType: 'rare' // Explicit mapping
+  },
+
+  // FLOOR 2 ENEMIES
+  // MELEE ENEMIES (map to 'common')
+  BANDIT: {
+    size: { width: 32, height: 32 },
+    health: 45,
+    damage: 18,
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 0.8,
+    attackRange: 40,
+    attackCooldown: 1000, // 1 second attack interval
+    backendType: 'common' // Explicit mapping
+  },
+
+  // RANGED ENEMIES (map to 'rare')
+  SLINGSHOT_SNIPER: {
+    size: { width: 32, height: 32 },
+    health: 35,
+    damage: 22,
+    speed: 0, // Static sniper
+    attackRange: 999999, // Infinite vision range
+    attackCooldown: 3000, // Attacks every 3 seconds
+    projectileSpeed: 500, // Super fast bullet
+    retreatDistance: 0, // Doesn't retreat
+    backendType: 'rare' // Explicit mapping
+  },
+
+  COP1: {
+    size: { width: 32, height: 32 },
+    health: 50,
+    damage: 12, // Lower per-bullet damage since it's burst fire
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 0.3,
+    attackRange: 100, // Vision range 100
+    attackCooldown: 3000, // 3 second cooldown
+    projectileSpeed: 400, // Very fast bullet
+    retreatDistance: 60,
+    burstCount: 10, // Shoots burst of 10 bullets
+    burstDelay: 100, // 100ms between each bullet in burst
+    backendType: 'rare' // Explicit mapping
+  },
+
+  COP2: {
+    size: { width: 32, height: 32 },
+    health: 50,
+    damage: 12, // Lower per-bullet damage since it's burst fire
+    speed: PLAYER_CONSTANTS.BASE_SPEED * 0.5, // Moves faster than Cop1
+    attackRange: 100, // Vision range 100
+    attackCooldown: 3000, // 3 second cooldown (same as Cop1)
+    projectileSpeed: 350, // Shoots slower than Cop1
+    retreatDistance: 60,
+    burstCount: 10, // Shoots burst of 10 bullets
+    burstDelay: 100, // 100ms between each bullet in burst
+    backendType: 'rare' // Explicit mapping
   }
 };
 

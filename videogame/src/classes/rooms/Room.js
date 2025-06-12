@@ -14,6 +14,10 @@ import { GoblinArcher } from "../enemies/floor1/GoblinArcher.js";
 import { SwordGoblin } from "../enemies/floor1/SwordGoblin.js";
 import { MageGoblin } from "../enemies/floor1/MageGoblin.js";
 import { GreatBowGoblin } from "../enemies/floor1/GreatBowGoblin.js";
+import { Bandit } from "../enemies/floor2/Bandit.js";
+import { SlingshotSniper } from "../enemies/floor2/SlingshotSniper.js";
+import { Cop1 } from "../enemies/floor2/Cop1.js";
+import { Cop2 } from "../enemies/floor2/Cop2.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
 import { ROOM_CONSTANTS, PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
@@ -264,10 +268,13 @@ export class Room {
           );
           enemy.moveTo(playerCenter);
 
-          // ✅ V2 RANGED ENEMIES ATTACK LOGIC
+          // ✅ V2 RANGED ENEMIES ATTACK LOGIC (Floor 1 & Floor 2)
           if (enemy.type === "goblin_archer" || 
               enemy.type === "mage_goblin" || 
-              enemy.type === "great_bow_goblin") {
+              enemy.type === "great_bow_goblin" ||
+              enemy.type === "slingshot_sniper" ||
+              enemy.type === "cop1" ||
+              enemy.type === "cop2") {
             enemy.attack(window.game.player);
           }
         }
@@ -492,17 +499,43 @@ export class Room {
     // Generate enemies randomly within defined range
     const enemyCount = Math.floor(Math.random() * (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)) + ROOM_CONSTANTS.MIN_ENEMIES;
 
-    // ✅ V2 ENEMY DISTRIBUTION WITH WEIGHTED SELECTION
-    const enemyTypes = [
-      { class: GoblinDagger, weight: 30, type: 'melee', name: 'GoblinDagger' },      // common
-      { class: SwordGoblin, weight: 25, type: 'melee', name: 'SwordGoblin' },       // common  
-      { class: GoblinArcher, weight: 20, type: 'ranged', name: 'GoblinArcher' },    // rare
-      { class: MageGoblin, weight: 15, type: 'ranged', name: 'MageGoblin' },        // rare
-      { class: GreatBowGoblin, weight: 10, type: 'ranged', name: 'GreatBowGoblin' } // rare
-    ];
+    // Get current floor from FloorGenerator to determine enemy types
+    const currentFloor = window.game?.floorGenerator?.getCurrentFloor() || 1;
+    
+    // ✅ V2 FLOOR-BASED ENEMY DISTRIBUTION WITH WEIGHTED SELECTION
+    let enemyTypes;
+    
+    if (currentFloor === 1) {
+      // Floor 1 enemies
+      enemyTypes = [
+        { class: GoblinDagger, weight: 30, type: 'melee', name: 'GoblinDagger' },      // common
+        { class: SwordGoblin, weight: 25, type: 'melee', name: 'SwordGoblin' },       // common  
+        { class: GoblinArcher, weight: 20, type: 'ranged', name: 'GoblinArcher' },    // rare
+        { class: MageGoblin, weight: 15, type: 'ranged', name: 'MageGoblin' },        // rare
+        { class: GreatBowGoblin, weight: 10, type: 'ranged', name: 'GreatBowGoblin' } // rare
+      ];
+    } else if (currentFloor === 2) {
+      // Floor 2 enemies
+      enemyTypes = [
+        { class: Bandit, weight: 40, type: 'melee', name: 'Bandit' },               // common
+        { class: SlingshotSniper, weight: 25, type: 'ranged', name: 'SlingshotSniper' }, // rare
+        { class: Cop1, weight: 20, type: 'ranged', name: 'Cop1' },                 // rare
+        { class: Cop2, weight: 15, type: 'ranged', name: 'Cop2' }                  // rare
+      ];
+    } else {
+      // Floor 3+ fallback to Floor 1 enemies (can be updated later)
+      log.warn(`No specific enemies defined for floor ${currentFloor}, using Floor 1 enemies as fallback`);
+      enemyTypes = [
+        { class: GoblinDagger, weight: 30, type: 'melee', name: 'GoblinDagger' },      // common
+        { class: SwordGoblin, weight: 25, type: 'melee', name: 'SwordGoblin' },       // common  
+        { class: GoblinArcher, weight: 20, type: 'ranged', name: 'GoblinArcher' },    // rare
+        { class: MageGoblin, weight: 15, type: 'ranged', name: 'MageGoblin' },        // rare
+        { class: GreatBowGoblin, weight: 10, type: 'ranged', name: 'GreatBowGoblin' } // rare
+      ];
+    }
 
     log.debug(
-      `Enemy V2 distribution for ${enemyCount} enemies:`,
+      `Floor ${currentFloor} enemy V2 distribution for ${enemyCount} enemies:`,
       enemyTypes.map(e => `${e.name}(${e.weight}%)`).join(', ')
     );
 
