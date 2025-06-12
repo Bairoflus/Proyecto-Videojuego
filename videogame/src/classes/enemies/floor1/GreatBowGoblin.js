@@ -10,7 +10,7 @@ import { ENEMY_CONSTANTS_V2 } from "../../../constants/gameConstants.js";
 export class GreatBowGoblin extends RangedEnemy {
   constructor(position) {
     const config = ENEMY_CONSTANTS_V2.GREAT_BOW_GOBLIN;
-    
+
     super(
       position,
       config.size.width,
@@ -55,7 +55,9 @@ export class GreatBowGoblin extends RangedEnemy {
       this.isAttacking = true;
       this.attackCooldown = this.attackDuration;
       this.fireProjectile(target);
-      console.log(`GreatBowGoblin fired powerful arrow at ${target.type || 'player'}`);
+      console.log(
+        `GreatBowGoblin fired powerful arrow at ${target.type || "player"}`
+      );
     }
   }
 
@@ -88,7 +90,7 @@ export class GreatBowGoblin extends RangedEnemy {
       isActive: true,
       lifetime: 6000, // Longer lifetime for long range
       timeAlive: 0,
-      color: "#654321" // Dark brown arrow color
+      color: "#654321", // Dark brown arrow color
     };
 
     this.projectiles.push(projectile);
@@ -97,4 +99,4 @@ export class GreatBowGoblin extends RangedEnemy {
   updateAnimation() {
     // TODO: Implement great bow goblin specific animations with bow drawing
   }
-} 
+}

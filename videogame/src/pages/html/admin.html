@@ -16,21 +16,21 @@
         <div class="login-card">
             <h1>Admin Access</h1>
             <h2>Shattered Timeline</h2>
-            
+
             <form id="admin-login-form">
                 <div class="form-group">
                     <label for="admin-username">Admin Username:</label>
                     <input type="text" id="admin-username" name="username" required />
                 </div>
-                
+
                 <div class="form-group">
                     <label for="admin-password">Admin Password:</label>
                     <input type="password" id="admin-password" name="password" required />
                 </div>
-                
+
                 <button type="submit" class="login-btn">Access Admin Dashboard</button>
             </form>
-            
+
             <div id="admin-login-error" class="login-error" style="display: none;"></div>
         </div>
     </div>
@@ -59,7 +59,7 @@
             <!-- Enhanced Dashboard Section -->
             <section id="dashboard" class="admin-section active">
                 <h2>Game Overview</h2>
-                
+
                 <!-- Optimized Metrics (useful data only) -->
                 <div class="dashboard-cards">
                     <div class="metric-card">
@@ -102,7 +102,7 @@
             <!-- Optimized Analytics Section -->
             <section id="analytics" class="admin-section">
                 <h2>Useful Analytics</h2>
-                
+
                 <!-- New useful analytics tabs -->
                 <div class="analytics-tabs">
                     <button class="tab-btn active" data-analytics="first-run-masters">First Run Masters</button>
@@ -116,13 +116,13 @@
                         <h4>Exceptional Players - Defeated All 3 Bosses in First Run</h4>
                         <div class="loading">Loading first run masters...</div>
                     </div>
-                    
+
                     <!-- Permanent Upgrade Adoption -->
                     <div id="analytics-upgrade-adoption" class="analytics-table">
                         <h4>Permanent Upgrade Adoption Analysis</h4>
                         <div class="loading">Loading upgrade adoption data...</div>
                     </div>
-                    
+
                     <!-- Simplified Player Progression -->
                     <div id="analytics-player-progression" class="analytics-table">
                         <h4>Player Progression (Experience Tiers Only)</h4>
@@ -134,7 +134,7 @@
             <!-- Enhanced Players Section -->
             <section id="players" class="admin-section">
                 <h2>Active Players Status</h2>
-                
+
                 <div class="player-controls">
                     <input type="text" id="player-search" placeholder="Search players..." />
                     <button id="refresh-players">Refresh</button>
@@ -160,38 +160,38 @@
                 
                 <div class="charts-grid">
                     <!-- Activity Trends Chart -->
-                    <div class="chart-container">
-                        <h3>Player Activity Trends (Last 30 Days)</h3>
-                        <canvas id="activity-trends-chart"></canvas>
-                    </div>
-                    
-                    <!-- Playtime Distribution Chart -->
-                    <div class="chart-container">
-                        <h3>Playtime Distribution</h3>
-                        <canvas id="playtime-distribution-chart"></canvas>
-                    </div>
-                    
-                    <!-- Run Experience Distribution Chart -->
-                    <div class="chart-container">
-                        <h3>Player Experience by Run Count</h3>
-                        <canvas id="run-experience-chart"></canvas>
-                    </div>
-                    
-                    <!-- Permanent Upgrades Adoption Chart -->
-                    <div class="chart-container">
-                        <h3>Permanent Upgrade Adoption Rates</h3>
-                        <canvas id="upgrade-adoption-chart"></canvas>
-                    </div>
-                    
-                    <!-- Session Duration Chart -->
-                    <div class="chart-container">
-                        <h3>Live Session Duration Distribution</h3>
-                        <canvas id="session-duration-chart"></canvas>
-                    </div>
-                </div>
-            </section>
-            -->
-        </main>
+            <div class="chart-container">
+                <h3>Player Activity Trends (Last 30 Days)</h3>
+                <canvas id="activity-trends-chart"></canvas>
+            </div>
+
+            <!-- Playtime Distribution Chart -->
+            <div class="chart-container">
+                <h3>Playtime Distribution</h3>
+                <canvas id="playtime-distribution-chart"></canvas>
+            </div>
+
+            <!-- Run Experience Distribution Chart -->
+            <div class="chart-container">
+                <h3>Player Experience by Run Count</h3>
+                <canvas id="run-experience-chart"></canvas>
+            </div>
+
+            <!-- Permanent Upgrades Adoption Chart -->
+            <div class="chart-container">
+                <h3>Permanent Upgrade Adoption Rates</h3>
+                <canvas id="upgrade-adoption-chart"></canvas>
+            </div>
+
+            <!-- Session Duration Chart -->
+            <div class="chart-container">
+                <h3>Live Session Duration Distribution</h3>
+                <canvas id="session-duration-chart"></canvas>
+            </div>
+    </div>
+    </section>
+    -->
+    </main>
     </div>
 
     <!-- Messages -->
@@ -207,4 +207,4 @@
     <script type="module" src="../js/admin.js"></script>
 </body>
 
-</html> 
+</html>

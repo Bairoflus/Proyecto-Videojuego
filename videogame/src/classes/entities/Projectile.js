@@ -9,7 +9,13 @@ import { log } from "../../utils/Logger.js";
 import { PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
 
 export class Projectile {
-  constructor(position, target, speed, damage, radius = PHYSICS_CONSTANTS.PROJECTILE_RADIUS) {
+  constructor(
+    position,
+    target,
+    speed,
+    damage,
+    radius = PHYSICS_CONSTANTS.PROJECTILE_RADIUS
+  ) {
     this.position = position;
     this.radius = radius;
     this.speed = speed;
@@ -111,11 +117,11 @@ export class Projectile {
     const hitbox = entity.getHitboxBounds
       ? entity.getHitboxBounds()
       : {
-        x: entity.position.x,
-        y: entity.position.y,
-        width: entity.width,
-        height: entity.height,
-      };
+          x: entity.position.x,
+          y: entity.position.y,
+          width: entity.width,
+          height: entity.height,
+        };
 
     // Get projectile bounds using helper method
     const projBox = this.getProjectileBounds();
@@ -146,7 +152,7 @@ export class Projectile {
       position: this.position,
       width: this.radius * 2,
       height: this.radius * 2,
-      getHitboxBounds: () => this.getProjectileBounds()
+      getHitboxBounds: () => this.getProjectileBounds(),
     };
 
     return this.currentRoom.checkWallCollision(tempProjectile);

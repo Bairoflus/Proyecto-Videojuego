@@ -10,11 +10,11 @@
 <body>
   <div class="page-container">
     <h2>User Statistics</h2>
-    
+
     <!-- Message containers -->
     <div id="error-message" class="message error" style="display: none;"></div>
     <div id="success-message" class="message success" style="display: none;"></div>
-    
+
     <form id="stats-form">
       <input type="number" name="userId" placeholder="Enter User ID" required min="1" />
       <button type="submit">Get Stats</button>
@@ -34,44 +34,44 @@
 
   <script type="module">
     import { getUserStats } from '../../utils/api.js';
-    
+
     // Wait for DOM to load
     document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById('stats-form');
-        const errorMessage = document.getElementById('error-message');
-        const successMessage = document.getElementById('success-message');
-        const statsDisplay = document.getElementById('stats-display');
-        const statsContent = document.getElementById('stats-content');
+      const form = document.getElementById('stats-form');
+      const errorMessage = document.getElementById('error-message');
+      const successMessage = document.getElementById('success-message');
+      const statsDisplay = document.getElementById('stats-display');
+      const statsContent = document.getElementById('stats-content');
 
-        // Handle form submission
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Clear previous messages and hide stats
-            errorMessage.style.display = 'none';
-            successMessage.style.display = 'none';
-            statsDisplay.style.display = 'none';
-            
-            // Get form data
-            const userId = form.userId.value.trim();
-            
-            if (!userId) {
-                errorMessage.textContent = 'Please enter a valid User ID';
-                errorMessage.style.display = 'block';
-                return;
-            }
-            
-            try {
-                // Disable submit button during request
-                const submitButton = form.querySelector('button[type="submit"]');
-                submitButton.disabled = true;
-                submitButton.textContent = 'Loading...';
-                
-                // Call API to get user stats
-                const stats = await getUserStats(userId);
-                
-                // Display stats
-                statsContent.innerHTML = `
+      // Handle form submission
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Clear previous messages and hide stats
+        errorMessage.style.display = 'none';
+        successMessage.style.display = 'none';
+        statsDisplay.style.display = 'none';
+
+        // Get form data
+        const userId = form.userId.value.trim();
+
+        if (!userId) {
+          errorMessage.textContent = 'Please enter a valid User ID';
+          errorMessage.style.display = 'block';
+          return;
+        }
+
+        try {
+          // Disable submit button during request
+          const submitButton = form.querySelector('button[type="submit"]');
+          submitButton.disabled = true;
+          submitButton.textContent = 'Loading...';
+
+          // Call API to get user stats
+          const stats = await getUserStats(userId);
+
+          // Display stats
+          statsContent.innerHTML = `
                     <p><strong>User ID:</strong> ${stats.user_id || 'N/A'}</p>
                     <p><strong>Games Played:</strong> ${stats.games_played || 0}</p>
                     <p><strong>Wins:</strong> ${stats.wins || 0}</p>
@@ -81,28 +81,28 @@
                     <p><strong>Total Playtime:</strong> ${stats.total_playtime_minutes || 0} minutes</p>
                     <p><strong>Last Played:</strong> ${stats.last_played_at || 'Never'}</p>
                 `;
-                
-                statsDisplay.style.display = 'block';
-                successMessage.textContent = 'Stats loaded successfully!';
-                successMessage.style.display = 'block';
-                
-            } catch (error) {
-                // Handle specific error cases
-                if (error.message.includes('404') || error.message.includes('Stats not found')) {
-                    errorMessage.textContent = 'No statistics found for this user ID. The user may not exist or has not played any games yet.';
-                } else {
-                    errorMessage.textContent = error.message || 'Failed to load user statistics. Please try again.';
-                }
-                errorMessage.style.display = 'block';
-            } finally {
-                // Re-enable submit button
-                const submitButton = form.querySelector('button[type="submit"]');
-                submitButton.disabled = false;
-                submitButton.textContent = 'Get Stats';
-            }
-        });
+
+          statsDisplay.style.display = 'block';
+          successMessage.textContent = 'Stats loaded successfully!';
+          successMessage.style.display = 'block';
+
+        } catch (error) {
+          // Handle specific error cases
+          if (error.message.includes('404') || error.message.includes('Stats not found')) {
+            errorMessage.textContent = 'No statistics found for this user ID. The user may not exist or has not played any games yet.';
+          } else {
+            errorMessage.textContent = error.message || 'Failed to load user statistics. Please try again.';
+          }
+          errorMessage.style.display = 'block';
+        } finally {
+          // Re-enable submit button
+          const submitButton = form.querySelector('button[type="submit"]');
+          submitButton.disabled = false;
+          submitButton.textContent = 'Get Stats';
+        }
+      });
     });
   </script>
 </body>
 
-</html> 
+</html>

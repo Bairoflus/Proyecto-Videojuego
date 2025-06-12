@@ -4,50 +4,50 @@
  */
 
 export class EnhancedLoadingSystem {
-    constructor(gameInstance) {
-        this.game = gameInstance;
-        this.loadingElement = null;
-        this.errorElement = null;
-        this.activeLoadings = new Map();
-        this.loadingQueue = [];
-        
-        // Configuration
-        this.config = {
-            showPercentage: true,
-            animationDuration: 300,
-            errorDisplayTime: 5000,
-            maxConcurrentLoading: 3
-        };
-        
-        // Initialize UI elements
-        this.initializeUI();
-        
-        // Setup cleanup
-        this.setupCleanup();
-    }
+  constructor(gameInstance) {
+    this.game = gameInstance;
+    this.loadingElement = null;
+    this.errorElement = null;
+    this.activeLoadings = new Map();
+    this.loadingQueue = [];
 
-    // ===================================================
-    // INITIALIZATION
-    // ===================================================
+    // Configuration
+    this.config = {
+      showPercentage: true,
+      animationDuration: 300,
+      errorDisplayTime: 5000,
+      maxConcurrentLoading: 3,
+    };
 
-    /**
-     * Initialize loading UI elements
-     */
-    initializeUI() {
-        this.createLoadingContainer();
-        this.createErrorContainer();
-        this.createProgressContainer();
-    }
+    // Initialize UI elements
+    this.initializeUI();
 
-    /**
-     * Create main loading container
-     */
-    createLoadingContainer() {
-        this.loadingElement = document.createElement('div');
-        this.loadingElement.id = 'enhanced-loading-system';
-        this.loadingElement.className = 'loading-system hidden';
-        
-        this.loadingElement.innerHTML = `
+    // Setup cleanup
+    this.setupCleanup();
+  }
+
+  // ===================================================
+  // INITIALIZATION
+  // ===================================================
+
+  /**
+   * Initialize loading UI elements
+   */
+  initializeUI() {
+    this.createLoadingContainer();
+    this.createErrorContainer();
+    this.createProgressContainer();
+  }
+
+  /**
+   * Create main loading container
+   */
+  createLoadingContainer() {
+    this.loadingElement = document.createElement("div");
+    this.loadingElement.id = "enhanced-loading-system";
+    this.loadingElement.className = "loading-system hidden";
+
+    this.loadingElement.innerHTML = `
             <div class="loading-backdrop"></div>
             <div class="loading-content">
                 <div class="loading-spinner">
@@ -64,20 +64,20 @@ export class EnhancedLoadingSystem {
                 <div class="loading-details"></div>
             </div>
         `;
-        
-        document.body.appendChild(this.loadingElement);
-        this.addLoadingStyles();
-    }
 
-    /**
-     * Create error message container
-     */
-    createErrorContainer() {
-        this.errorElement = document.createElement('div');
-        this.errorElement.id = 'enhanced-error-system';
-        this.errorElement.className = 'error-system hidden';
-        
-        this.errorElement.innerHTML = `
+    document.body.appendChild(this.loadingElement);
+    this.addLoadingStyles();
+  }
+
+  /**
+   * Create error message container
+   */
+  createErrorContainer() {
+    this.errorElement = document.createElement("div");
+    this.errorElement.id = "enhanced-error-system";
+    this.errorElement.className = "error-system hidden";
+
+    this.errorElement.innerHTML = `
             <div class="error-content">
                 <div class="error-icon">⚠️</div>
                 <div class="error-message"></div>
@@ -88,426 +88,433 @@ export class EnhancedLoadingSystem {
                 </div>
             </div>
         `;
-        
-        document.body.appendChild(this.errorElement);
-        this.addErrorStyles();
+
+    document.body.appendChild(this.errorElement);
+    this.addErrorStyles();
+  }
+
+  /**
+   * Create progress tracking container
+   */
+  createProgressContainer() {
+    this.progressElement = document.createElement("div");
+    this.progressElement.id = "loading-progress-tracker";
+    this.progressElement.className = "progress-tracker hidden";
+
+    document.body.appendChild(this.progressElement);
+  }
+
+  // ===================================================
+  // LOADING MANAGEMENT
+  // ===================================================
+
+  /**
+   * Show loading screen with enhanced features
+   * @param {Object} options - Loading configuration
+   */
+  async showLoading(options = {}) {
+    const loadingId = this.generateLoadingId();
+
+    const config = {
+      id: loadingId,
+      text: options.text || "Loading...",
+      details: options.details || "",
+      showProgress: options.showProgress !== false,
+      showPercentage: options.showPercentage !== false,
+      contextual: options.contextual || false,
+      priority: options.priority || "normal",
+      estimatedTime: options.estimatedTime || null,
+      ...options,
+    };
+
+    // Add to active loadings
+    this.activeLoadings.set(loadingId, config);
+
+    // Handle loading queue
+    if (this.activeLoadings.size > this.config.maxConcurrentLoading) {
+      this.loadingQueue.push(config);
+      return loadingId;
     }
 
-    /**
-     * Create progress tracking container
-     */
-    createProgressContainer() {
-        this.progressElement = document.createElement('div');
-        this.progressElement.id = 'loading-progress-tracker';
-        this.progressElement.className = 'progress-tracker hidden';
-        
-        document.body.appendChild(this.progressElement);
+    await this.displayLoading(config);
+    return loadingId;
+  }
+
+  /**
+   * Display loading screen
+   * @param {Object} config - Loading configuration
+   */
+  async displayLoading(config) {
+    const loadingText = this.loadingElement.querySelector(".loading-text");
+    const loadingDetails =
+      this.loadingElement.querySelector(".loading-details");
+    const progressContainer =
+      this.loadingElement.querySelector(".loading-progress");
+
+    // Update content
+    loadingText.textContent = config.text;
+    loadingDetails.textContent = config.details;
+
+    // Show/hide progress based on config
+    if (config.showProgress) {
+      progressContainer.classList.remove("hidden");
+    } else {
+      progressContainer.classList.add("hidden");
     }
 
-    // ===================================================
-    // LOADING MANAGEMENT
-    // ===================================================
+    // Show loading with animation
+    this.loadingElement.classList.remove("hidden");
+    await this.animateIn(this.loadingElement);
 
-    /**
-     * Show loading screen with enhanced features
-     * @param {Object} options - Loading configuration
-     */
-    async showLoading(options = {}) {
-        const loadingId = this.generateLoadingId();
-        
-        const config = {
-            id: loadingId,
-            text: options.text || 'Loading...',
-            details: options.details || '',
-            showProgress: options.showProgress !== false,
-            showPercentage: options.showPercentage !== false,
-            contextual: options.contextual || false,
-            priority: options.priority || 'normal',
-            estimatedTime: options.estimatedTime || null,
-            ...options
-        };
-        
-        // Add to active loadings
-        this.activeLoadings.set(loadingId, config);
-        
-        // Handle loading queue
-        if (this.activeLoadings.size > this.config.maxConcurrentLoading) {
-            this.loadingQueue.push(config);
-            return loadingId;
-        }
-        
-        await this.displayLoading(config);
-        return loadingId;
+    // Start estimated time countdown if provided
+    if (config.estimatedTime) {
+      this.startTimeEstimation(config);
+    }
+  }
+
+  /**
+   * Update loading progress
+   * @param {string} loadingId - Loading ID
+   * @param {number} percentage - Progress percentage (0-100)
+   * @param {string} text - Optional text update
+   */
+  updateProgress(loadingId, percentage, text = null) {
+    const config = this.activeLoadings.get(loadingId);
+    if (!config) return;
+
+    const progressFill = this.loadingElement.querySelector(".progress-fill");
+    const progressPercentage = this.loadingElement.querySelector(
+      ".progress-percentage"
+    );
+    const loadingText = this.loadingElement.querySelector(".loading-text");
+
+    // Update progress bar
+    progressFill.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
+
+    if (config.showPercentage) {
+      progressPercentage.textContent = `${Math.round(percentage)}%`;
     }
 
-    /**
-     * Display loading screen
-     * @param {Object} config - Loading configuration
-     */
-    async displayLoading(config) {
-        const loadingText = this.loadingElement.querySelector('.loading-text');
-        const loadingDetails = this.loadingElement.querySelector('.loading-details');
-        const progressContainer = this.loadingElement.querySelector('.loading-progress');
-        
-        // Update content
-        loadingText.textContent = config.text;
-        loadingDetails.textContent = config.details;
-        
-        // Show/hide progress based on config
-        if (config.showProgress) {
-            progressContainer.classList.remove('hidden');
-        } else {
-            progressContainer.classList.add('hidden');
-        }
-        
-        // Show loading with animation
-        this.loadingElement.classList.remove('hidden');
-        await this.animateIn(this.loadingElement);
-        
-        // Start estimated time countdown if provided
-        if (config.estimatedTime) {
-            this.startTimeEstimation(config);
-        }
+    // Update text if provided
+    if (text) {
+      loadingText.textContent = text;
+      config.text = text;
     }
 
-    /**
-     * Update loading progress
-     * @param {string} loadingId - Loading ID
-     * @param {number} percentage - Progress percentage (0-100)
-     * @param {string} text - Optional text update
-     */
-    updateProgress(loadingId, percentage, text = null) {
-        const config = this.activeLoadings.get(loadingId);
-        if (!config) return;
-        
-        const progressFill = this.loadingElement.querySelector('.progress-fill');
-        const progressPercentage = this.loadingElement.querySelector('.progress-percentage');
-        const loadingText = this.loadingElement.querySelector('.loading-text');
-        
-        // Update progress bar
-        progressFill.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
-        
-        if (config.showPercentage) {
-            progressPercentage.textContent = `${Math.round(percentage)}%`;
-        }
-        
-        // Update text if provided
-        if (text) {
-            loadingText.textContent = text;
-            config.text = text;
-        }
-        
-        // Update config
-        config.progress = percentage;
+    // Update config
+    config.progress = percentage;
+  }
+
+  /**
+   * Hide loading screen
+   * @param {string} loadingId - Loading ID
+   */
+  async hideLoading(loadingId) {
+    const config = this.activeLoadings.get(loadingId);
+    if (!config) return;
+
+    // Remove from active loadings
+    this.activeLoadings.delete(loadingId);
+
+    // If no more active loadings, hide the overlay
+    if (this.activeLoadings.size === 0) {
+      await this.animateOut(this.loadingElement);
+      this.loadingElement.classList.add("hidden");
     }
 
-    /**
-     * Hide loading screen
-     * @param {string} loadingId - Loading ID
-     */
-    async hideLoading(loadingId) {
-        const config = this.activeLoadings.get(loadingId);
-        if (!config) return;
-        
-        // Remove from active loadings
-        this.activeLoadings.delete(loadingId);
-        
-        // If no more active loadings, hide the overlay
-        if (this.activeLoadings.size === 0) {
-            await this.animateOut(this.loadingElement);
-            this.loadingElement.classList.add('hidden');
-        }
-        
-        // Process queue
-        this.processLoadingQueue();
+    // Process queue
+    this.processLoadingQueue();
+  }
+
+  /**
+   * Process loading queue
+   */
+  processLoadingQueue() {
+    if (
+      this.loadingQueue.length > 0 &&
+      this.activeLoadings.size < this.config.maxConcurrentLoading
+    ) {
+      const nextLoading = this.loadingQueue.shift();
+      this.displayLoading(nextLoading);
     }
+  }
 
-    /**
-     * Process loading queue
-     */
-    processLoadingQueue() {
-        if (this.loadingQueue.length > 0 && this.activeLoadings.size < this.config.maxConcurrentLoading) {
-            const nextLoading = this.loadingQueue.shift();
-            this.displayLoading(nextLoading);
-        }
+  // ===================================================
+  // ERROR HANDLING
+  // ===================================================
+
+  /**
+   * Show enhanced error message
+   * @param {Object} errorConfig - Error configuration
+   */
+  async showError(errorConfig) {
+    const config = {
+      message: errorConfig.message || "An error occurred",
+      details: errorConfig.details || "",
+      type: errorConfig.type || "error",
+      action: errorConfig.action || null,
+      retryCallback: errorConfig.retryCallback || null,
+      dismissCallback: errorConfig.dismissCallback || null,
+      autoHide: errorConfig.autoHide !== false,
+      persistent: errorConfig.persistent || false,
+      ...errorConfig,
+    };
+
+    await this.displayError(config);
+  }
+
+  /**
+   * Display error message
+   * @param {Object} config - Error configuration
+   */
+  async displayError(config) {
+    const errorMessage = this.errorElement.querySelector(".error-message");
+    const errorDetails = this.errorElement.querySelector(".error-details");
+    const errorIcon = this.errorElement.querySelector(".error-icon");
+    const retryButton = this.errorElement.querySelector(".error-retry");
+    const dismissButton = this.errorElement.querySelector(".error-dismiss");
+
+    // Update content
+    errorMessage.textContent = config.message;
+    errorDetails.textContent = config.details;
+
+    // Update icon based on error type
+    errorIcon.textContent = this.getErrorIcon(config.type);
+
+    // Setup button handlers
+    retryButton.onclick = () => this.handleErrorAction("retry", config);
+    dismissButton.onclick = () => this.handleErrorAction("dismiss", config);
+
+    // Show/hide buttons based on config
+    retryButton.style.display = config.retryCallback ? "block" : "none";
+
+    // Apply error type styling
+    this.errorElement.className = `error-system error-${config.type}`;
+
+    // Show error with animation
+    this.errorElement.classList.remove("hidden");
+    await this.animateIn(this.errorElement);
+
+    // Auto-hide if configured
+    if (config.autoHide && !config.persistent) {
+      setTimeout(() => {
+        this.hideError();
+      }, this.config.errorDisplayTime);
     }
+  }
 
-    // ===================================================
-    // ERROR HANDLING
-    // ===================================================
-
-    /**
-     * Show enhanced error message
-     * @param {Object} errorConfig - Error configuration
-     */
-    async showError(errorConfig) {
-        const config = {
-            message: errorConfig.message || 'An error occurred',
-            details: errorConfig.details || '',
-            type: errorConfig.type || 'error',
-            action: errorConfig.action || null,
-            retryCallback: errorConfig.retryCallback || null,
-            dismissCallback: errorConfig.dismissCallback || null,
-            autoHide: errorConfig.autoHide !== false,
-            persistent: errorConfig.persistent || false,
-            ...errorConfig
-        };
-        
-        await this.displayError(config);
+  /**
+   * Handle error actions
+   * @param {string} action - Action type ('retry' or 'dismiss')
+   * @param {Object} config - Error configuration
+   */
+  async handleErrorAction(action, config) {
+    if (action === "retry" && config.retryCallback) {
+      await this.hideError();
+      config.retryCallback();
+    } else if (action === "dismiss") {
+      await this.hideError();
+      if (config.dismissCallback) {
+        config.dismissCallback();
+      }
     }
+  }
 
-    /**
-     * Display error message
-     * @param {Object} config - Error configuration
-     */
-    async displayError(config) {
-        const errorMessage = this.errorElement.querySelector('.error-message');
-        const errorDetails = this.errorElement.querySelector('.error-details');
-        const errorIcon = this.errorElement.querySelector('.error-icon');
-        const retryButton = this.errorElement.querySelector('.error-retry');
-        const dismissButton = this.errorElement.querySelector('.error-dismiss');
-        
-        // Update content
-        errorMessage.textContent = config.message;
-        errorDetails.textContent = config.details;
-        
-        // Update icon based on error type
-        errorIcon.textContent = this.getErrorIcon(config.type);
-        
-        // Setup button handlers
-        retryButton.onclick = () => this.handleErrorAction('retry', config);
-        dismissButton.onclick = () => this.handleErrorAction('dismiss', config);
-        
-        // Show/hide buttons based on config
-        retryButton.style.display = config.retryCallback ? 'block' : 'none';
-        
-        // Apply error type styling
-        this.errorElement.className = `error-system error-${config.type}`;
-        
-        // Show error with animation
-        this.errorElement.classList.remove('hidden');
-        await this.animateIn(this.errorElement);
-        
-        // Auto-hide if configured
-        if (config.autoHide && !config.persistent) {
-            setTimeout(() => {
-                this.hideError();
-            }, this.config.errorDisplayTime);
-        }
-    }
+  /**
+   * Hide error message
+   */
+  async hideError() {
+    await this.animateOut(this.errorElement);
+    this.errorElement.classList.add("hidden");
+  }
 
-    /**
-     * Handle error actions
-     * @param {string} action - Action type ('retry' or 'dismiss')
-     * @param {Object} config - Error configuration
-     */
-    async handleErrorAction(action, config) {
-        if (action === 'retry' && config.retryCallback) {
-            await this.hideError();
-            config.retryCallback();
-        } else if (action === 'dismiss') {
-            await this.hideError();
-            if (config.dismissCallback) {
-                config.dismissCallback();
-            }
-        }
-    }
+  /**
+   * Get error icon based on type
+   * @param {string} type - Error type
+   */
+  getErrorIcon(type) {
+    const icons = {
+      error: "❌",
+      warning: "⚠️",
+      info: "ℹ️",
+      network: "🌐",
+      timeout: "⏱️",
+      auth: "🔒",
+    };
 
-    /**
-     * Hide error message
-     */
-    async hideError() {
-        await this.animateOut(this.errorElement);
-        this.errorElement.classList.add('hidden');
-    }
+    return icons[type] || icons.error;
+  }
 
-    /**
-     * Get error icon based on type
-     * @param {string} type - Error type
-     */
-    getErrorIcon(type) {
-        const icons = {
-            error: '❌',
-            warning: '⚠️',
-            info: 'ℹ️',
-            network: '🌐',
-            timeout: '⏱️',
-            auth: '🔒'
-        };
-        
-        return icons[type] || icons.error;
-    }
+  // ===================================================
+  // VISUAL FEEDBACK
+  // ===================================================
 
-    // ===================================================
-    // VISUAL FEEDBACK
-    // ===================================================
-
-    /**
-     * Show contextual loading indicator
-     * @param {HTMLElement} element - Target element
-     * @param {Object} options - Options
-     */
-    showContextualLoading(element, options = {}) {
-        const loadingOverlay = document.createElement('div');
-        loadingOverlay.className = 'contextual-loading';
-        loadingOverlay.innerHTML = `
+  /**
+   * Show contextual loading indicator
+   * @param {HTMLElement} element - Target element
+   * @param {Object} options - Options
+   */
+  showContextualLoading(element, options = {}) {
+    const loadingOverlay = document.createElement("div");
+    loadingOverlay.className = "contextual-loading";
+    loadingOverlay.innerHTML = `
             <div class="contextual-spinner"></div>
-            <div class="contextual-text">${options.text || 'Loading...'}</div>
+            <div class="contextual-text">${options.text || "Loading..."}</div>
         `;
-        
-        element.style.position = 'relative';
-        element.appendChild(loadingOverlay);
-        
-        return {
-            hide: () => {
-                if (loadingOverlay.parentNode) {
-                    loadingOverlay.parentNode.removeChild(loadingOverlay);
-                }
-            }
-        };
-    }
 
-    /**
-     * Show success feedback
-     * @param {string} message - Success message
-     * @param {number} duration - Display duration
-     */
-    showSuccess(message, duration = 3000) {
-        const successElement = document.createElement('div');
-        successElement.className = 'success-feedback';
-        successElement.innerHTML = `
+    element.style.position = "relative";
+    element.appendChild(loadingOverlay);
+
+    return {
+      hide: () => {
+        if (loadingOverlay.parentNode) {
+          loadingOverlay.parentNode.removeChild(loadingOverlay);
+        }
+      },
+    };
+  }
+
+  /**
+   * Show success feedback
+   * @param {string} message - Success message
+   * @param {number} duration - Display duration
+   */
+  showSuccess(message, duration = 3000) {
+    const successElement = document.createElement("div");
+    successElement.className = "success-feedback";
+    successElement.innerHTML = `
             <div class="success-icon">✅</div>
             <div class="success-message">${message}</div>
         `;
-        
-        document.body.appendChild(successElement);
-        
-        // Animate in
-        setTimeout(() => successElement.classList.add('visible'), 100);
-        
-        // Auto remove
-        setTimeout(() => {
-            successElement.classList.remove('visible');
-            setTimeout(() => {
-                if (successElement.parentNode) {
-                    successElement.parentNode.removeChild(successElement);
-                }
-            }, 300);
-        }, duration);
-    }
 
-    // ===================================================
-    // ANIMATIONS
-    // ===================================================
+    document.body.appendChild(successElement);
 
-    /**
-     * Animate element in
-     * @param {HTMLElement} element - Element to animate
-     */
-    async animateIn(element) {
-        return new Promise((resolve) => {
-            element.style.opacity = '0';
-            element.style.transform = 'scale(0.9)';
-            
-            setTimeout(() => {
-                element.style.transition = `opacity ${this.config.animationDuration}ms ease, transform ${this.config.animationDuration}ms ease`;
-                element.style.opacity = '1';
-                element.style.transform = 'scale(1)';
-                
-                setTimeout(resolve, this.config.animationDuration);
-            }, 50);
-        });
-    }
+    // Animate in
+    setTimeout(() => successElement.classList.add("visible"), 100);
 
-    /**
-     * Animate element out
-     * @param {HTMLElement} element - Element to animate
-     */
-    async animateOut(element) {
-        return new Promise((resolve) => {
-            element.style.transition = `opacity ${this.config.animationDuration}ms ease, transform ${this.config.animationDuration}ms ease`;
-            element.style.opacity = '0';
-            element.style.transform = 'scale(0.9)';
-            
-            setTimeout(resolve, this.config.animationDuration);
-        });
-    }
-
-    // ===================================================
-    // UTILITY METHODS
-    // ===================================================
-
-    /**
-     * Generate unique loading ID
-     */
-    generateLoadingId() {
-        return `loading_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    }
-
-    /**
-     * Start time estimation countdown
-     * @param {Object} config - Loading configuration
-     */
-    startTimeEstimation(config) {
-        const startTime = Date.now();
-        const estimatedTime = config.estimatedTime;
-        
-        const updateEstimation = () => {
-            const elapsed = Date.now() - startTime;
-            const remaining = Math.max(0, estimatedTime - elapsed);
-            const percentage = Math.min(100, (elapsed / estimatedTime) * 100);
-            
-            this.updateProgress(config.id, percentage);
-            
-            if (remaining > 0) {
-                setTimeout(updateEstimation, 100);
-            }
-        };
-        
-        updateEstimation();
-    }
-
-    /**
-     * Setup cleanup listeners
-     */
-    setupCleanup() {
-        window.addEventListener('beforeunload', () => {
-            this.cleanup();
-        });
-    }
-
-    /**
-     * Cleanup resources
-     */
-    cleanup() {
-        // Clear all active loadings
-        this.activeLoadings.clear();
-        this.loadingQueue.length = 0;
-        
-        // Remove UI elements
-        if (this.loadingElement && this.loadingElement.parentNode) {
-            this.loadingElement.parentNode.removeChild(this.loadingElement);
+    // Auto remove
+    setTimeout(() => {
+      successElement.classList.remove("visible");
+      setTimeout(() => {
+        if (successElement.parentNode) {
+          successElement.parentNode.removeChild(successElement);
         }
-        
-        if (this.errorElement && this.errorElement.parentNode) {
-            this.errorElement.parentNode.removeChild(this.errorElement);
-        }
-        
-        if (this.progressElement && this.progressElement.parentNode) {
-            this.progressElement.parentNode.removeChild(this.progressElement);
-        }
+      }, 300);
+    }, duration);
+  }
+
+  // ===================================================
+  // ANIMATIONS
+  // ===================================================
+
+  /**
+   * Animate element in
+   * @param {HTMLElement} element - Element to animate
+   */
+  async animateIn(element) {
+    return new Promise((resolve) => {
+      element.style.opacity = "0";
+      element.style.transform = "scale(0.9)";
+
+      setTimeout(() => {
+        element.style.transition = `opacity ${this.config.animationDuration}ms ease, transform ${this.config.animationDuration}ms ease`;
+        element.style.opacity = "1";
+        element.style.transform = "scale(1)";
+
+        setTimeout(resolve, this.config.animationDuration);
+      }, 50);
+    });
+  }
+
+  /**
+   * Animate element out
+   * @param {HTMLElement} element - Element to animate
+   */
+  async animateOut(element) {
+    return new Promise((resolve) => {
+      element.style.transition = `opacity ${this.config.animationDuration}ms ease, transform ${this.config.animationDuration}ms ease`;
+      element.style.opacity = "0";
+      element.style.transform = "scale(0.9)";
+
+      setTimeout(resolve, this.config.animationDuration);
+    });
+  }
+
+  // ===================================================
+  // UTILITY METHODS
+  // ===================================================
+
+  /**
+   * Generate unique loading ID
+   */
+  generateLoadingId() {
+    return `loading_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Start time estimation countdown
+   * @param {Object} config - Loading configuration
+   */
+  startTimeEstimation(config) {
+    const startTime = Date.now();
+    const estimatedTime = config.estimatedTime;
+
+    const updateEstimation = () => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, estimatedTime - elapsed);
+      const percentage = Math.min(100, (elapsed / estimatedTime) * 100);
+
+      this.updateProgress(config.id, percentage);
+
+      if (remaining > 0) {
+        setTimeout(updateEstimation, 100);
+      }
+    };
+
+    updateEstimation();
+  }
+
+  /**
+   * Setup cleanup listeners
+   */
+  setupCleanup() {
+    window.addEventListener("beforeunload", () => {
+      this.cleanup();
+    });
+  }
+
+  /**
+   * Cleanup resources
+   */
+  cleanup() {
+    // Clear all active loadings
+    this.activeLoadings.clear();
+    this.loadingQueue.length = 0;
+
+    // Remove UI elements
+    if (this.loadingElement && this.loadingElement.parentNode) {
+      this.loadingElement.parentNode.removeChild(this.loadingElement);
     }
 
-    // ===================================================
-    // STYLES
-    // ===================================================
+    if (this.errorElement && this.errorElement.parentNode) {
+      this.errorElement.parentNode.removeChild(this.errorElement);
+    }
 
-    /**
-     * Add loading system styles
-     */
-    addLoadingStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
+    if (this.progressElement && this.progressElement.parentNode) {
+      this.progressElement.parentNode.removeChild(this.progressElement);
+    }
+  }
+
+  // ===================================================
+  // STYLES
+  // ===================================================
+
+  /**
+   * Add loading system styles
+   */
+  addLoadingStyles() {
+    const style = document.createElement("style");
+    style.textContent = `
             .loading-system {
                 position: fixed;
                 top: 0;
@@ -617,16 +624,16 @@ export class EnhancedLoadingSystem {
                 display: none !important;
             }
         `;
-        
-        document.head.appendChild(style);
-    }
 
-    /**
-     * Add error system styles
-     */
-    addErrorStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
+    document.head.appendChild(style);
+  }
+
+  /**
+   * Add error system styles
+   */
+  addErrorStyles() {
+    const style = document.createElement("style");
+    style.textContent = `
             .error-system {
                 position: fixed;
                 top: 20px;
@@ -750,10 +757,10 @@ export class EnhancedLoadingSystem {
                 margin-bottom: 10px;
             }
         `;
-        
-        document.head.appendChild(style);
-    }
+
+    document.head.appendChild(style);
+  }
 }
 
 // Export for use in game
-export default EnhancedLoadingSystem; 
+export default EnhancedLoadingSystem;
