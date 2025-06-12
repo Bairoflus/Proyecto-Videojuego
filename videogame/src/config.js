@@ -32,23 +32,23 @@ export const BACKGROUND_CONFIG = {
     "/assets/backgrounds/floor1/store.png", // Room 5 (Shop)
     "/assets/backgrounds/floor1/volcano.png", // Room 6 (Boss)
   ],
-  // Floor 2 backgrounds (can be added later)
+  // Floor 2 backgrounds (futuristic/industrial theme)
   floor2: [
-    "/assets/backgrounds/floor1/grass.png", // Fallback for now
-    "/assets/backgrounds/floor1/woods.png",
-    "/assets/backgrounds/floor1/swamp.png",
-    "/assets/backgrounds/floor1/cave.png",
-    "/assets/backgrounds/floor1/store.png",
-    "/assets/backgrounds/floor1/volcano.png",
+    "/assets/backgrounds/floor2/factory.png", // Room 1 (Combat)
+    "/assets/backgrounds/floor2/factory2.png", // Room 2 (Combat)
+    "/assets/backgrounds/floor2/school.png", // Room 3 (Combat)
+    "/assets/backgrounds/floor2/street.png", // Room 4 (Combat)
+    "/assets/backgrounds/floor2/store.png", // Room 5 (Shop)
+    "/assets/backgrounds/floor2/boss.png", // Room 6 (Boss)
   ],
-  // Floor 3 backgrounds (can be added later)
+  // Floor 3 backgrounds (neon/cyberpunk theme)
   floor3: [
-    "/assets/backgrounds/floor1/grass.png", // Fallback for now
-    "/assets/backgrounds/floor1/woods.png",
-    "/assets/backgrounds/floor1/swamp.png",
-    "/assets/backgrounds/floor1/cave.png",
-    "/assets/backgrounds/floor1/store.png",
-    "/assets/backgrounds/floor1/volcano.png",
+    "/assets/backgrounds/floor3/neon_room.png", // Room 1 (Combat)
+    "/assets/backgrounds/floor3/street2.png", // Room 2 (Combat)
+    "/assets/backgrounds/floor3/spaceship.png", // Room 3 (Combat)
+    "/assets/backgrounds/floor3/street.png", // Room 4 (Combat)
+    "/assets/backgrounds/floor3/store.png", // Room 5 (Shop)
+    "/assets/backgrounds/floor3/boss.png", // Room 6 (Boss)
   ],
 };
 
