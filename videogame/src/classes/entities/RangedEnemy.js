@@ -20,8 +20,18 @@ export class RangedEnemy extends Enemy {
     baseDamage,
     maxHealth
   ) {
-    super(position, width, height, color, sheetCols, type, movementSpeed, baseDamage, maxHealth);
-    
+    super(
+      position,
+      width,
+      height,
+      color,
+      sheetCols,
+      type,
+      movementSpeed,
+      baseDamage,
+      maxHealth
+    );
+
     // Ranged enemy specific properties
     this.attackRange = 150; // Default attack range
     this.retreatDistance = 80; // Distance to maintain from target
@@ -43,14 +53,14 @@ export class RangedEnemy extends Enemy {
       this.state = "retreating";
       const retreatDirection = this.position.minus(targetPosition);
       this.velocity = retreatDirection.normalize().times(this.movementSpeed);
-      
+
       const newPosition = this.position.plus(this.velocity);
       this.moveToPosition(newPosition);
     } else if (distance > this.attackRange) {
       // Move closer if too far
       this.state = "chasing";
       this.velocity = direction.normalize().times(this.movementSpeed);
-      
+
       const newPosition = this.position.plus(this.velocity);
       this.moveToPosition(newPosition);
     } else {
@@ -107,12 +117,12 @@ export class RangedEnemy extends Enemy {
       this.projectileSpeed,
       this.baseDamage
     );
-    
+
     // Set room reference for wall collision detection
     projectile.setCurrentRoom(this.currentRoom);
-    
+
     this.projectiles.push(projectile);
-    
+
     log.verbose(`${this.type} fired projectile at player`);
   }
 }

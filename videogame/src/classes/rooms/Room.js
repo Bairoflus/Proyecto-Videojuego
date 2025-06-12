@@ -13,7 +13,10 @@ import { GoblinDagger } from "../enemies/floor1/GoblinDagger.js";
 import { GoblinArcher } from "../enemies/floor1/GoblinArcher.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
-import { ROOM_CONSTANTS, PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
+import {
+  ROOM_CONSTANTS,
+  PHYSICS_CONSTANTS,
+} from "../../constants/gameConstants.js";
 
 export class Room {
   constructor(layout, isCombatRoom = false, roomType = "combat") {
@@ -301,7 +304,9 @@ export class Room {
   // Checks for wall collisions using hitboxes
   checkWallCollision(obj) {
     const objHitbox = obj.getHitboxBounds();
-    return this.objects.walls.some((wall) => this.checkRectangleCollision(objHitbox, wall));
+    return this.objects.walls.some((wall) =>
+      this.checkRectangleCollision(objHitbox, wall)
+    );
   }
 
   // Helper method for rectangle collision detection
@@ -375,10 +380,10 @@ export class Room {
 
     return new Vec(
       variables.canvasWidth -
-      this.transitionZone -
-      this.minSafeDistance -
-      playerWidth +
-      hitboxOffset,
+        this.transitionZone -
+        this.minSafeDistance -
+        playerWidth +
+        hitboxOffset,
       variables.canvasHeight / 2 - 32
     );
   }
@@ -388,10 +393,18 @@ export class Room {
     log.info("Starting procedural enemy generation for combat room...");
 
     // Generate enemies randomly within defined range
-    const enemyCount = Math.floor(Math.random() * (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)) + ROOM_CONSTANTS.MIN_ENEMIES;
+    const enemyCount =
+      Math.floor(
+        Math.random() *
+          (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)
+      ) + ROOM_CONSTANTS.MIN_ENEMIES;
 
     // Random proportion using constants
-    const commonPercentage = Math.random() * (ROOM_CONSTANTS.COMMON_ENEMY_RATIO.max - ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min) + ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min;
+    const commonPercentage =
+      Math.random() *
+        (ROOM_CONSTANTS.COMMON_ENEMY_RATIO.max -
+          ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min) +
+      ROOM_CONSTANTS.COMMON_ENEMY_RATIO.min;
     const commonCount = Math.floor(enemyCount * commonPercentage);
     const rareCount = enemyCount - commonCount;
 
@@ -486,7 +499,11 @@ export class Room {
       attempts++;
     }
 
-    log.warn("Could not find valid position for enemy after", ROOM_CONSTANTS.MAX_PLACEMENT_ATTEMPTS, "attempts");
+    log.warn(
+      "Could not find valid position for enemy after",
+      ROOM_CONSTANTS.MAX_PLACEMENT_ATTEMPTS,
+      "attempts"
+    );
     return null;
   }
 
@@ -496,7 +513,8 @@ export class Room {
 
     if (isCommon) {
       // Common enemies: left half (excluding safe zone)
-      x = Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE);
+      x =
+        Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE);
       y = Math.random() * (variables.canvasHeight - ROOM_CONSTANTS.TILE_SIZE);
 
       // Check if position overlaps with safe zone
@@ -505,7 +523,9 @@ export class Room {
       }
     } else {
       // Rare enemies: right half
-      x = Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE) + variables.canvasWidth / 2;
+      x =
+        Math.random() * (variables.canvasWidth / 2 - ROOM_CONSTANTS.TILE_SIZE) +
+        variables.canvasWidth / 2;
       y = Math.random() * (variables.canvasHeight - ROOM_CONSTANTS.TILE_SIZE);
     }
 
@@ -532,9 +552,11 @@ export class Room {
   // Checks if the room can transition (no enemies alive)
   canTransition() {
     // Boss room: locked until boss (and any adds) are dead
-    if (this.roomType === 'boss') {
+    if (this.roomType === "boss") {
       const totalEnemies = this.objects.enemies.length;
-      const aliveEnemies = this.objects.enemies.filter(e => e.state !== 'dead');
+      const aliveEnemies = this.objects.enemies.filter(
+        (e) => e.state !== "dead"
+      );
       const deadEnemies = totalEnemies - aliveEnemies.length;
       const canTransition = aliveEnemies.length === 0;
 
@@ -543,7 +565,7 @@ export class Room {
           `Boss defeated! (${deadEnemies}/${totalEnemies} dead) — boss room unlocked.`
         );
       } else {
-        const aliveTypes = aliveEnemies.map(e => e.type).join(', ');
+        const aliveTypes = aliveEnemies.map((e) => e.type).join(", ");
         log.debug(
           `Boss room locked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes}).`
         );
@@ -560,7 +582,7 @@ export class Room {
 
     // Regular combat rooms: must clear all enemies
     const totalEnemies = this.objects.enemies.length;
-    const aliveEnemies = this.objects.enemies.filter(e => e.state !== 'dead');
+    const aliveEnemies = this.objects.enemies.filter((e) => e.state !== "dead");
     const deadEnemies = totalEnemies - aliveEnemies.length;
     const canTransition = aliveEnemies.length === 0;
 
@@ -569,7 +591,7 @@ export class Room {
         `Transition allowed: All enemies defeated! (${deadEnemies}/${totalEnemies} dead)`
       );
     } else {
-      const aliveTypes = aliveEnemies.map(e => e.type).join(', ');
+      const aliveTypes = aliveEnemies.map((e) => e.type).join(", ");
       log.debug(
         `Transition blocked: ${aliveEnemies.length}/${totalEnemies} enemies still alive (${aliveTypes})`
       );
@@ -585,7 +607,11 @@ export class Room {
     if (this.chestSpawned || !this.isCombatRoom) return;
 
     // Calculate safe spawn position near transition zone using constants
-    const x = variables.canvasWidth - this.transitionZone - ROOM_CONSTANTS.CHEST_SIZE - ROOM_CONSTANTS.CHEST_SAFE_MARGIN;
+    const x =
+      variables.canvasWidth -
+      this.transitionZone -
+      ROOM_CONSTANTS.CHEST_SIZE -
+      ROOM_CONSTANTS.CHEST_SAFE_MARGIN;
     const y = variables.canvasHeight / 2 - ROOM_CONSTANTS.CHEST_SIZE / 2;
 
     // Create chest at calculated position
@@ -597,7 +623,10 @@ export class Room {
     }
 
     // Try alternate position if wall collision
-    chestPosition.y = variables.canvasHeight / 2 - ROOM_CONSTANTS.CHEST_SIZE - ROOM_CONSTANTS.CHEST_SIZE;
+    chestPosition.y =
+      variables.canvasHeight / 2 -
+      ROOM_CONSTANTS.CHEST_SIZE -
+      ROOM_CONSTANTS.CHEST_SIZE;
     this.trySpawnChestAtPosition(chestPosition);
   }
 

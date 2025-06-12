@@ -78,7 +78,10 @@ export class Enemy extends AnimatedObject {
     }
 
     // Return true if we moved at all
-    return this.position.x !== originalPosition.x || this.position.y !== originalPosition.y;
+    return (
+      this.position.x !== originalPosition.x ||
+      this.position.y !== originalPosition.y
+    );
   }
 
   takeDamage(amount) {

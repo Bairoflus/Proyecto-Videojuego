@@ -10,7 +10,7 @@ import { ENEMY_CONSTANTS } from "../../../constants/gameConstants.js";
 export class GoblinDagger extends MeleeEnemy {
   constructor(position) {
     const config = ENEMY_CONSTANTS.GOBLIN_DAGGER;
-    
+
     super(
       position,
       config.size.width,
@@ -38,7 +38,7 @@ export class GoblinDagger extends MeleeEnemy {
 
     this.state = "chasing";
     this.velocity = direction.normalize().times(this.movementSpeed);
-    
+
     const newPosition = this.position.plus(this.velocity);
     this.moveToPosition(newPosition);
 

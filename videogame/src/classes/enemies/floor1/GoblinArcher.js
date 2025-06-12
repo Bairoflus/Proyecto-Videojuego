@@ -10,7 +10,7 @@ import { Vec } from "../../../utils/Vec.js";
 export class GoblinArcher extends RangedEnemy {
   constructor(position) {
     const config = ENEMY_CONSTANTS.GOBLIN_ARCHER;
-    
+
     super(
       position,
       config.size.width,
