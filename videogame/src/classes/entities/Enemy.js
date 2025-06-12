@@ -126,27 +126,54 @@ export class Enemy extends AnimatedObject {
       }
 
       // FIX: Check if this was the last enemy in boss room to activate transition zone immediately
-      const aliveEnemies = this.currentRoom.objects.enemies.filter(e => e.state !== 'dead');
-      if (this.currentRoom.roomType === 'boss' && aliveEnemies.length === 0) {
-        console.log('BOSS DEFEATED! Transition zone activated immediately');
+      // CRITICAL FIX: Account for the fact that this enemy just died but is still in the array
+      const aliveEnemies = this.currentRoom.objects.enemies.filter(e => 
+        e !== undefined && e !== null && e.state !== 'dead'
+      );
+      
+      if (this.currentRoom.roomType === 'boss') {
+        // ENHANCED: Check if this boss that just died was the last alive enemy
+        // We need to check if there are any OTHER alive enemies besides this one
+        const otherAliveEnemies = this.currentRoom.objects.enemies.filter(e => 
+          e !== undefined && e !== null && e.state !== 'dead' && e !== this
+        );
         
-        // Mark room as immediately available for transition
-        this.currentRoom.bossDefeated = true;
-        console.log(`Boss room marked as defeated (bossDefeated = true)`);
+        console.log('BOSS DEATH CHECK:', {
+          bossJustDied: this.type,
+          otherAliveEnemies: otherAliveEnemies.length,
+          totalEnemiesInRoom: this.currentRoom.objects.enemies.length,
+          enemyTypes: this.currentRoom.objects.enemies.map(e => ({
+            type: e.type || e.constructor.name,
+            state: e.state,
+            isThis: e === this
+          }))
+        });
         
-        // Notify game that boss room is cleared
-        if (window.game) {
-          console.log('Boss room cleared - player can now transition to next floor');
-          // Set a flag that boss was just defeated for immediate feedback
-          window.game.bossJustDefeated = true;
+        if (otherAliveEnemies.length === 0) {
+          console.log('BOSS DEFEATED! This was the last alive enemy - Transition zone activated immediately');
           
-          // FIX: Show permanent upgrade popup immediately when boss is defeated (ONLY ONCE)
-          if (window.game.permanentUpgradePopup && !window.game.bossUpgradeShown) {
-            console.log('Showing permanent upgrade popup after boss defeat');
-            window.game.permanentUpgradePopup.show();
-            window.game.gameState = "upgradeSelection";
-            window.game.bossUpgradeShown = true; // Mark as shown to prevent multiple displays
+          // Mark room as immediately available for transition
+          this.currentRoom.bossDefeated = true;
+          console.log(`Boss room marked as defeated (bossDefeated = true)`);
+          
+          // Notify game that boss room is cleared
+          if (window.game) {
+            console.log('Boss room cleared - player can now transition to next floor');
+            // Set a flag that boss was just defeated for immediate feedback
+            window.game.bossJustDefeated = true;
+            
+            // FIX: Show permanent upgrade popup immediately when boss is defeated (ONLY ONCE)
+            if (window.game.permanentUpgradePopup && !window.game.bossUpgradeShown) {
+              console.log('Showing permanent upgrade popup after boss defeat');
+              window.game.permanentUpgradePopup.show();
+              window.game.gameState = "upgradeSelection";
+              window.game.bossUpgradeShown = true; // Mark as shown to prevent multiple displays
+            }
           }
+        } else {
+          console.log(`Boss died but ${otherAliveEnemies.length} other enemies still alive:`, 
+            otherAliveEnemies.map(e => e.type || e.constructor.name)
+          );
         }
       }
     }

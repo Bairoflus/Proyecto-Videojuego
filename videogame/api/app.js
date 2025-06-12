@@ -198,17 +198,11 @@ app.post('/api/auth/logout', async (req, res) => {
         
         connection = await createConnection();
         
-        const [result] = await connection.execute(
-            'UPDATE sessions SET is_active = FALSE, logout_at = NOW() WHERE session_token = ?',
+        // FIXED: Remove affectedRows check - logout should always succeed even if session was already inactive
+        await connection.execute(
+            'UPDATE sessions SET is_active = FALSE WHERE session_token = ?',
             [sessionToken]
         );
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ 
-                success: false,
-                message: 'Session not found' 
-            });
-        }
 
         res.status(200).json({
             success: true,
@@ -227,7 +221,7 @@ app.post('/api/auth/logout', async (req, res) => {
 });
 
 // ===================================================
-// USER CONFIGURATIONS
+// CONFIGURATION ENDPOINTS
 // ===================================================
 
 // GET /api/users/:userId/settings
@@ -489,7 +483,7 @@ app.put('/api/runs/:runId/complete', async (req, res) => {
     let connection;
     try {
         const { runId } = req.params;
-        const { finalFloor, finalGold, causeOfDeath, totalKills, bossesKilled, durationSeconds } = req.body;
+        const { finalFloor, finalGold, causeOfDeath, totalKills, bossesKilled, durationSeconds, maxDamageHit } = req.body;
         
         connection = await createConnection();
         await connection.execute(
@@ -500,9 +494,10 @@ app.put('/api/runs/:runId/complete', async (req, res) => {
                 cause_of_death = ?, 
                 total_kills = ?, 
                 bosses_killed = ?, 
-                duration_seconds = ?
+                duration_seconds = ?,
+                max_damage_hit = ?
              WHERE run_id = ?`,
-            [finalFloor || 1, finalGold || 0, causeOfDeath || 'active', totalKills || 0, bossesKilled || 0, durationSeconds || 0, runId]
+            [finalFloor || 1, finalGold || 0, causeOfDeath || 'active', totalKills || 0, bossesKilled || 0, durationSeconds || 0, maxDamageHit || 0, runId]
         );
         
         res.json({
@@ -515,6 +510,64 @@ app.put('/api/runs/:runId/complete', async (req, res) => {
         res.status(500).json({ 
             success: false,
             message: 'Database error' 
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// NEW: PUT /api/runs/:runId/stats - Update run statistics during gameplay
+app.put('/api/runs/:runId/stats', async (req, res) => {
+    let connection;
+    try {
+        const { runId } = req.params;
+        const { maxDamageHit, totalGoldEarned, totalKills } = req.body;
+        
+        connection = await createConnection();
+        
+        // Build dynamic update query
+        const updateFields = [];
+        const updateValues = [];
+        
+        if (maxDamageHit !== undefined) {
+            updateFields.push('max_damage_hit = GREATEST(max_damage_hit, ?)');
+            updateValues.push(maxDamageHit);
+        }
+        
+        if (totalGoldEarned !== undefined) {
+            updateFields.push('final_gold = ?');
+            updateValues.push(totalGoldEarned);
+        }
+        
+        if (totalKills !== undefined) {
+            updateFields.push('total_kills = ?');
+            updateValues.push(totalKills);
+        }
+        
+        if (updateFields.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No valid stats provided'
+            });
+        }
+        
+        updateValues.push(runId);
+        
+        await connection.execute(
+            `UPDATE run_history SET ${updateFields.join(', ')} WHERE run_id = ? AND ended_at IS NULL`,
+            updateValues
+        );
+        
+        res.json({
+            success: true,
+            message: 'Run stats updated successfully'
+        });
+        
+    } catch (err) {
+        console.error('Update run stats error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
         });
     } finally {
         if (connection) await connection.end();
@@ -1297,22 +1350,39 @@ app.post('/api/admin/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         
+        console.log('Admin login attempt:', { username, hasPassword: !!password });
+        
         if (!username || !password) {
+            console.log('Missing credentials');
             return res.status(400).json({ 
                 success: false,
                 message: 'Missing username or password' 
             });
         }
         
+        console.log('Creating database connection...');
         connection = await createConnection();
+        console.log('Database connection established');
         
         // Find admin user by username (only role = 'admin')
+        console.log('Searching for admin user:', username);
         const [users] = await connection.execute(
             'SELECT user_id, password_hash, username FROM users WHERE username = ? AND role = "admin" AND is_active = TRUE',
             [username]
         );
         
+        console.log('Query result:', { 
+            usersFound: users.length, 
+            userExists: users.length > 0,
+            firstUserInfo: users.length > 0 ? { 
+                id: users[0].user_id, 
+                username: users[0].username,
+                hashPreview: users[0].password_hash?.substring(0, 10) + '...'
+            } : null
+        });
+        
         if (users.length === 0) {
+            console.log('No admin user found with username:', username);
             return res.status(401).json({ 
                 success: false,
                 message: 'Admin access denied: Invalid credentials' 
@@ -1320,14 +1390,19 @@ app.post('/api/admin/auth/login', async (req, res) => {
         }
         
         const user = users[0];
+        console.log('Comparing password hash...');
         const passwordMatch = await bcrypt.compare(password, user.password_hash);
+        console.log('Password match result:', passwordMatch);
         
         if (!passwordMatch) {
+            console.log('Password does not match');
             return res.status(401).json({ 
                 success: false,
                 message: 'Admin access denied: Invalid credentials' 
             });
         }
+        
+        console.log('Password verified, creating session...');
         
         // Create new admin session
         const sessionToken = require('crypto').randomUUID();
@@ -1343,6 +1418,8 @@ app.post('/api/admin/auth/login', async (req, res) => {
             'UPDATE users SET last_login = NOW() WHERE user_id = ?',
             [user.user_id]
         );
+        
+        console.log('Admin login successful for:', username);
         
         res.status(200).json({
             success: true,
@@ -1360,6 +1437,55 @@ app.post('/api/admin/auth/login', async (req, res) => {
         res.status(500).json({ 
             success: false,
             message: 'Authentication server error' 
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// TEMPORARY DEBUG ENDPOINT - REMOVE AFTER FIXING ISSUE
+app.get('/api/admin/debug/users', async (req, res) => {
+    let connection;
+    try {
+        console.log('Checking admin users in database...');
+        connection = await createConnection();
+        
+        // Get all users
+        const [allUsers] = await connection.execute('SELECT user_id, username, role, is_active FROM users ORDER BY created_at DESC LIMIT 10');
+        
+        // Get specifically admin users  
+        const [adminUsers] = await connection.execute('SELECT user_id, username, email, role, is_active, password_hash FROM users WHERE role = "admin"');
+        
+        // Get users by username
+        const [specificUsers] = await connection.execute('SELECT user_id, username, email, role, is_active, password_hash FROM users WHERE username IN ("admin", "devteam")');
+        
+        console.log('Results:', {
+            totalUsers: allUsers.length,
+            adminUsers: adminUsers.length,
+            specificUsers: specificUsers.length
+        });
+        
+        res.json({
+            success: true,
+            debug: {
+                totalUsers: allUsers.length,
+                allUsers: allUsers,
+                adminUsers: adminUsers.map(u => ({
+                    ...u,
+                    password_hash: u.password_hash ? u.password_hash.substring(0, 20) + '...' : null
+                })),
+                specificUsers: specificUsers.map(u => ({
+                    ...u,
+                    password_hash: u.password_hash ? u.password_hash.substring(0, 20) + '...' : null
+                }))
+            }
+        });
+        
+    } catch (error) {
+        console.error('Endpoint error:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
         });
     } finally {
         if (connection) await connection.end();
@@ -1515,31 +1641,6 @@ app.get('/api/admin/status/current-games', verifyAdminAuth, async (req, res) => 
 // ===================================================
 // NEW USEFUL ADMIN ANALYTICS ENDPOINTS
 // ===================================================
-
-// GET /api/admin/analytics/first-run-masters (NEW - Very Useful)
-app.get('/api/admin/analytics/first-run-masters', verifyAdminAuth, async (req, res) => {
-    let connection;
-    try {
-        connection = await createConnection();
-        
-        const [masters] = await connection.execute(
-            'SELECT * FROM vw_all_bosses_first_run'
-        );
-        
-        res.json({
-            success: true,
-            data: masters
-        });
-    } catch (error) {
-        console.error('Error getting first run masters:', error);
-        res.status(500).json({ 
-            success: false,
-            message: 'Error fetching first run masters'
-        });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
 
 // GET /api/admin/analytics/permanent-upgrades-adoption (NEW - Very Useful)
 app.get('/api/admin/analytics/permanent-upgrades-adoption', verifyAdminAuth, async (req, res) => {
@@ -1769,7 +1870,6 @@ app.listen(PORT, () => {
     console.log(`\nOptimized Admin Analytics:`);
     console.log(`   GET /api/admin/leaderboards/playtime`);
     console.log(`   GET /api/admin/analytics/player-progression (simplified)`);
-    console.log(`   GET /api/admin/analytics/first-run-masters (NEW - Master players)`);
     console.log(`   GET /api/admin/analytics/permanent-upgrades-adoption (NEW - Feature adoption)`);
     console.log(`\nAdmin System Status:`);
     console.log(`   GET /api/admin/status/active-players`);

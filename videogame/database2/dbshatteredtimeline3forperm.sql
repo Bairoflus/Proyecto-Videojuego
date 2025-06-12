@@ -145,14 +145,16 @@ CREATE TABLE player_stats (
     total_bosses_killed INT DEFAULT 0,
     total_playtime_seconds INT DEFAULT 0,
     highest_floor_ever INT DEFAULT 1,  -- NEW: Track highest floor reached
+    max_damage_hit INT DEFAULT 0,      -- NEW: Track maximum damage dealt in single hit
     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     UNIQUE KEY unique_user_stats (user_id),
     -- Performance indexes
     INDEX idx_total_bosses (total_bosses_killed),
     INDEX idx_player_performance (total_runs, total_kills),
-    INDEX idx_highest_floor (highest_floor_ever)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT = 'ENHANCED: Player aggregated historical statistics with floor tracking';
+    INDEX idx_highest_floor (highest_floor_ever),
+    INDEX idx_max_damage (max_damage_hit)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT = 'ENHANCED: Player aggregated historical statistics with floor tracking and max damage';
 
 -- Table: run_history - Game attempt history (ENHANCED)
 CREATE TABLE run_history (
@@ -168,13 +170,15 @@ CREATE TABLE run_history (
     total_kills INT DEFAULT 0,
     bosses_killed INT DEFAULT 0,
     duration_seconds INT DEFAULT 0,
+    max_damage_hit INT DEFAULT 0,  -- NEW: Maximum damage dealt in single hit during this run
     
     -- Performance indexes
     INDEX idx_user_runs (user_id, started_at),
     INDEX idx_active_runs (cause_of_death, ended_at),
     INDEX idx_run_performance (final_floor, total_kills),
-    INDEX idx_run_number (user_id, run_number)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT = 'ENHANCED: Player game attempt history with run numbers';
+    INDEX idx_run_number (user_id, run_number),
+    INDEX idx_max_damage_run (max_damage_hit)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT = 'ENHANCED: Player game attempt history with run numbers and max damage tracking';
 
 -- Table: weapon_upgrade_purchases - Shop purchases
 CREATE TABLE weapon_upgrade_purchases (

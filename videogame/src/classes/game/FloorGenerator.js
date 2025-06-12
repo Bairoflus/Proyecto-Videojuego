@@ -213,6 +213,12 @@ export class FloorGenerator {
         room.initializeEnemies();
 
         if (roomType === 'boss') {
+            // RESET BOSS UPGRADE FLAG: Important - reset for every boss room
+            if (window.game) {
+                window.game.bossUpgradeShown = false;
+                console.log('Boss room created - reset bossUpgradeShown flag for permanent upgrade popup');
+            }
+            
             let boss;
             if (this.floorCount === 1) {
                 // Floor 1 boss
@@ -458,8 +464,9 @@ export class FloorGenerator {
     async nextFloor() {
         const beforeFloor = this.floorCount;
         const beforeRun = this.runCount;
+        const beforeRunId = localStorage.getItem('currentRunId');
 
-        console.log(`FLOOR TRANSITION starting from Floor ${beforeFloor}, Run ${beforeRun}`);
+        console.log(`FLOOR TRANSITION starting from Floor ${beforeFloor}, Run ${beforeRun}, RunId ${beforeRunId}`);
 
         // FIXED: Correct condition - allow progression through all floors
         if (this.floorCount < FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN) {
@@ -471,16 +478,17 @@ export class FloorGenerator {
             console.log(`Generating new floor ${this.floorCount}...`);
             this.generateFloor();
             console.log(`FLOOR TRANSITION COMPLETE: Now at Floor ${this.floorCount}, Room ${this.currentRoomIndex + 1}`);
+            return true; // Success for normal floor progression
         } else {
             // Floor 3 completed - start new run
             console.log(`ALL FLOORS COMPLETED! Max floors (${FLOOR_CONSTANTS.MAX_FLOORS_PER_RUN}) reached`);
 
-            // Complete current run in backend
+            // Complete current run in backend FIRST
             try {
                 const currentRunId = localStorage.getItem('currentRunId');
 
                 if (currentRunId && window.game) {
-                    console.log("Completing run for successful completion...");
+                    console.log(`Completing current run (ID: ${currentRunId}) for successful completion...`);
 
                     // Get run statistics from game instance
                     const runStats = window.game.getRunStats();
@@ -489,19 +497,13 @@ export class FloorGenerator {
                         goldCollected: runStats.goldCollected,
                         goldSpent: runStats.goldSpent,
                         totalKills: runStats.totalKills,
+                        maxDamageHit: runStats.maxDamageHit,  // NEW: Include max damage hit
                         deathCause: null // null for successful completion
                     };
 
-                    console.log("Victory completion data:", completionData);
+                    console.log(`Victory completion data for run ${currentRunId}:`, completionData);
                     const result = await completeRun(currentRunId, completionData);
-                    console.log("Run completed for victory:", result);
-
-                    // Clear the current run ID since run is now complete  
-                    localStorage.removeItem('currentRunId');
-
-                    // FIXED: Do NOT create run here - let resetToInitialState handle it
-                    // This prevents double run creation (victory run + death run)
-                    console.log("Run completed - Next run will be created when needed");
+                    console.log(`Run ${currentRunId} completed for victory:`, result);
 
                 } else {
                     console.log("No current run ID found or game instance missing - playing in test mode");
@@ -510,18 +512,37 @@ export class FloorGenerator {
                 console.error("Failed to complete run on victory:", error);
             }
 
+            // CRITICAL: Clear the old runId BEFORE creating new one
+            console.log(`Clearing old runId ${beforeRunId} from localStorage...`);
+            localStorage.removeItem('currentRunId');
+
             // NEW v3.0: Increment run and create new run in database immediately
             this.runCount++;
             console.log(`VICTORY: Starting run ${this.runCount}`);
 
-            // Create new run in backend immediately
+            // Create new run in backend immediately with enhanced error handling
+            let newRunId = null;
             try {
                 const userId = localStorage.getItem('currentUserId');
                 if (userId) {
-                    console.log("Creating new run for victory progression...");
+                    console.log(`Creating new run for victory progression (user ${userId})...`);
                     const newRunData = await createRun(parseInt(userId));
-                    localStorage.setItem('currentRunId', newRunData.runId);
-                    console.log("New run created for victory:", newRunData.runId);
+                    
+                    if (newRunData && newRunData.runId) {
+                        newRunId = newRunData.runId;
+                        localStorage.setItem('currentRunId', newRunId);
+                        console.log(`✅ NEW RUN CREATED: runId ${newRunId} stored in localStorage`);
+                        
+                        // VERIFICATION: Double-check localStorage was updated
+                        const verifyRunId = localStorage.getItem('currentRunId');
+                        if (verifyRunId === newRunId.toString()) {
+                            console.log(`✅ VERIFICATION PASSED: localStorage runId confirmed as ${verifyRunId}`);
+                        } else {
+                            console.error(`❌ VERIFICATION FAILED: Expected ${newRunId}, got ${verifyRunId}`);
+                        }
+                    } else {
+                        throw new Error('createRun returned invalid data');
+                    }
                 } else {
                     console.log("No userId available, enabling test mode");
                     localStorage.setItem('testMode', 'true');
@@ -538,7 +559,20 @@ export class FloorGenerator {
             // Generate new floor and reset room index
             console.log(`Generating new floor ${this.floorCount}...`);
             this.generateFloor();
-            console.log(`NEW RUN STARTED: Now at Run ${this.runCount}, Floor ${this.floorCount}, Room ${this.currentRoomIndex + 1}`);
+            
+            // FINAL STATUS LOG
+            const finalRunId = localStorage.getItem('currentRunId');
+            console.log(`🎉 NEW RUN COMPLETE: Run ${this.runCount}, Floor ${this.floorCount}, Room ${this.currentRoomIndex + 1}, RunId ${finalRunId}`);
+            
+            // SYNC CHECK: Verify everything is properly synchronized
+            if (finalRunId && finalRunId !== beforeRunId) {
+                console.log(`✅ RUN TRANSITION SUCCESS: ${beforeRunId} → ${finalRunId}`);
+            } else {
+                console.error(`❌ RUN TRANSITION ISSUE: Before=${beforeRunId}, After=${finalRunId}`);
+            }
+            
+            // CRITICAL: Return true to indicate successful run transition
+            return true;
         }
     }
 

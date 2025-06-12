@@ -7,15 +7,15 @@
 
 USE dbshatteredtimeline;
 
--- Create admin user with pre-hashed password
--- Password: "admin123" (hashed with bcrypt, rounds=10)
+-- Create admin user with REAL pre-hashed password
+-- Password: "admin123" (hashed with bcrypt, rounds=10) - REAL HASH
 INSERT IGNORE INTO users (username, email, password_hash, role, is_active, created_at) VALUES 
-('admin', 'admin@shatteredtimeline.com', '$2b$10$N9qo8uLOickgx2ZMRjOYNe.5YSaGdm3JPcOF5Pb.G8HAwLYn4Yz6W', 'admin', TRUE, NOW());
+('admin', 'admin@shatteredtimeline.com', '$2b$10$inT66ccyC1oDn2D66/auXuBKdp2JaBvB4RXvFe0aL8uwIA7YMmKca', 'admin', TRUE, NOW());
 
--- Create development admin user  
--- Password: "devteam2024" (hashed with bcrypt, rounds=10)
+-- Create development admin user with REAL pre-hashed password
+-- Password: "devteam2024" (hashed with bcrypt, rounds=10) - REAL HASH
 INSERT IGNORE INTO users (username, email, password_hash, role, is_active, created_at) VALUES 
-('devteam', 'dev@shatteredtimeline.com', '$2b$10$XYZ123ExampleHashForDevteam456789012345678901234567890', 'admin', TRUE, NOW());
+('devteam', 'dev@shatteredtimeline.com', '$2b$10$fwFvOr17AZPxoRxVJYzkE.7EGvosFjqYBgvIb360o9IOLI3dLihK2', 'admin', TRUE, NOW());
 
 -- Verify admin users were created
 SELECT 
@@ -77,5 +77,5 @@ ADMIN PANEL ACCESS:
    - Economy analytics (not needed)
    - Combat analytics (not needed)
 
-ENJOY YOUR OPTIMIZED ADMIN DASHBOARD!
+ENJOY YOUR SIMPLIFIED ADMIN DASHBOARD v2.1!
 */ 

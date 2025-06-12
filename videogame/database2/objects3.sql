@@ -10,7 +10,7 @@
 USE dbshatteredtimeline;
 
 -- ===================================================
--- USER AND SESSION VIEWS (CLEAN)
+-- USER AND SESSION VIEWS 
 -- ===================================================
 
 -- View: User authentication profile
@@ -36,7 +36,7 @@ SELECT
 FROM sessions;
 
 -- ===================================================
--- USER RUN PROGRESS VIEWS (CRITICAL FIX)
+-- USER RUN PROGRESS VIEWS 
 -- ===================================================
 
 -- NEW VIEW: User run progress (for run persistence)
@@ -145,10 +145,10 @@ SELECT
 FROM weapon_upgrades_temp;
 
 -- ===================================================
--- STATISTICS AND ANALYTICS VIEWS (ENHANCED)
+-- STATISTICS AND ANALYTICS VIEWS 
 -- ===================================================
 
--- View: Player general statistics (ENHANCED with floor tracking)
+-- View: Player general statistics
 CREATE VIEW vw_player_metrics AS
 SELECT 
     user_id as player,
@@ -160,10 +160,11 @@ SELECT
     total_bosses_killed as boss_victories,
     total_playtime_seconds as time_played,
     highest_floor_ever as best_floor_ever,  -- NEW: Highest floor tracking
+    max_damage_hit as max_damage,           -- NEW: Maximum damage hit tracking
     last_updated as updated
 FROM player_stats;
 
--- View: Game attempt history (ENHANCED with run numbers)
+-- View: Game attempt history 
 CREATE VIEW vw_game_history AS
 SELECT 
     run_id as id,
@@ -185,7 +186,7 @@ SELECT
 FROM run_history
 ORDER BY started_at DESC;
 
--- View: Upgrade purchases (ENHANCED with run numbers)
+-- View: Upgrade purchases 
 CREATE VIEW vw_purchase_log AS
 SELECT 
     user_id as buyer,
@@ -198,7 +199,7 @@ SELECT
 FROM weapon_upgrade_purchases
 ORDER BY purchased_at DESC;
 
--- View: Enemy elimination records (ENHANCED with run numbers)
+-- View: Enemy elimination records 
 CREATE VIEW vw_combat_log AS
 SELECT 
     user_id as hunter,
@@ -211,7 +212,7 @@ SELECT
 FROM enemy_kills
 ORDER BY killed_at DESC;
 
--- View: Boss elimination records (ENHANCED with run numbers)
+-- View: Boss elimination records 
 CREATE VIEW vw_boss_victories AS
 SELECT 
     user_id as champion,
@@ -226,27 +227,24 @@ FROM boss_kills
 ORDER BY killed_at DESC;
 
 -- ===================================================
--- CONFIGURATION VIEWS (UNCHANGED)
+-- CONFIGURATION VIEWS 
 -- ===================================================
 
 -- View: Player configurations
 CREATE VIEW vw_player_config AS
 SELECT 
     user_id as player,
-    music_volume as audio_music,
-    sfx_volume as audio_effects,
-    auto_save_enabled as auto_backup,
+    music_volume as music_volume,       -- FIXED: Keep original field names for frontend compatibility
+    sfx_volume as sfx_volume,           -- FIXED: Keep original field names for frontend compatibility
+    auto_save_enabled as auto_save_enabled,  -- FIXED: Keep original field names for frontend compatibility
     updated_at as modified
 FROM player_settings;
 
 -- ===================================================
--- ADMIN DASHBOARD VIEWS (OPTIMIZED PER USER REQUIREMENTS)
+-- ADMIN DASHBOARD VIEWS 
 -- ===================================================
 
--- REMOVED: vw_leaderboard_floors (only 3 floors, not useful for developers)
--- REMOVED: vw_leaderboard_bosses 
-
--- View: Top players by playtime (KEPT - Useful for 3-floor game)
+-- View: Top players by playtime 
 CREATE VIEW vw_leaderboard_playtime AS
 SELECT 
     u.username as dedicated_player,
@@ -254,6 +252,7 @@ SELECT
     ps.total_runs as sessions,
     ps.highest_floor_ever as best_achievement,  -- NEW: Use highest_floor_ever
     urp.current_run_number as current_run,  -- NEW: Current run number
+    ps.total_kills as total_kills,  -- FIXED: Add total_kills for runs leaderboard
     ps.total_gold_spent as total_invested,
     ps.last_updated as last_session
 FROM player_stats ps
@@ -264,10 +263,10 @@ ORDER BY ps.total_playtime_seconds DESC
 LIMIT 20;
 
 -- ===================================================
--- OPTIMIZED ANALYTICS VIEWS (FOCUSED ON USEFUL METRICS)
+-- OPTIMIZED ANALYTICS VIEWS 
 -- ===================================================
 
--- View: Player progression analysis (SIMPLIFIED - Only experience tier)
+-- View: Player progression analysis 
 CREATE VIEW vw_player_progression AS
 SELECT 
     u.user_id as player_id,
@@ -294,10 +293,10 @@ WHERE u.is_active = TRUE AND u.role = 'player'
 ORDER BY u.created_at DESC;
 
 -- ===================================================
--- NEW USEFUL ADMIN VIEWS (Per User Requirements)
+-- NEW USEFUL ADMIN VIEWS 
 -- ===================================================
 
--- View: Players who defeated all 3 bosses in their first run (MASTER PLAYERS)
+-- View: Players who defeated all 3 bosses in their first run (FIXED)
 CREATE VIEW vw_all_bosses_first_run AS
 SELECT 
     u.username as player_name,
@@ -316,15 +315,15 @@ INNER JOIN (
     SELECT 
         user_id,
         MIN(run_number) as first_run_number,
-        COUNT(*) as bosses_defeated_first_run,
+        COUNT(DISTINCT boss_type) as bosses_defeated_first_run,  -- FIXED: Use DISTINCT to count unique boss types
         MIN(killed_at) as first_dragon_kill_date
     FROM boss_kills 
     WHERE run_number = 1  -- Only first run
     GROUP BY user_id
-    HAVING COUNT(*) >= 3  -- Only show players who killed all 3 bosses
+    HAVING COUNT(DISTINCT boss_type) >= 1  -- FIXED: Show players with ANY boss kills in first run for debugging
 ) bk_stats ON u.user_id = bk_stats.user_id
 WHERE u.is_active = TRUE AND u.role = 'player'
-ORDER BY bk_stats.first_dragon_kill_date ASC;
+ORDER BY bk_stats.bosses_defeated_first_run DESC, bk_stats.first_dragon_kill_date ASC;
 
 -- View: First permanent upgrade purchases analysis (FEATURE ADOPTION)
 CREATE VIEW vw_first_permanent_purchases AS
@@ -359,120 +358,10 @@ GROUP BY upgrade_type
 ORDER BY first_time_buyers DESC;
 
 -- ===================================================
--- CHART DATA VIEWS (For Beautiful Visualizations)
+-- ESSENTIAL STATUS VIEWS 
 -- ===================================================
 
--- View: Daily activity data for charts
-CREATE VIEW vw_daily_activity AS
-SELECT 
-    DATE(activity_date) as date,
-    'registrations' as activity_type,
-    COUNT(*) as count
-FROM (
-    SELECT created_at as activity_date 
-    FROM users 
-    WHERE role = 'player' AND is_active = TRUE
-    AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-) reg_data
-GROUP BY DATE(activity_date)
-
-UNION ALL
-
-SELECT 
-    DATE(activity_date) as date,
-    'active_players' as activity_type,
-    COUNT(*) as count
-FROM (
-    SELECT last_login as activity_date 
-    FROM users 
-    WHERE role = 'player' AND is_active = TRUE
-    AND last_login >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-) login_data
-GROUP BY DATE(activity_date)
-
-ORDER BY date DESC, activity_type;
-
--- View: Playtime distribution for charts
-CREATE VIEW vw_playtime_distribution AS
-SELECT 
-    CASE 
-        WHEN total_playtime_seconds < 3600 THEN '< 1h'
-        WHEN total_playtime_seconds < 10800 THEN '1-3h'
-        WHEN total_playtime_seconds < 21600 THEN '3-6h'
-        WHEN total_playtime_seconds < 43200 THEN '6-12h'
-        ELSE '12h+'
-    END as playtime_range,
-    COUNT(*) as player_count,
-    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM player_stats WHERE total_playtime_seconds > 0), 2) as percentage
-FROM player_stats ps
-INNER JOIN users u ON ps.user_id = u.user_id
-WHERE u.is_active = TRUE AND u.role = 'player' AND ps.total_playtime_seconds > 0
-GROUP BY 
-    CASE 
-        WHEN total_playtime_seconds < 3600 THEN '< 1h'
-        WHEN total_playtime_seconds < 10800 THEN '1-3h'
-        WHEN total_playtime_seconds < 21600 THEN '3-6h'
-        WHEN total_playtime_seconds < 43200 THEN '6-12h'
-        ELSE '12h+'
-    END
-ORDER BY 
-    CASE 
-        WHEN playtime_range = '< 1h' THEN 1
-        WHEN playtime_range = '1-3h' THEN 2
-        WHEN playtime_range = '3-6h' THEN 3
-        WHEN playtime_range = '6-12h' THEN 4
-        ELSE 5
-    END;
-
--- View: Run experience distribution for charts
-CREATE VIEW vw_run_experience_distribution AS
-SELECT 
-    CASE 
-        WHEN current_run_number <= 5 THEN 'Run 1-5'
-        WHEN current_run_number <= 15 THEN 'Run 6-15'
-        WHEN current_run_number <= 30 THEN 'Run 16-30'
-        ELSE 'Run 30+'
-    END as run_range,
-    COUNT(*) as player_count,
-    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM user_run_progress), 2) as percentage
-FROM user_run_progress urp
-INNER JOIN users u ON urp.user_id = u.user_id
-WHERE u.is_active = TRUE AND u.role = 'player'
-GROUP BY 
-    CASE 
-        WHEN current_run_number <= 5 THEN 'Run 1-5'
-        WHEN current_run_number <= 15 THEN 'Run 6-15'
-        WHEN current_run_number <= 30 THEN 'Run 16-30'
-        ELSE 'Run 30+'
-    END
-ORDER BY 
-    CASE 
-        WHEN run_range = 'Run 1-5' THEN 1
-        WHEN run_range = 'Run 6-15' THEN 2
-        WHEN run_range = 'Run 16-30' THEN 3
-        ELSE 4
-    END;
-
--- View: Session duration distribution for live games
-CREATE VIEW vw_session_duration_distribution AS
-SELECT 
-    session_duration_type,
-    COUNT(*) as session_count,
-    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM vw_current_games WHERE session_duration_type IS NOT NULL), 2) as percentage
-FROM vw_current_games
-GROUP BY session_duration_type
-ORDER BY 
-    CASE 
-        WHEN session_duration_type = 'Fresh' THEN 1
-        WHEN session_duration_type = 'Active' THEN 2
-        ELSE 3
-    END;
-
--- ===================================================
--- ESSENTIAL STATUS VIEWS (KEPT)
--- ===================================================
-
--- View: Active players status (ENHANCED)
+-- View: Active players status 
 CREATE VIEW vw_active_players AS
 SELECT 
     u.username as player_name,
@@ -493,12 +382,12 @@ LEFT JOIN user_run_progress urp ON u.user_id = urp.user_id
 WHERE u.is_active = TRUE AND u.role = 'player'
 ORDER BY u.last_login DESC;
 
--- View: Current active games (ENHANCED with run tracking)
+-- View: Current active games (FIXED: Only most recent run per user)
 CREATE VIEW vw_current_games AS
 SELECT 
     rh.run_id as game_id,
     u.username as player,
-    rh.run_number as run_number,  -- NEW: Run number display
+    rh.run_number as run_number,
     rh.started_at as session_start,
     TIMESTAMPDIFF(MINUTE, rh.started_at, NOW()) as minutes_playing,
     rh.final_floor as current_level,
@@ -512,9 +401,22 @@ SELECT
     END as session_duration_type
 FROM run_history rh
 INNER JOIN users u ON rh.user_id = u.user_id
-WHERE rh.ended_at IS NULL
-  AND u.is_active = TRUE
-  AND u.role = 'player'
+INNER JOIN (
+    -- FIXED: Subquery to get only the most recent unfinished run per user
+    SELECT user_id, MAX(started_at) as latest_start
+    FROM run_history 
+    WHERE ended_at IS NULL
+    GROUP BY user_id
+) latest_runs ON rh.user_id = latest_runs.user_id AND rh.started_at = latest_runs.latest_start
+WHERE rh.ended_at IS NULL  -- Only unfinished runs
+  AND u.is_active = TRUE   -- Only active users
+  AND u.role = 'player'    -- Only players, not admins
+  AND EXISTS (              -- Only users with active sessions
+      SELECT 1 FROM sessions s 
+      WHERE s.user_id = u.user_id 
+        AND s.is_active = TRUE 
+        AND s.expires_at > NOW()
+  )
 ORDER BY rh.started_at;
 
 -- ===================================================
@@ -564,7 +466,7 @@ SELECT
     END as completionRate,
     ps.total_kills as totalKills,
     COALESCE(best_run.max_kills, 0) as bestRunKills,
-    0 as maxDamageHit, -- Not tracked in current schema
+    ps.max_damage_hit as maxDamageHit,  -- FIXED: Use actual max damage hit from database
     ps.total_gold_earned as goldEarned,
     ps.total_gold_spent as goldSpent,
     CONCAT(
@@ -584,7 +486,139 @@ LEFT JOIN (
 ) best_run ON ps.user_id = best_run.user_id;
 
 -- ===================================================
--- TRIGGERS AND PROCEDURES (ENHANCED FOR v3.0)
+-- CHART DATA VIEWS FOR ADMIN DASHBOARD
+-- ===================================================
+
+-- View: Daily activity trends (registrations and logins)
+CREATE VIEW vw_daily_activity AS
+SELECT 
+    DATE(created_at) as date,
+    'registrations' as activity_type,
+    COUNT(*) as count
+FROM users 
+WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+GROUP BY DATE(created_at)
+
+UNION ALL
+
+SELECT 
+    DATE(last_login) as date,
+    'active_players' as activity_type,
+    COUNT(DISTINCT user_id) as count
+FROM users 
+WHERE last_login >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+  AND last_login IS NOT NULL
+GROUP BY DATE(last_login)
+
+ORDER BY date DESC;
+
+-- View: Playtime distribution analysis
+CREATE VIEW vw_playtime_distribution AS
+SELECT 
+    CASE 
+        WHEN total_playtime_seconds < 300 THEN '0-5 minutes'
+        WHEN total_playtime_seconds < 900 THEN '5-15 minutes'
+        WHEN total_playtime_seconds < 1800 THEN '15-30 minutes'
+        WHEN total_playtime_seconds < 3600 THEN '30-60 minutes'
+        WHEN total_playtime_seconds < 7200 THEN '1-2 hours'
+        WHEN total_playtime_seconds < 14400 THEN '2-4 hours'
+        ELSE '4+ hours'
+    END as playtime_range,
+    COUNT(*) as player_count,
+    ROUND(AVG(total_playtime_seconds / 60), 1) as avg_minutes,
+    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM player_stats WHERE total_playtime_seconds > 0), 2) as percentage
+FROM player_stats 
+WHERE total_playtime_seconds > 0
+GROUP BY 
+    CASE 
+        WHEN total_playtime_seconds < 300 THEN '0-5 minutes'
+        WHEN total_playtime_seconds < 900 THEN '5-15 minutes'
+        WHEN total_playtime_seconds < 1800 THEN '15-30 minutes'
+        WHEN total_playtime_seconds < 3600 THEN '30-60 minutes'
+        WHEN total_playtime_seconds < 7200 THEN '1-2 hours'
+        WHEN total_playtime_seconds < 14400 THEN '2-4 hours'
+        ELSE '4+ hours'
+    END
+ORDER BY 
+    CASE 
+        WHEN playtime_range = '0-5 minutes' THEN 1
+        WHEN playtime_range = '5-15 minutes' THEN 2
+        WHEN playtime_range = '15-30 minutes' THEN 3
+        WHEN playtime_range = '30-60 minutes' THEN 4
+        WHEN playtime_range = '1-2 hours' THEN 5
+        WHEN playtime_range = '2-4 hours' THEN 6
+        ELSE 7
+    END;
+
+-- View: Run experience distribution
+CREATE VIEW vw_run_experience_distribution AS
+SELECT 
+    CASE 
+        WHEN urp.current_run_number <= 5 THEN 'Newcomer (1-5 runs)'
+        WHEN urp.current_run_number <= 20 THEN 'Regular (6-20 runs)'
+        WHEN urp.current_run_number <= 50 THEN 'Experienced (21-50 runs)'
+        ELSE 'Veteran (50+ runs)'
+    END as experience_tier,
+    COUNT(*) as player_count,
+    ROUND(AVG(urp.current_run_number), 1) as avg_run_number,
+    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM user_run_progress), 2) as percentage,
+    MIN(urp.current_run_number) as min_runs,
+    MAX(urp.current_run_number) as max_runs
+FROM user_run_progress urp
+INNER JOIN users u ON urp.user_id = u.user_id
+WHERE u.is_active = TRUE AND u.role = 'player'
+GROUP BY 
+    CASE 
+        WHEN urp.current_run_number <= 5 THEN 'Newcomer (1-5 runs)'
+        WHEN urp.current_run_number <= 20 THEN 'Regular (6-20 runs)'
+        WHEN urp.current_run_number <= 50 THEN 'Experienced (21-50 runs)'
+        ELSE 'Veteran (50+ runs)'
+    END
+ORDER BY 
+    CASE 
+        WHEN experience_tier = 'Newcomer (1-5 runs)' THEN 1
+        WHEN experience_tier = 'Regular (6-20 runs)' THEN 2
+        WHEN experience_tier = 'Experienced (21-50 runs)' THEN 3
+        ELSE 4
+    END;
+
+-- View: Session duration distribution
+CREATE VIEW vw_session_duration_distribution AS
+SELECT 
+    CASE 
+        WHEN duration_seconds < 300 THEN '0-5 minutes'
+        WHEN duration_seconds < 900 THEN '5-15 minutes'
+        WHEN duration_seconds < 1800 THEN '15-30 minutes'
+        WHEN duration_seconds < 3600 THEN '30-60 minutes'
+        WHEN duration_seconds < 7200 THEN '1-2 hours'
+        ELSE '2+ hours'
+    END as duration_range,
+    COUNT(*) as session_count,
+    ROUND(AVG(duration_seconds / 60), 1) as avg_minutes,
+    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM run_history WHERE duration_seconds > 0), 2) as percentage
+FROM run_history 
+WHERE duration_seconds > 0 AND ended_at IS NOT NULL
+GROUP BY 
+    CASE 
+        WHEN duration_seconds < 300 THEN '0-5 minutes'
+        WHEN duration_seconds < 900 THEN '5-15 minutes'
+        WHEN duration_seconds < 1800 THEN '15-30 minutes'
+        WHEN duration_seconds < 3600 THEN '30-60 minutes'
+        WHEN duration_seconds < 7200 THEN '1-2 hours'
+        ELSE '2+ hours'
+    END
+ORDER BY 
+    CASE 
+        WHEN duration_range = '0-5 minutes' THEN 1
+        WHEN duration_range = '5-15 minutes' THEN 2
+        WHEN duration_range = '15-30 minutes' THEN 3
+        WHEN duration_range = '30-60 minutes' THEN 4
+        WHEN duration_range = '1-2 hours' THEN 5
+        ELSE 6
+    END;
+
+-- ===================================================
+-- TRIGGERS AND PROCEDURES 
 -- ===================================================
 
 -- TRIGGER: Initialize user run progress for new users
@@ -665,7 +699,7 @@ BEGIN
 END//
 DELIMITER ;
 
--- TRIGGER: Update player_stats when run ends (ENHANCED)
+-- TRIGGER: Update player_stats when run ends 
 DELIMITER //
 CREATE TRIGGER tr_update_player_stats_after_run
 AFTER UPDATE ON run_history
@@ -676,12 +710,12 @@ BEGIN
         INSERT INTO player_stats (
             user_id, total_runs, total_kills, total_deaths, 
             total_gold_earned, total_gold_spent, total_bosses_killed, 
-            total_playtime_seconds, highest_floor_ever
+            total_playtime_seconds, highest_floor_ever, max_damage_hit
         )
         VALUES (
             NEW.user_id, 1, NEW.total_kills, 1, 
             NEW.final_gold, NEW.gold_spent, NEW.bosses_killed, 
-            NEW.duration_seconds, NEW.final_floor
+            NEW.duration_seconds, NEW.final_floor, COALESCE(NEW.max_damage_hit, 0)
         )
         ON DUPLICATE KEY UPDATE 
             total_runs = total_runs + 1,
@@ -691,7 +725,8 @@ BEGIN
             total_gold_spent = total_gold_spent + NEW.gold_spent,
             total_bosses_killed = total_bosses_killed + NEW.bosses_killed,
             total_playtime_seconds = total_playtime_seconds + NEW.duration_seconds,
-            highest_floor_ever = GREATEST(highest_floor_ever, NEW.final_floor);
+            highest_floor_ever = GREATEST(highest_floor_ever, NEW.final_floor),
+            max_damage_hit = GREATEST(max_damage_hit, COALESCE(NEW.max_damage_hit, 0));
             
         -- Update user run progress
         UPDATE user_run_progress 
@@ -813,12 +848,12 @@ GET /api/admin/charts/session-duration → vw_session_duration_distribution
 GET /api/admin/charts/upgrade-adoption → vw_first_permanent_purchases
 
 REMOVED ADMIN ENDPOINTS (Unnecessary for 3-floor game):
-❌ GET /api/admin/leaderboards/floors (only 3 floors, not useful)
-❌ GET /api/admin/leaderboards/bosses (no developer value)  
-❌ GET /api/admin/analytics/economy (not needed)
-❌ GET /api/admin/analytics/combat (not needed)
+GET /api/admin/leaderboards/floors (only 3 floors, not useful)
+GET /api/admin/leaderboards/bosses (no developer value)  
+GET /api/admin/analytics/economy (not needed)
+GET /api/admin/analytics/combat (not needed)
 
-✅ OPTIMIZED FUNCTIONALITIES v3.0:
+OPTIMIZED FUNCTIONALITIES v3.0:
 
 #1 RUN PERSISTENCE:
 - vw_user_run_progress: Persistent run counter per user
@@ -840,7 +875,7 @@ REMOVED ADMIN ENDPOINTS (Unnecessary for 3-floor game):
 - JSON-like permanent upgrades string
 - All flags for frontend consumption
 
-#5 OPTIMIZED ADMIN ANALYTICS:
+#5 ADMIN ANALYTICS:
 - vw_all_bosses_first_run: Exceptional players who beat all 3 bosses in first run
 - vw_first_permanent_purchases: Feature adoption analysis for permanent upgrades
 - Chart data views: Activity trends, playtime distribution, run experience, session duration

@@ -11,6 +11,9 @@ export class Boss extends Enemy {
         this.nextAttackTime = 0;
         this.fightStartTime = Date.now(); // Track fight duration for boss kill registration
         
+        // CRITICAL FIX: Add isBoss property for proper boss detection in Room.js
+        this.isBoss = true;
+        
         // Retraso inicial antes del primer ataque (para todos los jefes)
         this.initialDelay = true;
         this.initialDelayTime = 3000; // 3 segundos de espera

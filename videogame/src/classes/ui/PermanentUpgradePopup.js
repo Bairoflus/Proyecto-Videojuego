@@ -123,7 +123,7 @@ export class PermanentUpgradePopup {
    * Creates the upgrade selection buttons
    */
   createUpgradeButtons(container) {
-    const upgradeTypes = ['health_max', 'stamina_max', 'movement_speed'];
+    const upgradeTypes = ['health_max', 'stamina_max'];
     
     upgradeTypes.forEach(upgradeType => {
       const upgradeInfo = PERMANENT_UPGRADES[upgradeType];
@@ -449,13 +449,6 @@ export class PermanentUpgradePopup {
         // Also increase current stamina
         player.stamina += upgradeInfo.value;
         console.log(`Stamina upgraded: ${oldMaxStamina} → ${player.maxStamina} (${upgradeInfo.description})`);
-        break;
-        
-      case 'movement_speed':
-        // Movement speed upgrade would need to be applied in player movement logic
-        // For now, just log it - this would need more complex implementation
-        console.log(`Movement speed upgraded by ${upgradeInfo.value * 100}% (${upgradeInfo.description})`);
-        // TODO: Implement movement speed boost in player movement
         break;
         
       default:

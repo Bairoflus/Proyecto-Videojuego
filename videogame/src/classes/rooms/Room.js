@@ -647,7 +647,7 @@ export class Room {
     return !this.checkWallCollision(tempEnemy);
   }
 
-  // SIMPLIFIED: Checks if the room allows transition - streamlined logic
+  // FIXED: Checks if the room allows transition with proper boss room handling
   canTransition() {
     // Clean enemies array first
     this.cleanEnemiesArray();
@@ -657,21 +657,149 @@ export class Room {
       return true;
     }
     
-    // Combat rooms: check if all enemies are dead
+    // CHECK 1: CHEST REQUIREMENT (applies to all combat rooms)
+    if (this.chestSpawned && !this.chestCollected) {
+      // FIXED: Throttle chest collection message to prevent spam
+      if (!this.lastChestCollectionLog || Date.now() - this.lastChestCollectionLog > 3000) {
+        console.log('🚫 TRANSITION BLOCKED: Chest not collected yet');
+        this.lastChestCollectionLog = Date.now();
+      }
+      return false;
+    }
+    
+    // CRITICAL FIX: Boss room special handling with enhanced validation
+    if (this.roomType === 'boss') {
+      // For boss rooms, we need additional verification
+      const allEnemies = this.objects.enemies;
+      const aliveEnemies = allEnemies.filter(
+        e => e !== undefined && e !== null && e.state !== 'dead'
+      );
+      
+      // ENHANCED: Multiple ways to detect bosses for maximum coverage
+      const bosses = allEnemies.filter(e => 
+        e !== undefined && e !== null && (
+          e.constructor.name.includes('Boss') || 
+          e.type === 'boss' || 
+          e.isBoss === true ||
+          e.constructor.name === 'DragonBoss' ||
+          e.constructor.name === 'Supersoldier'
+        )
+      );
+      
+      const aliveBosses = aliveEnemies.filter(e => 
+        e !== undefined && e !== null && (
+          e.constructor.name.includes('Boss') || 
+          e.type === 'boss' || 
+          e.isBoss === true ||
+          e.constructor.name === 'DragonBoss' ||
+          e.constructor.name === 'Supersoldier'
+        )
+      );
+      
+      // ULTRA-STRICT: Also check bosses with health > 0 regardless of state
+      const bossesWithHealth = allEnemies.filter(e => 
+        e !== undefined && e !== null && e.health > 0 && (
+          e.constructor.name.includes('Boss') || 
+          e.type === 'boss' || 
+          e.isBoss === true ||
+          e.constructor.name === 'DragonBoss' ||
+          e.constructor.name === 'Supersoldier'
+        )
+      );
+      
+      // SUPERSOLDIER-SPECIFIC CHECK
+      const supersoldiers = allEnemies.filter(e => e.constructor.name === 'Supersoldier');
+      const aliveSupersoldiers = supersoldiers.filter(e => e.state !== 'dead' && e.health > 0);
+      
+      // ENHANCED: Additional debugging for boss detection
+      const bossDefeated = window.game && window.game.bossJustDefeated;
+      
+      // FIXED: Heavily throttled logging - only log detailed state every 10 seconds to prevent spam
+      if (!this.lastDetailedBossLog || Date.now() - this.lastDetailedBossLog > 10000) {
+        console.log('🔍 BOSS ROOM TRANSITION ATTEMPT:', {
+          allEnemies: allEnemies.length,
+          aliveEnemies: aliveEnemies.length,
+          totalBosses: bosses.length,
+          aliveBosses: aliveBosses.length,
+          bossesWithHealth: bossesWithHealth.length,
+          supersoldiers: supersoldiers.length,
+          aliveSupersoldiers: aliveSupersoldiers.length,
+          bossDefeated: bossDefeated,
+          roomBossDefeated: this.bossDefeated,
+          chestSpawned: this.chestSpawned,
+          chestCollected: this.chestCollected
+        });
+        this.lastDetailedBossLog = Date.now();
+      }
+      
+      // ULTRA-STRICT BOSS ROOM LOGIC: ALL must be true for transition
+      const noAliveEnemies = aliveEnemies.length === 0;
+      const noAliveBosses = aliveBosses.length === 0;
+      const noBossesWithHealth = bossesWithHealth.length === 0;
+      const noAliveSupersoldiers = aliveSupersoldiers.length === 0;
+      const bossConfirmedDefeated = bossDefeated || this.bossDefeated;
+      const chestRequirementMet = !this.chestSpawned || this.chestCollected; // NEW: Chest check
+      
+      // FIXED: Super-throttled validation logging - only log validation details every 10 seconds
+      if (!this.lastValidationLog || Date.now() - this.lastValidationLog > 10000) {
+        console.log('🔍 BOSS ROOM VALIDATION CHECKS:', {
+          noAliveEnemies: noAliveEnemies,
+          noAliveBosses: noAliveBosses, 
+          noBossesWithHealth: noBossesWithHealth,
+          noAliveSupersoldiers: noAliveSupersoldiers,
+          bossConfirmedDefeated: bossConfirmedDefeated,
+          chestRequirementMet: chestRequirementMet
+        });
+        this.lastValidationLog = Date.now();
+      }
+      
+      // CRITICAL: All conditions must be met for boss room transition
+      const canTransition = noAliveEnemies && noAliveBosses && noBossesWithHealth && noAliveSupersoldiers && bossConfirmedDefeated && chestRequirementMet;
+      
+      // FIXED: Super-throttled result logging - only log result changes or every 15 seconds
+      if (canTransition !== this.lastCanTransition || !this.lastResultLog || Date.now() - this.lastResultLog > 15000) {
+        this.lastCanTransition = canTransition;
+        this.lastResultLog = Date.now();
+        
+        if (canTransition) {
+          console.log(`✅ BOSS ROOM TRANSITION ALLOWED - All checks passed`);
+        } else {
+          console.log(`🚫 BOSS ROOM TRANSITION BLOCKED:`);
+          if (!noAliveEnemies) console.log(`  ❌ BLOCKING: ${aliveEnemies.length} enemies still alive`);
+          if (!noAliveBosses) console.log(`  ❌ BLOCKING: ${aliveBosses.length} bosses still alive`);
+          if (!noBossesWithHealth) console.log(`  ❌ BLOCKING: ${bossesWithHealth.length} bosses still have health > 0`);
+          if (!noAliveSupersoldiers) console.log(`  ❌ BLOCKING: ${aliveSupersoldiers.length} Supersoldiers still alive`);
+          if (!bossConfirmedDefeated) console.log(`  ❌ BLOCKING: Boss defeat not confirmed`);
+          if (!chestRequirementMet) console.log(`  ❌ BLOCKING: Chest spawned but not collected yet`);
+        }
+      }
+      
+      return canTransition;
+    }
+    
+    // Regular combat rooms: check if all enemies are dead AND chest collected (if spawned)
     const aliveEnemies = this.objects.enemies.filter(
       e => e !== undefined && e !== null && e.state !== 'dead'
     );
     
-    // SIMPLIFIED: Only one condition - no complex boss logic needed
-    const canTransition = aliveEnemies.length === 0;
+    const enemiesCleared = aliveEnemies.length === 0;
+    const chestRequirementMet = !this.chestSpawned || this.chestCollected;
+    const canTransition = enemiesCleared && chestRequirementMet;
     
-    // Only log when transition state changes to avoid spam
+    // FIXED: Only log when transition state changes to avoid spam - but throttle heavily
     if (canTransition !== this.lastCanTransition) {
-      this.lastCanTransition = canTransition;
-      if (canTransition) {
-        console.log(`✅ Room cleared: All enemies defeated! Can transition now.`);
-      } else {
-        console.log(`🚫 Transition blocked: ${aliveEnemies.length} enemies still alive`);
+      // Additional throttling even for state changes
+      if (!this.lastStateChangeLog || Date.now() - this.lastStateChangeLog > 2000) {
+        this.lastCanTransition = canTransition;
+        this.lastStateChangeLog = Date.now();
+        
+        if (canTransition) {
+          console.log(`✅ Combat room cleared: All enemies defeated and chest collected! Can transition now.`);
+        } else {
+          console.log(`🚫 Combat room transition blocked:`);
+          if (!enemiesCleared) console.log(`  ❌ ${aliveEnemies.length} enemies still alive`);
+          if (!chestRequirementMet) console.log(`  ❌ Chest spawned but not collected yet`);
+        }
       }
     }
     

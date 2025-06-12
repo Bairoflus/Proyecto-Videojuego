@@ -31,8 +31,7 @@ export const GAME_ENUMS = {
   // ===================================================
   UPGRADE_TYPES: [
     'health_max',        // Mejora HP máximo
-    'stamina_max',       // Mejora Stamina máximo
-    'movement_speed'     // Mejora velocidad de movimiento
+    'stamina_max'        // Mejora Stamina máximo
   ],
   
   // ===================================================
@@ -96,12 +95,6 @@ export const GAME_ENUMS = {
       value: 20,
       description: '+20 Maximum Stamina',
       icon: '💪'
-    },
-    movement_speed: {
-      name: 'Speed Boost',
-      value: 0.1,
-      description: '+10% Movement Speed',
-      icon: '💨'
     }
   },
   

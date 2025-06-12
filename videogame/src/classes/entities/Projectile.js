@@ -130,6 +130,11 @@ export class Projectile {
 
     // Apply damage to entity
     entity.takeDamage(this.damage);
+    
+    // NEW: Track maximum damage hit for statistics (only for player projectiles)
+    if (window.game && typeof window.game.trackDamageDealt === 'function') {
+      window.game.trackDamageDealt(this.damage);
+    }
 
     // Log successful hit
     log.verbose(`Projectile hit ${entity.type} for ${this.damage} damage`);

@@ -258,12 +258,12 @@ export class Player extends AnimatedObject {
     console.log("PLAYER DEATH - Processing...");
     this.state = "dead";
 
-    // Complete current run in backend with death data
+    // Complete current run in backend
     try {
-      const currentRunId = localStorage.getItem("currentRunId");
+      const currentRunId = localStorage.getItem('currentRunId');
 
       if (currentRunId && window.game) {
-        console.log("Completing run for player death...");
+        console.log("Completing run for death...");
 
         // Get run statistics from game instance
         const runStats = window.game.getRunStats();
@@ -272,6 +272,7 @@ export class Player extends AnimatedObject {
           goldCollected: runStats.goldCollected,
           goldSpent: runStats.goldSpent,
           totalKills: runStats.totalKills,
+          maxDamageHit: runStats.maxDamageHit,     // NEW: Include max damage hit
           deathCause: "enemy_damage", // Player died from enemy damage
         };
 
@@ -279,13 +280,19 @@ export class Player extends AnimatedObject {
         const result = await completeRun(currentRunId, completionData);
         console.log("Run completed for death:", result);
 
-        // Clear the current run ID since run is now complete
-        localStorage.removeItem("currentRunId");
+        // CRITICAL FIX: Only clear runId AFTER successful completion
+        // AND only if we're actually in a death scenario (not victory transition)
+        if (result && result.success) {
+          console.log("Run completion successful - clearing runId after death");
+          localStorage.removeItem("currentRunId");
+        } else {
+          console.warn("Run completion failed - keeping runId for retry");
+        }
 
         // FIXED: Let FloorGenerator.resetToInitialState() handle new run creation
         // This centralizes all run management logic in one place
         console.log(
-          "Run completed - FloorGenerator will create new run during reset"
+          "Death run completed - FloorGenerator will create new run during reset"
         );
       } else {
         console.log(
@@ -294,6 +301,8 @@ export class Player extends AnimatedObject {
       }
     } catch (error) {
       console.error("Failed to complete run on death:", error);
+      // CRITICAL: Don't clear runId if completion failed - allows for retry
+      console.warn("Death completion failed - keeping runId for potential retry");
     }
 
     // Trigger complete game reset through the global game instance
@@ -321,6 +330,11 @@ export class Player extends AnimatedObject {
     if (amount > 0) {
       this.gold += amount;
       log.info(`Player collected ${amount} gold. Total: ${this.gold}`);
+      
+      // NEW: Track total gold earned for statistics
+      if (window.game && typeof window.game.trackGoldEarned === 'function') {
+        window.game.trackGoldEarned(amount);
+      }
     }
     return this.gold;
   }
@@ -681,6 +695,12 @@ export class Player extends AnimatedObject {
           const damage = this.getWeaponDamage();
           enemy.takeDamage(damage);
           enemiesHit++;
+          
+          // NEW: Track maximum damage hit for statistics
+          if (window.game && typeof window.game.trackDamageDealt === 'function') {
+            window.game.trackDamageDealt(damage);
+          }
+          
           console.log(
             `${this.getCurrentWeapon()} hit ${enemy.type} for ${damage} damage`
           );
