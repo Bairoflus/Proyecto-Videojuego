@@ -1,12 +1,11 @@
 /**
- * Simplified Admin Dashboard v2.1
+ * Simplified Admin Dashboard
  * Focused on useful metrics that actually exist in the database
  * Removed keyboard shortcuts and CSV export per user request
  */
 
 import { 
     adminLogin,
-    adminLogout,
     verifyAdminSession,
     getAdminPlaytimeLeaderboard,
     getAdminPlayerProgression,

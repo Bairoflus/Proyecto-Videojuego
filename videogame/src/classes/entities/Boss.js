@@ -1,6 +1,5 @@
 import { Enemy } from "./Enemy.js";
 import { AnimatedObject } from "./AnimatedObject.js";
-import { registerBossKill } from "../../utils/api.js";
 import { variables } from "../../config.js";
 
 export class Boss extends Enemy {
@@ -63,11 +62,11 @@ export class Boss extends Enemy {
         super.die();
 
         // Only add boss-specific behavior here
-        console.log(`🏆 Boss ${this.type} defeated!`);
+        console.log(`Boss ${this.type} defeated!`);
 
         // Calculate fight duration for metrics
         const fightDuration = Math.round((Date.now() - this.fightStartTime) / 1000);
-        console.log(`🕐 Boss fight duration: ${fightDuration} seconds`);
+        console.log(`Boss fight duration: ${fightDuration} seconds`);
     }
 
     draw(ctx) {

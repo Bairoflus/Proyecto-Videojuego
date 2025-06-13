@@ -16,16 +16,25 @@ import { MageGoblin } from "../enemies/floor1/MageGoblin.js";
 import { GreatBowGoblin } from "../enemies/floor1/GreatBowGoblin.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
-import { ROOM_CONSTANTS, PHYSICS_CONSTANTS } from "../../constants/gameConstants.js";
+import { ROOM_CONSTANTS } from "../../constants/gameConstants.js";
+import { backgroundManager } from "../../utils/BackgroundManager.js";
 
 export class Room {
-  constructor(layout, isCombatRoom = false, roomType = "combat") {
+  constructor(layout, isCombatRoom = false, roomType = "combat", floor = 1, roomIndex = 0) {
     this.layout = layout;
     this.isCombatRoom = isCombatRoom;
     this.roomType = roomType; // 'combat', 'shop', or 'boss'
+    this.floor = floor; // Current floor (1-3)
+    this.roomIndex = roomIndex; // Room index within floor (0-5)
     this.tileSize = ROOM_CONSTANTS.TILE_SIZE;
     this.transitionZone = ROOM_CONSTANTS.TRANSITION_ZONE_SIZE;
     this.minSafeDistance = ROOM_CONSTANTS.MIN_SAFE_DISTANCE;
+    
+    // Dynamic background support
+    this.backgroundImage = null;
+    this.backgroundPath = null;
+    this.backgroundLoaded = false;
+    
     this.objects = {
       walls: [],
       enemies: [],
@@ -42,6 +51,9 @@ export class Room {
 
     this.parseLayout();
 
+    // Initialize background for this room
+    this.initializeBackground();
+
     // Create shop instance for shop rooms
     if (this.roomType === "shop" && !this.objects.shop) {
       this.objects.shop = new Shop();
@@ -51,6 +63,39 @@ export class Room {
       log.info("Shop instance created in constructor for shop room");
     }
   }
+
+  /**
+   * Initialize background for this specific room
+   */
+  async initializeBackground() {
+    try {
+      // Get background path based on room properties
+      this.backgroundPath = backgroundManager.getBackgroundPath(
+        this.floor, 
+        this.roomType, 
+        this.roomIndex
+      );
+      
+      log.info(`Initializing background for ${this.roomType} room: ${this.backgroundPath}`);
+      
+      // Load background image
+      this.backgroundImage = await backgroundManager.loadBackground(this.backgroundPath);
+      this.backgroundLoaded = true;
+      
+      log.verbose(`Background loaded successfully for floor ${this.floor}, room ${this.roomIndex + 1}`);
+      
+    } catch (error) {
+      log.error('Failed to load room background:', error);
+      
+      // Fallback to global background
+      this.backgroundImage = variables.backgroundImage;
+      this.backgroundPath = '/assets/backgrounds/backgroundfloor1.jpg';
+      this.backgroundLoaded = variables.backgroundImage && variables.backgroundImage.complete;
+      
+      log.warn('Using fallback background due to loading error');
+    }
+  }
+
   addEntity(entity) {
     if (typeof entity.setCurrentRoom === 'function') {
       entity.setCurrentRoom(this);
@@ -149,8 +194,17 @@ export class Room {
     // CRITICAL: Clean enemies array before drawing
     this.cleanEnemiesArray();
     
-    // Draw background first
-    if (variables.backgroundImage && variables.backgroundImage.complete) {
+    // Draw background first - Use room-specific background
+    if (this.backgroundImage && this.backgroundLoaded) {
+      ctx.drawImage(
+        this.backgroundImage,
+        0,
+        0,
+        variables.canvasWidth,
+        variables.canvasHeight
+      );
+    } else if (variables.backgroundImage && variables.backgroundImage.complete) {
+      // Fallback to global background if room background not loaded
       ctx.drawImage(
         variables.backgroundImage,
         0,
@@ -161,7 +215,7 @@ export class Room {
     }
 
     // Draw walls
-    ctx.fillStyle = "brown";
+    ctx.fillStyle = "#666666";
     this.objects.walls.forEach((wall) => {
       ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
     });
@@ -498,7 +552,7 @@ export class Room {
     // Generate enemies randomly within defined range
     const enemyCount = Math.floor(Math.random() * (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)) + ROOM_CONSTANTS.MIN_ENEMIES;
 
-    // ✅ V2 ENEMY DISTRIBUTION WITH WEIGHTED SELECTION
+    // V2 ENEMY DISTRIBUTION WITH WEIGHTED SELECTION
     const enemyTypes = [
       { class: GoblinDagger, weight: 30, type: 'melee', name: 'GoblinDagger' },      // common
       { class: SwordGoblin, weight: 25, type: 'melee', name: 'SwordGoblin' },       // common  
@@ -565,7 +619,7 @@ export class Room {
     log.debug(`Validation: ${totalValidEnemies} valid enemy instances created`);
   }
 
-  // ✅ V2 WEIGHTED RANDOM SELECTION
+  // V2 WEIGHTED RANDOM SELECTION
   weightedRandomSelect(types) {
     const totalWeight = types.reduce((sum, type) => sum + type.weight, 0);
     const random = Math.random() * totalWeight;
@@ -580,7 +634,7 @@ export class Room {
     return types[0]; // Fallback
   }
 
-  // ✅ V2 IMPROVED POSITION GENERATION
+  // V2 IMPROVED POSITION GENERATION
   getValidEnemyPositionV2(isMelee, safeZone) {
     let attempts = 0;
 
@@ -598,7 +652,7 @@ export class Room {
     return null;
   }
 
-  // ✅ V2 POSITION GENERATION WITH BETTER LOGIC
+  // V2 POSITION GENERATION WITH BETTER LOGIC
   generateRandomPositionV2(isMelee, safeZone) {
     let x, y;
 
@@ -630,7 +684,7 @@ export class Room {
     );
   }
 
-  // ✅ V2 VALIDATION WITH BETTER ENEMY DETECTION
+  // V2 VALIDATION WITH BETTER ENEMY DETECTION
   isValidEnemyPositionV2(position) {
     // Create a temporary enemy to test collision (use base enemy for testing)
     const tempEnemy = {
@@ -661,7 +715,7 @@ export class Room {
     if (this.chestSpawned && !this.chestCollected) {
       // FIXED: Throttle chest collection message to prevent spam
       if (!this.lastChestCollectionLog || Date.now() - this.lastChestCollectionLog > 3000) {
-        console.log('🚫 TRANSITION BLOCKED: Chest not collected yet');
+        console.log('TRANSITION BLOCKED: Chest not collected yet');
         this.lastChestCollectionLog = Date.now();
       }
       return false;
@@ -716,7 +770,7 @@ export class Room {
       
       // FIXED: Heavily throttled logging - only log detailed state every 10 seconds to prevent spam
       if (!this.lastDetailedBossLog || Date.now() - this.lastDetailedBossLog > 10000) {
-        console.log('🔍 BOSS ROOM TRANSITION ATTEMPT:', {
+        console.log('BOSS ROOM TRANSITION ATTEMPT:', {
           allEnemies: allEnemies.length,
           aliveEnemies: aliveEnemies.length,
           totalBosses: bosses.length,
@@ -742,7 +796,7 @@ export class Room {
       
       // FIXED: Super-throttled validation logging - only log validation details every 10 seconds
       if (!this.lastValidationLog || Date.now() - this.lastValidationLog > 10000) {
-        console.log('🔍 BOSS ROOM VALIDATION CHECKS:', {
+        console.log('BOSS ROOM VALIDATION CHECKS:', {
           noAliveEnemies: noAliveEnemies,
           noAliveBosses: noAliveBosses, 
           noBossesWithHealth: noBossesWithHealth,
@@ -762,15 +816,15 @@ export class Room {
         this.lastResultLog = Date.now();
         
         if (canTransition) {
-          console.log(`✅ BOSS ROOM TRANSITION ALLOWED - All checks passed`);
+          console.log(`BOSS ROOM TRANSITION ALLOWED - All checks passed`);
         } else {
-          console.log(`🚫 BOSS ROOM TRANSITION BLOCKED:`);
-          if (!noAliveEnemies) console.log(`  ❌ BLOCKING: ${aliveEnemies.length} enemies still alive`);
-          if (!noAliveBosses) console.log(`  ❌ BLOCKING: ${aliveBosses.length} bosses still alive`);
-          if (!noBossesWithHealth) console.log(`  ❌ BLOCKING: ${bossesWithHealth.length} bosses still have health > 0`);
-          if (!noAliveSupersoldiers) console.log(`  ❌ BLOCKING: ${aliveSupersoldiers.length} Supersoldiers still alive`);
-          if (!bossConfirmedDefeated) console.log(`  ❌ BLOCKING: Boss defeat not confirmed`);
-          if (!chestRequirementMet) console.log(`  ❌ BLOCKING: Chest spawned but not collected yet`);
+          console.log(`BOSS ROOM TRANSITION BLOCKED:`);
+          if (!noAliveEnemies) console.log(`  BLOCKING: ${aliveEnemies.length} enemies still alive`);
+          if (!noAliveBosses) console.log(`  BLOCKING: ${aliveBosses.length} bosses still alive`);
+          if (!noBossesWithHealth) console.log(`  BLOCKING: ${bossesWithHealth.length} bosses still have health > 0`);
+          if (!noAliveSupersoldiers) console.log(`  BLOCKING: ${aliveSupersoldiers.length} Supersoldiers still alive`);
+          if (!bossConfirmedDefeated) console.log(`  BLOCKING: Boss defeat not confirmed`);
+          if (!chestRequirementMet) console.log(`  BLOCKING: Chest spawned but not collected yet`);
         }
       }
       
@@ -794,11 +848,11 @@ export class Room {
         this.lastStateChangeLog = Date.now();
         
         if (canTransition) {
-          console.log(`✅ Combat room cleared: All enemies defeated and chest collected! Can transition now.`);
+          console.log(`Combat room cleared: All enemies defeated and chest collected! Can transition now.`);
         } else {
-          console.log(`🚫 Combat room transition blocked:`);
-          if (!enemiesCleared) console.log(`  ❌ ${aliveEnemies.length} enemies still alive`);
-          if (!chestRequirementMet) console.log(`  ❌ Chest spawned but not collected yet`);
+          console.log(`Combat room transition blocked:`);
+          if (!enemiesCleared) console.log(`  ${aliveEnemies.length} enemies still alive`);
+          if (!chestRequirementMet) console.log(`  Chest spawned but not collected yet`);
         }
       }
     }

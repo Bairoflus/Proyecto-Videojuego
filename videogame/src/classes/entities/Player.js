@@ -5,7 +5,6 @@
  */
 import { AnimatedObject } from "./AnimatedObject.js";
 import { Vec } from "../../utils/Vec.js";
-import { Rect } from "../../utils/Rect.js";
 import { Projectile } from "./Projectile.js";
 import {
   variables,

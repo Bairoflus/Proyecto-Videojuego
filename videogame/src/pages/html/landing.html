@@ -13,6 +13,7 @@
     <div class="landing-buttons">
       <button class="link-button" onclick="location.href='register.html'">Create Account</button>
       <button class="link-button" onclick="location.href='login.html'">Log In</button>
+      <button class="link-button" onclick="location.href='credits.html'">Credits</button>
     </div>
   </div>
 
@@ -30,9 +31,9 @@
     try {
       const clearedCount = clearSessionLocalStorage();
       if (clearedCount > 0) {
-        console.log(`🧹 Landing page cleanup: cleared ${clearedCount} localStorage entries`);
+        console.log(`Landing page cleanup: cleared ${clearedCount} localStorage entries`);
       } else {
-        console.log('🧹 Landing page: no session data to clear');
+        console.log('Landing page: no session data to clear');
       }
     } catch (error) {
       console.error('Failed to clear session data on landing:', error);
@@ -40,7 +41,7 @@
       ['sessionToken', 'currentUserId', 'currentSessionId', 'currentRunId', 'testMode'].forEach(key => {
         localStorage.removeItem(key);
       });
-      console.log('🧹 Fallback cleanup completed');
+      console.log('Fallback cleanup completed');
     }
   </script>
 </body>

@@ -145,7 +145,7 @@ export class FloorGenerator {
 
         // ADDITIONAL VERIFICATION: Ensure we're actually at room 0
         if (this.currentRoomIndex !== 0) {
-            console.error(`🚨 CRITICAL: currentRoomIndex should be 0 but is ${this.currentRoomIndex}`);
+            console.error(`CRITICAL: currentRoomIndex should be 0 but is ${this.currentRoomIndex}`);
             this.currentRoomIndex = 0; // Force it
         }
 
@@ -206,8 +206,8 @@ export class FloorGenerator {
 
         console.log(`CREATING NEW ROOM: index ${roomIndex}, type ${roomType}`);
 
-        // Create new room instance with room type
-        const room = new Room(layout, isCombatRoom, roomType);
+        // Create new room instance with room type and background info
+        const room = new Room(layout, isCombatRoom, roomType, this.floorCount, roomIndex);
 
         // FIXED: Only initialize enemies for NEW rooms
         room.initializeEnemies();
@@ -280,7 +280,7 @@ export class FloorGenerator {
             const expectedRoomId = this.getExpectedRoomId();
 
             if (roomId !== expectedRoomId) {
-                console.error(`🚨 ROOM MAPPING ERROR: Got ${roomId}, expected ${expectedRoomId}`);
+                console.error(`CRITICAL: Got ${roomId}, expected ${expectedRoomId}`);
                 console.error(`  Floor: ${this.floorCount}, Index: ${this.currentRoomIndex}, Type: ${this.getCurrentRoomType()}`);
             } else {
                 console.log(`ROOM MAPPING CORRECT: Floor ${this.floorCount}, Index ${this.currentRoomIndex} → Room ID ${roomId}`);
@@ -531,14 +531,14 @@ export class FloorGenerator {
                     if (newRunData && newRunData.runId) {
                         newRunId = newRunData.runId;
                         localStorage.setItem('currentRunId', newRunId);
-                        console.log(`✅ NEW RUN CREATED: runId ${newRunId} stored in localStorage`);
+                        console.log(`NEW RUN CREATED: runId ${newRunId} stored in localStorage`);
                         
                         // VERIFICATION: Double-check localStorage was updated
                         const verifyRunId = localStorage.getItem('currentRunId');
                         if (verifyRunId === newRunId.toString()) {
-                            console.log(`✅ VERIFICATION PASSED: localStorage runId confirmed as ${verifyRunId}`);
+                            console.log(`VERIFICATION PASSED: localStorage runId confirmed as ${verifyRunId}`);
                         } else {
-                            console.error(`❌ VERIFICATION FAILED: Expected ${newRunId}, got ${verifyRunId}`);
+                            console.error(`VERIFICATION FAILED: Expected ${newRunId}, got ${verifyRunId}`);
                         }
                     } else {
                         throw new Error('createRun returned invalid data');
@@ -562,13 +562,13 @@ export class FloorGenerator {
             
             // FINAL STATUS LOG
             const finalRunId = localStorage.getItem('currentRunId');
-            console.log(`🎉 NEW RUN COMPLETE: Run ${this.runCount}, Floor ${this.floorCount}, Room ${this.currentRoomIndex + 1}, RunId ${finalRunId}`);
+            console.log(`NEW RUN COMPLETE: Run ${this.runCount}, Floor ${this.floorCount}, Room ${this.currentRoomIndex + 1}, RunId ${finalRunId}`);
             
             // SYNC CHECK: Verify everything is properly synchronized
             if (finalRunId && finalRunId !== beforeRunId) {
-                console.log(`✅ RUN TRANSITION SUCCESS: ${beforeRunId} → ${finalRunId}`);
+                console.log(`RUN TRANSITION SUCCESS: ${beforeRunId} → ${finalRunId}`);
             } else {
-                console.error(`❌ RUN TRANSITION ISSUE: Before=${beforeRunId}, After=${finalRunId}`);
+                console.error(`RUN TRANSITION ISSUE: Before=${beforeRunId}, After=${finalRunId}`);
             }
             
             // CRITICAL: Return true to indicate successful run transition
@@ -628,7 +628,7 @@ export class FloorGenerator {
             const calculatedRoomId = this.getExpectedRoomId();
 
             if (mappedRoomId !== calculatedRoomId) {
-                console.warn(`⚠️ ROOM MAPPING MISMATCH: Mapped=${mappedRoomId}, Calculated=${calculatedRoomId}`);
+                console.warn(`ROOM MAPPING MISMATCH: Mapped=${mappedRoomId}, Calculated=${calculatedRoomId}`);
                 console.warn(`  Floor: ${this.floorCount}, Index: ${this.currentRoomIndex}, Type: ${this.getCurrentRoomType()}`);
 
                 // Use calculated room ID as fallback

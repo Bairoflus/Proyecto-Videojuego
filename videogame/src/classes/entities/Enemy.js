@@ -8,7 +8,6 @@ import { Vec } from "../../utils/Vec.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
 import { registerEnemyKill } from "../../utils/api.js";
-import { enemyMappingService } from "../../utils/enemyMapping.js";
 
 export class Enemy extends AnimatedObject {
   constructor(
@@ -212,7 +211,7 @@ export class Enemy extends AnimatedObject {
         return false;
       }
 
-      // ✅ MAPEO INTELIGENTE V2 - CONSERVADOR
+      // SMART MAPPING V2 - CONSERVATIVE
       let enemyType = 'common'; // Por defecto para melee
       
       // RANGED ENEMIES → 'rare'

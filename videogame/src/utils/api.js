@@ -796,7 +796,7 @@ export function isAdmin() {
  * Clear admin session data
  */
 export function clearAdminSession() {
-    console.log('🔐 Clearing admin session data...');
+    console.log('Clearing admin session data...');
     
     const adminKeys = [
         'adminSessionToken',
@@ -811,7 +811,7 @@ export function clearAdminSession() {
         }
     });
     
-    console.log('✅ Admin session cleared');
+    console.log('Admin session cleared');
 }
 
 /**
@@ -820,7 +820,7 @@ export function clearAdminSession() {
  */
 export async function enhancedAdminLogout() {
     try {
-        console.log('🚪 Starting enhanced admin logout...');
+        console.log('Starting enhanced admin logout...');
         
         const sessionToken = localStorage.getItem('adminSessionToken');
         
@@ -828,20 +828,20 @@ export async function enhancedAdminLogout() {
         if (sessionToken) {
             try {
                 await adminLogout(sessionToken);
-                console.log('✅ Admin backend logout successful');
+                console.log('Admin backend logout successful');
             } catch (error) {
-                console.warn('⚠️ Admin backend logout failed, but continuing with cleanup:', error);
+                console.warn('Admin backend logout failed, but continuing with cleanup:', error);
             }
         }
         
         // Clear admin session data
         clearAdminSession();
         
-        console.log('✅ Enhanced admin logout completed successfully');
+        console.log('Enhanced admin logout completed successfully');
         return true;
         
     } catch (error) {
-        console.error('❌ Enhanced admin logout error:', error);
+        console.error('Enhanced admin logout error:', error);
         
         // Emergency cleanup even on error
         clearAdminSession();

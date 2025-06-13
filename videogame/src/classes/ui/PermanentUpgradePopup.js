@@ -3,7 +3,7 @@
 // ===================================================
 // Objective: Permanent upgrade popup
 // Trigger: After killing a boss
-// Options: Health (+15), Stamina (+20), MovementSpeed (+10%)
+// Options: Health (+15), Stamina (+20)
 // ===================================================
 
 import { PERMANENT_UPGRADES } from '../../constants/gameEnums.js';
@@ -64,7 +64,7 @@ export class PermanentUpgradePopup {
 
     // Title
     const title = document.createElement('h1');
-    title.textContent = '🏆 BOSS DEFEATED! 🏆';
+    title.textContent = 'BOSS DEFEATED!';
     title.style.cssText = `
       color: #d4af37;
       font-size: 2.5em;
@@ -99,7 +99,7 @@ export class PermanentUpgradePopup {
 
     // Warning
     const warning = document.createElement('p');
-    warning.textContent = '⚠️ Choose wisely! This upgrade is permanent and cannot be changed.';
+    warning.textContent = 'Choose wisely! This upgrade is permanent and cannot be changed.';
     warning.style.cssText = `
       color: #ff9800;
       font-size: 0.9em;

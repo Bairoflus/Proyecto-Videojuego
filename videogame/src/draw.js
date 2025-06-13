@@ -1,10 +1,4 @@
-/**
- * Drawing utilities (DEPRECATED)
- * This file is kept for backward compatibility but is no longer used
- * Drawing logic has been integrated into main.js and individual class draw methods
- */
 import { variables } from "./config.js";
-import { Vec } from "./utils/Vec.js";
 
 let ctx = null;
 let game = null;

@@ -1,9 +1,9 @@
 /**
- * Módulo centralizado para manejo de autenticación y sesiones
- * Evita duplicación de código entre páginas
+ * Centralized module for authentication and session handling
+ * Avoids code duplication between pages
  */
 
-// Guardar datos de sesión
+// Save session data
 export function saveSession({ userId, sessionToken, sessionId }) {
     sessionStorage.setItem('userId', userId);
     sessionStorage.setItem('sessionToken', sessionToken);
@@ -12,22 +12,22 @@ export function saveSession({ userId, sessionToken, sessionId }) {
     }
 }
 
-// Obtener token de sesión
+// Get session token
 export function getSessionToken() {
     return sessionStorage.getItem('sessionToken');
 }
 
-// Obtener userId de sesión
+// Get user ID from session
 export function getUserId() {
     return sessionStorage.getItem('userId');
 }
 
-// Obtener sessionId
+// Get session ID
 export function getSessionId() {
     return sessionStorage.getItem('sessionId');
 }
 
-// Obtener todos los datos de sesión
+// Get all session data
 export function getSessionData() {
     return {
         userId: getUserId(),
@@ -36,7 +36,7 @@ export function getSessionData() {
     };
 }
 
-// Limpiar datos de sesión
+// Clear session data
 export function clearSession() {
     sessionStorage.removeItem('userId');
     sessionStorage.removeItem('sessionToken');
@@ -44,12 +44,12 @@ export function clearSession() {
     sessionStorage.removeItem('currentRunId');
 }
 
-// Verificar si hay sesión activa
+// Check if there is an active session
 export function hasActiveSession() {
     return !!getSessionToken() && !!getUserId();
 }
 
-// Requerir login - redirige a login si no hay sesión
+// Require login - redirects to login if there is no session
 export function requireLogin() {
     if (!hasActiveSession()) {
         window.location.href = '/pages/html/login.html';
@@ -58,16 +58,16 @@ export function requireLogin() {
     return true;
 }
 
-// Validación simple de email
+// Simple email validation
 export function isValidEmail(email) {
     return email && email.includes('@') && email.includes('.');
 }
 
-// Validación simple de campos requeridos
+// Simple required fields validation
 export function validateRequired(fields) {
     for (const [name, value] of Object.entries(fields)) {
         if (!value || (typeof value === 'string' && value.trim() === '')) {
-            return `El campo ${name} es requerido`;
+            return `The field ${name} is required`;
         }
     }
     return null;

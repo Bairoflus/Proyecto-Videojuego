@@ -28,7 +28,7 @@
     // Clean up menu music when entering game
     const menuAudioManager = new SimpleAudioManager();
     menuAudioManager.cleanupForGamePage();
-    console.log('🎵 Menu music cleaned up for game page');
+    console.log('Menu music cleaned up for game page');
 
     /**
      * Clear all session data for complete logout
@@ -48,7 +48,7 @@
         const value = localStorage.getItem(key);
         if (value) {
           localStorage.removeItem(key);
-          console.log(`  Cleared ${key}: ${value}`);
+          console.log(`Cleared ${key}: ${value}`);
         }
       });
       

@@ -175,7 +175,7 @@ export class Shop {
 
       // Validate we have the required game data
       if (!this.gameData.runId || !this.gameData.userId || !this.gameData.roomId) {
-        log.warn('⚠️ Missing game data for backend registration:', this.gameData);
+        log.warn('Missing game data for backend registration:', this.gameData);
         return;
       }
 

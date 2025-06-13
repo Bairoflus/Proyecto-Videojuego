@@ -1,5 +1,5 @@
 /**
- * Simple Audio Manager for main menu, floor music, and sound effects
+ * Audio Manager for main menu, floor music, and sound effects
  * Handles autoplay restrictions and audio playback
  */
 class SimpleAudioManager {
@@ -25,14 +25,14 @@ class SimpleAudioManager {
       this.audio = null;
     }
 
-    console.log("🎵 Creating audio instance for:", src);
+    console.log("Creating audio instance for:", src);
     this.audio = new Audio(src);
     this.audio.loop = true;
     this.audio.volume = this.musicVolume;
     this.currentTrack = src;
 
     this.audio.addEventListener("error", (e) => {
-      console.error("🎵 Audio error:", e);
+      console.error("Audio error:", e);
     });
 
     return this.audio;
@@ -42,7 +42,7 @@ class SimpleAudioManager {
    * Start playing main menu music
    */
   async playMainMenuMusic() {
-    console.log("🎵 playMainMenuMusic called");
+    console.log("playMainMenuMusic called");
     this.initializeAudio("/assets/sound_assets/music/main-menu.mp3");
 
     if (!this.audio.paused) {
@@ -51,11 +51,11 @@ class SimpleAudioManager {
     }
 
     try {
-      console.log("🎵 Attempting to play main menu music");
+      console.log("Attempting to play main menu music");
       await this.audio.play();
-      console.log("🎵 Main menu music started successfully");
+      console.log("Main menu music started successfully");
     } catch (error) {
-      console.log("🎵 Autoplay blocked:", error.message);
+      console.log("Autoplay blocked:", error.message);
       this.setupClickHandler();
     }
   }
@@ -72,18 +72,18 @@ class SimpleAudioManager {
 
     const trackSrc = floorTracks[floorNumber];
     if (!trackSrc) {
-      console.warn(`🎵 No music track for floor ${floorNumber}`);
+      console.warn(`No music track for floor ${floorNumber}`);
       return;
     }
 
-    console.log(`🎵 Playing Floor ${floorNumber} music`);
+    console.log(`Playing Floor ${floorNumber} music`);
     this.initializeAudio(trackSrc);
 
     try {
       await this.audio.play();
-      console.log(`🎵 Floor ${floorNumber} music started successfully`);
+      console.log(`Floor ${floorNumber} music started successfully`);
     } catch (error) {
-      console.log("🎵 Autoplay blocked:", error.message);
+      console.log("Autoplay blocked:", error.message);
       this.setupClickHandler();
     }
   }
@@ -95,7 +95,7 @@ class SimpleAudioManager {
    */
   playSFX(sfxPath) {
     try {
-      console.log("🔊 Playing SFX:", sfxPath);
+      console.log("Playing SFX:", sfxPath);
 
       // Check if it's a .mov file (video with audio)
       if (sfxPath.toLowerCase().endsWith(".mov")) {
@@ -111,14 +111,14 @@ class SimpleAudioManager {
         });
 
         sfxVideo.addEventListener("error", (e) => {
-          console.warn("🔊 SFX video play failed:", e.target.error);
+          console.warn("SFX video play failed:", e.target.error);
           if (document.body.contains(sfxVideo)) {
             document.body.removeChild(sfxVideo);
           }
         });
 
         sfxVideo.play().catch((error) => {
-          console.warn("🔊 SFX video play failed:", error.message);
+          console.warn("SFX video play failed:", error.message);
           if (document.body.contains(sfxVideo)) {
             document.body.removeChild(sfxVideo);
           }
@@ -128,11 +128,11 @@ class SimpleAudioManager {
         const sfxAudio = new Audio(sfxPath);
         sfxAudio.volume = this.sfxVolume;
         sfxAudio.play().catch((error) => {
-          console.warn("🔊 SFX play failed:", error.message);
+          console.warn("SFX play failed:", error.message);
         });
       }
     } catch (error) {
-      console.error("🔊 SFX error:", error);
+      console.error("SFX error:", error);
     }
   }
 
@@ -183,17 +183,17 @@ class SimpleAudioManager {
    */
   setupClickHandler() {
     if (this.isSetup) {
-      console.log("🎵 Click handler already setup");
+      console.log("Click handler already setup");
       return;
     }
 
-    console.log("🎵 Setting up click handler");
+    console.log("Setting up click handler");
     const playOnInteraction = async (event) => {
-      console.log("🎵 User interaction detected:", event.type);
+      console.log("User interaction detected:", event.type);
       if (this.audio && this.audio.paused) {
         try {
           await this.audio.play();
-          console.log("🎵 Music started after user interaction");
+          console.log("Music started after user interaction");
 
           // Remove event listeners after successful play
           document.removeEventListener("click", playOnInteraction);
@@ -201,7 +201,7 @@ class SimpleAudioManager {
           document.removeEventListener("touchstart", playOnInteraction);
           this.isSetup = false;
         } catch (error) {
-          console.error("🎵 Failed to play after interaction:", error);
+          console.error("Failed to play after interaction:", error);
         }
       }
     };
@@ -212,7 +212,7 @@ class SimpleAudioManager {
     this.isSetup = true;
 
     console.log(
-      "🎵 Click handler setup complete - click anywhere to start music"
+      "Click handler setup complete - click anywhere to start music"
     );
   }
 
@@ -223,7 +223,7 @@ class SimpleAudioManager {
     if (this.audio) {
       this.audio.pause();
       this.audio.currentTime = 0;
-      console.log("🎵 Music stopped");
+      console.log("Music stopped");
     }
   }
 
@@ -239,7 +239,7 @@ class SimpleAudioManager {
    */
   cleanupForGamePage() {
     this.stopMusic();
-    console.log("🎵 Cleaned up for game page");
+    console.log("Cleaned up for game page");
   }
 }
 

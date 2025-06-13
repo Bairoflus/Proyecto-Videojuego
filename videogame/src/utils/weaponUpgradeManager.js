@@ -1,9 +1,8 @@
 // ===================================================
 // WEAPON UPGRADE MANAGER - SHATTERED TIMELINE
 // ===================================================
-// Objetivo: Manejar mejoras temporales de armas
-// Lógica: Mantener en logout, resetear en muerte
-// Version: 3.1 - Performance Optimized
+// Objective: Handle temporary weapon upgrades
+// Logic: Keep on logout, reset on death
 // ===================================================
 
 import { apiRequest } from './api.js';
@@ -169,13 +168,13 @@ export class WeaponUpgradeManager {
   }
 
   // ===================================================
-  // INICIALIZACIÓN Y CONFIGURACIÓN
+  // INITIALIZATION AND CONFIGURATION
   // ===================================================
 
   /**
-   * Inicializa el manager con datos del usuario y run
-   * @param {number} userId - ID del usuario
-   * @param {number} runId - ID del run actual
+   * Initializes the manager with user and run data
+   * @param {number} userId - User ID
+   * @param {number} runId - Current run ID
    */
   async initialize(userId, runId) {
     const startTime = performance.now();
@@ -184,7 +183,7 @@ export class WeaponUpgradeManager {
       this.userId = userId;
       this.runId = runId;
       
-      // Cargar upgrades existentes para este run
+      // Load existing upgrades for this run
       await this.loadCurrentUpgrades();
       
       const initTime = performance.now() - startTime;
@@ -197,7 +196,7 @@ export class WeaponUpgradeManager {
   }
 
   /**
-   * Carga las mejoras temporales actuales desde la base de datos
+   * Loads current temporary upgrades from the database
    */
   async loadCurrentUpgrades() {
     const startTime = performance.now();
@@ -222,7 +221,7 @@ export class WeaponUpgradeManager {
         // Only log during initial load or significant events
         // console.log(`Weapon upgrades loaded in ${loadTime.toFixed(2)}ms:`, this.currentUpgrades);
       } else {
-        // No hay upgrades previos, usar valores por defecto
+        // No previous upgrades, use default values
         this.currentUpgrades = { melee: 1, ranged: 1 };
         // console.log('Using default weapon levels');
       }
@@ -241,12 +240,12 @@ export class WeaponUpgradeManager {
   }
 
   // ===================================================
-  // MÉTODOS DE UPGRADE
+  // UPGRADE METHODS
   // ===================================================
 
   /**
-   * Mejora un arma al siguiente nivel
-   * @param {string} weaponType - Tipo de arma ('melee' o 'ranged')
+   * Upgrades a weapon to the next level
+   * @param {string} weaponType - Weapon type ('melee' or 'ranged')
    * @returns {Object} - {success: boolean, newLevel?: number, message?: string}
    */
   async upgradeWeapon(weaponType) {
@@ -259,7 +258,7 @@ export class WeaponUpgradeManager {
     }
 
     const currentLevel = this.currentUpgrades[weaponType];
-    const maxLevel = 15; // Desde gameEnums
+    const maxLevel = 15; // From gameEnums
 
     if (currentLevel >= maxLevel) {
       console.warn(`${weaponType} weapon already at max level (${maxLevel})`);
@@ -272,7 +271,7 @@ export class WeaponUpgradeManager {
     // Store original level for rollback
     const originalLevel = currentLevel;
     
-    // Incrementar nivel localmente
+    // Increment level locally
     this.currentUpgrades[weaponType] = currentLevel + 1;
     
     // Clear cache for this weapon type
@@ -300,9 +299,9 @@ export class WeaponUpgradeManager {
   }
 
   /**
-   * Establece el nivel de un arma específica
-   * @param {string} weaponType - Tipo de arma
-   * @param {number} level - Nuevo nivel (1-15)
+   * Sets the level of a specific weapon
+   * @param {string} weaponType - Weapon type
+   * @param {number} level - New level (1-15)
    */
   async setWeaponLevel(weaponType, level) {
     if (!this.isValidWeaponType(weaponType)) {
@@ -369,7 +368,7 @@ export class WeaponUpgradeManager {
   }
 
   /**
-   * Guarda las mejoras actuales en la base de datos
+   * Saves current
    */
   async saveUpgrades() {
     const startTime = performance.now();
@@ -407,11 +406,11 @@ export class WeaponUpgradeManager {
   }
 
   // ===================================================
-  // GESTIÓN DE MUERTE Y LOGOUT
+  // DEATH AND LOGOUT MANAGEMENT
   // ===================================================
 
   /**
-   * Resetea todas las mejoras temporales (cuando muere el jugador)
+   * Resets all temporary upgrades (when the player dies)
    */
   async resetOnDeath() {
     try {
@@ -427,7 +426,7 @@ export class WeaponUpgradeManager {
       });
 
       if (response.success) {
-        // Resetear valores locales
+        // Reset local values
         this.currentUpgrades = { melee: 1, ranged: 1 };
         
         // Clear all caches
@@ -458,7 +457,7 @@ export class WeaponUpgradeManager {
   }
 
   /**
-   * Preserva las mejoras en logout (no hace nada, se mantienen automáticamente)
+   * Preserves upgrades on logout (does nothing, they are automatically maintained)
    */
   async preserveOnLogout() {
     // Clear any pending debounced saves
@@ -478,7 +477,7 @@ export class WeaponUpgradeManager {
   }
 
   // ===================================================
-  // MÉTODOS DE CONSULTA
+  // QUERY METHODS
   // ===================================================
 
   /**
@@ -507,9 +506,9 @@ export class WeaponUpgradeManager {
   }
 
   /**
-   * Obtiene el daño actual de un arma
-   * @param {string} weaponType - Tipo de arma
-   * @returns {number} - Daño actual del arma
+   * Gets the current damage of a weapon
+   * @param {string} weaponType - Weapon type
+   * @returns {number} - Current damage of the weapon
    */
   getWeaponDamage(weaponType) {
     const level = this.getWeaponLevel(weaponType);
@@ -517,25 +516,25 @@ export class WeaponUpgradeManager {
   }
 
   /**
-   * Obtiene el costo de mejora para el siguiente nivel
-   * @param {string} weaponType - Tipo de arma
-   * @returns {number} - Costo para mejorar al siguiente nivel
+   * Gets the upgrade cost for the next level
+   * @param {string} weaponType - Weapon type
+   * @returns {number} - Cost to upgrade to the next level
    */
   getUpgradeCost(weaponType) {
     const currentLevel = this.getWeaponLevel(weaponType);
     const nextLevel = currentLevel + 1;
     
     if (nextLevel > 15) {
-      return 0; // Ya está al máximo
+      return 0; // Already at max level
     }
     
     return this.getCachedCost(weaponType, nextLevel);
   }
 
   /**
-   * Verifica si un arma puede ser mejorada
-   * @param {string} weaponType - Tipo de arma
-   * @returns {boolean} - True si puede ser mejorada
+   * Checks if a weapon can be upgraded
+   * @param {string} weaponType - Weapon type
+   * @returns {boolean} - True if it can be upgraded
    */
   canUpgradeWeapon(weaponType) {
     if (!this.isValidWeaponType(weaponType)) {
@@ -546,8 +545,8 @@ export class WeaponUpgradeManager {
   }
 
   /**
-   * Obtiene información completa de todas las armas
-   * @returns {Object} - Información detallada de todas las armas
+   * Gets complete information about all weapons
+   * @returns {Object} - Detailed information about all weapons
    */
   getAllWeaponsInfo() {
     return {
@@ -567,13 +566,13 @@ export class WeaponUpgradeManager {
   }
 
   // ===================================================
-  // MÉTODOS UTILITARIOS
+  // UTILITY METHODS
   // ===================================================
 
   /**
-   * Valida si un tipo de arma es válido
-   * @param {string} weaponType - Tipo de arma a validar
-   * @returns {boolean} - True si es válido
+   * Validates if a weapon type is valid
+   * @param {string} weaponType - Weapon type to validate
+   * @returns {boolean} - True if it is valid
    */
   isValidWeaponType(weaponType) {
     return ['melee', 'ranged'].includes(weaponType);
@@ -642,7 +641,7 @@ export class WeaponUpgradeManager {
 }
 
 // ===================================================
-// INSTANCIA SINGLETON
+// SINGLETON INSTANCE
 // ===================================================
 
 export const weaponUpgradeManager = new WeaponUpgradeManager();

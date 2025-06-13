@@ -1,0 +1,138 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+body {
+  color: #fff;
+  min-height: 100vh;
+  background-image: url('../../assets/backgrounds/pages_background.png');
+  background-size: 100%;
+  background-position: center;
+}  
+
+.logo {
+    display: block;
+    max-width: 280px;
+    margin: 0 auto 30px;
+}
+
+.credits-container {
+    top: 100px;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 10px;
+    color: #f0f0f0;
+}
+
+.credits-title {
+    text-align: center;
+    font-size: 2.5rem;
+    color: #4CAF50;
+    margin-bottom: 40px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.credits-section {
+    margin-bottom: 40px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid #4CAF50;
+}
+
+.section-title {
+    font-size: 1.8rem;
+    color: #81C784;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 10px;
+    }
+
+.subsection-title {
+    font-size: 1.3rem;
+    color: #A5D6A7;
+    margin: 20px 0 10px 0;
+    font-weight: bold;
+    }
+
+.credits-text {
+    line-height: 1.6;
+    margin-bottom: 15px;
+    }
+
+.developer-list {
+    list-style: none;
+    padding: 0;
+    }
+
+.developer-list li {
+    background: rgba(76, 175, 80, 0.1);
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 3px solid #4CAF50;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.sprite-credit {
+    background: rgba(255, 255, 255, 0.03);
+    margin: 15px 0;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 2px solid #81C784;
+}
+
+.sprite-filename {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #FFD54F;
+    margin-bottom: 10px;
+}
+
+.license-info {
+    color: #B39DDB;
+    font-style: italic;
+    margin: 5px 0;
+}
+
+.authors-info {
+    color: #90CAF9;
+    margin: 5px 0;
+}
+
+.links-info {
+    color: #A5D6A7;
+    margin: 5px 0;
+    word-break: break-all;
+}
+
+.back-button {
+    display: inline-block;
+    margin-top: 30px;
+    padding: 12px 24px;
+    background: #4CAF50;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.back-button:hover {
+    background: #45a049;
+}
+
+.music-disclaimer {
+    background: rgba(255, 152, 0, 0.1);
+    border-left: 4px solid #FF9800;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 20px 0;
+}
+    

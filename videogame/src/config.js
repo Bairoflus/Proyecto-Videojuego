@@ -8,17 +8,17 @@ export const HITBOX_SCALE = {
 };
 
 export const variables = {
-  // Dimensiones del canvas
+  // Canvas dimensions
   canvasWidth: 800, // 25 * 32
   canvasHeight: 608, // 19 * 32
-  // Retardo de animación en milisegundos
+  // Animation delay in milliseconds
   animationDelay: 100,
   playerSpeed: 0.3,
   ctx: null,
   game: null,
   oldTime: null,
   backgroundImage: new Image(),
-  showHitboxes: true, // Enable hitbox visualization for debugging
+  showHitboxes: true, // Enable hitbox visualization for debugging (for development)
 };
 variables.backgroundImage.src = "/assets/backgrounds/backgroundfloor1.jpg";
 
