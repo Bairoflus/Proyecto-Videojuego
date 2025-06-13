@@ -164,8 +164,8 @@ app.post('/api/auth/login', async (req, res) => {
             [user.user_id]
         );
         
-        // NEW: Increment total_runs on login to keep track synchronized
-        // This ensures total_runs counts login + logout + completion events
+        // REVERTED v3.4: Always increment total_runs AND current_run_number on login
+        // User wants BOTH login and completion to increment counters
         await connection.execute(
             `INSERT INTO player_stats (user_id, total_runs, last_updated) 
              VALUES (?, 1, NOW()) 
@@ -175,13 +175,30 @@ app.post('/api/auth/login', async (req, res) => {
             [user.user_id]
         );
         
-        console.log(`User ${user.user_id} login: total_runs incremented`);
+        // Always increment current_run_number in user_run_progress
+        await connection.execute(
+            `INSERT INTO user_run_progress (user_id, current_run_number, last_updated) 
+             VALUES (?, 1, NOW()) 
+             ON DUPLICATE KEY UPDATE 
+             current_run_number = current_run_number + 1,
+             last_updated = NOW()`,
+            [user.user_id]
+        );
+        
+        // Always create new run_history entry for this login session
+        const [runResult] = await connection.execute(
+            'INSERT INTO run_history (user_id) VALUES (?)',
+            [user.user_id]
+        );
+        
+        console.log(`User ${user.user_id} login: total_runs incremented, current_run_number incremented, new run_history entry created (runId: ${runResult.insertId})`);
         
         res.status(200).json({
             success: true,
             userId: user.user_id,
             sessionToken: sessionToken,
             sessionId: sessionResult.insertId,
+            runId: runResult.insertId,
             expiresAt: expiresAt
         });
         
@@ -228,8 +245,7 @@ app.post('/api/auth/logout', async (req, res) => {
             [sessionToken]
         );
         
-        // NEW: Increment total_runs in player_stats when user logs out
-        // This differentiates between "runs started" (logout) vs "runs completed" (death/victory)
+        // FIXED: Only accumulate gold and sync data on logout - NO total_runs increment
         if (userId) {
             // NEW: Get current run progress to sync run_number properly
             const [runProgressData] = await connection.execute(
@@ -269,18 +285,22 @@ app.post('/api/auth/logout', async (req, res) => {
                 console.log(`Save states run_number synchronized to ${currentRunNumber}`);
             }
             
-            await connection.execute(
-                `INSERT INTO player_stats (user_id, total_runs, total_gold_earned, max_damage_hit, last_updated) 
-                 VALUES (?, 1, ?, ?, NOW()) 
-                 ON DUPLICATE KEY UPDATE 
-                 total_runs = total_runs + 1,
-                 total_gold_earned = total_gold_earned + ?,
-                 max_damage_hit = GREATEST(max_damage_hit, ?),
-                 last_updated = NOW()`,
-                [userId, currentGold, currentMaxDamage, currentGold, currentMaxDamage]
-            );
-            
-            console.log(`User ${userId} logout: total_runs incremented, +${currentGold} gold added to total, max damage: ${currentMaxDamage}, run_number synced: ${currentRunNumber}`);
+            // FIXED: Only accumulate gold and max damage on logout, NO total_runs increment
+            if (currentGold > 0 || currentMaxDamage > 0) {
+                await connection.execute(
+                    `INSERT INTO player_stats (user_id, total_gold_earned, max_damage_hit, last_updated) 
+                     VALUES (?, ?, ?, NOW()) 
+                     ON DUPLICATE KEY UPDATE 
+                     total_gold_earned = total_gold_earned + ?,
+                     max_damage_hit = GREATEST(max_damage_hit, ?),
+                     last_updated = NOW()`,
+                    [userId, currentGold, currentMaxDamage, currentGold, currentMaxDamage]
+                );
+                
+                console.log(`User ${userId} logout: +${currentGold} gold added to total, max damage: ${currentMaxDamage}, run_number synced: ${currentRunNumber}`);
+            } else {
+                console.log(`User ${userId} logout: run_number synced: ${currentRunNumber} (no gold/damage to accumulate)`);
+            }
         }
 
         res.status(200).json({

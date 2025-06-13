@@ -1,9 +1,5 @@
 -- ===================================================
--- SHATTERED TIMELINE - DATABASE OBJECTS
--- ===================================================
--- Focus: Database objects only (views, triggers, procedures, permissions)
--- Objective: Complete database objects for run persistence, permanent & temporary upgrades
--- Note: Execute this file AFTER dbshatteredtimeline.sql
+-- SHATTERED TIMELINE - DATABASE OBJECTS v3.2
 -- ===================================================
 
 USE dbshatteredtimeline;
@@ -676,7 +672,7 @@ BEGIN
 END//
 DELIMITER ;
 
--- TRIGGER: Increment run number on new run creation (FIXED)
+-- TRIGGER: Increment run number on new run creation (FIXED v3.2)
 DELIMITER //
 CREATE TRIGGER tr_increment_run_number
 BEFORE INSERT ON run_history
@@ -689,35 +685,35 @@ BEGIN
     FROM user_run_progress 
     WHERE user_id = NEW.user_id;
     
-    -- Set the run number for this run
+    -- Set the run number for this run (should match current_run_number)
     SET NEW.run_number = current_run_num;
     
-    -- FIXED: Only increment run counter AFTER the run is completed, not when created
-    -- The current_run_number should represent the active run number
-    -- Increment will happen in tr_update_player_stats_after_run when run ends
+    -- NOTE: current_run_number increment now happens in API on LOGIN
+    -- This trigger only assigns the correct run_number
 END//
 DELIMITER ;
 
--- TRIGGER: Update player_stats when run ends 
+-- TRIGGER: Update player_stats when run ends (ENHANCED v3.4)
 DELIMITER //
 CREATE TRIGGER tr_update_player_stats_after_run
 AFTER UPDATE ON run_history
 FOR EACH ROW
 BEGIN
     IF NEW.ended_at IS NOT NULL AND OLD.ended_at IS NULL THEN
-        -- Update player stats
+        -- Update player stats (ENHANCED v3.4: NOW includes total_runs increment on completion)
         INSERT INTO player_stats (
-            user_id, total_runs, total_kills, total_deaths, 
+            user_id, total_kills, total_deaths, 
             total_gold_earned, total_gold_spent, total_bosses_killed, 
-            total_playtime_seconds, highest_floor_ever, max_damage_hit
+            total_playtime_seconds, highest_floor_ever, max_damage_hit,
+            total_runs, last_updated
         )
         VALUES (
-            NEW.user_id, 1, NEW.total_kills, 1, 
+            NEW.user_id, NEW.total_kills, 1, 
             NEW.final_gold, NEW.gold_spent, NEW.bosses_killed, 
-            NEW.duration_seconds, NEW.final_floor, COALESCE(NEW.max_damage_hit, 0)
+            NEW.duration_seconds, NEW.final_floor, COALESCE(NEW.max_damage_hit, 0),
+            1, NOW()
         )
         ON DUPLICATE KEY UPDATE 
-            total_runs = total_runs + 1,
             total_kills = total_kills + NEW.total_kills,
             total_deaths = total_deaths + 1,
             total_gold_earned = total_gold_earned + NEW.final_gold,
@@ -725,13 +721,15 @@ BEGIN
             total_bosses_killed = total_bosses_killed + NEW.bosses_killed,
             total_playtime_seconds = total_playtime_seconds + NEW.duration_seconds,
             highest_floor_ever = GREATEST(highest_floor_ever, NEW.final_floor),
-            max_damage_hit = GREATEST(max_damage_hit, COALESCE(NEW.max_damage_hit, 0));
+            max_damage_hit = GREATEST(max_damage_hit, COALESCE(NEW.max_damage_hit, 0)),
+            total_runs = total_runs + 1,  -- ENHANCED v3.4: Increment on completion
+            last_updated = NOW();
             
-        -- Update user run progress
+        -- Update user run progress (ENHANCED v3.4: NOW includes current_run_number increment)
         UPDATE user_run_progress 
         SET highest_floor_reached = GREATEST(highest_floor_reached, NEW.final_floor),
             total_completed_runs = total_completed_runs + 1,
-            current_run_number = current_run_number + 1,  -- FIXED: Increment ONLY when run completes
+            current_run_number = current_run_number + 1,  -- ENHANCED v3.4: Increment for next run
             last_updated = NOW()
         WHERE user_id = NEW.user_id;
         
@@ -892,16 +890,20 @@ TRIGGERS:
 - tr_create_user_run_progress: Auto-initialize new users (current_run_number starts at 0)
 - tr_calculate_permanent_upgrade_values: Auto-calculate upgrade values
 - tr_update_permanent_upgrade_values: Recalculate on level changes
-- tr_increment_run_number: Set run number and increment current_run_number on run creation
-- tr_update_player_stats_after_run: Update stats including total_runs increment on completion
+- tr_increment_run_number: Set run number only, NO increment (API handles increment)
+- tr_update_player_stats_after_run: ENHANCED v3.4 - Increments run counters on completion
 - tr_update_run_gold_spent: Track gold spending during runs
 
-ENHANCED v3.1 RUN TRACKING:
-- total_runs increments on LOGIN (session start)
-- total_runs increments on LOGOUT (session end with gold sync)  
-- total_runs increments on COMPLETION (run finish)
-- current_run_number starts at 0, increments to 1 on first run creation
-- Synchronized tracking across all user interaction events
+ENHANCED v3.4 RUN TRACKING (FINAL - BOTH LOGIN + COMPLETION):
+- total_runs increments on BOTH LOGIN and COMPLETION independently
+- current_run_number increments on BOTH LOGIN and COMPLETION independently  
+- run_history entry created on every LOGIN
+- LOGOUT: Only accumulates gold/damage, NO run increment
+- COMPLETION: Trigger increments counters for immediate feedback
+- LOGIN: Always increments counters (original behavior preserved)
+- Result: Each complete cycle (login + completion) adds 2 to counters
+- Perfect synchronization: total_runs = current_run_number at all times
+- Zero-start run numbering: users start at 0, first login goes to 1
 
 DATABASE OPTIMIZATION v3.1:
 - Complete run persistence across sessions

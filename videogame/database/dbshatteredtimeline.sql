@@ -1,11 +1,6 @@
 -- ===================================================
 -- SHATTERED TIMELINE - DATABASE STRUCTURE
 -- ===================================================
--- Version: Complete database structure with fixed persistence
--- Focus: Tables, constraints, indexes, and initial data only
--- Objective: Create database structure for run persistence, permanent & temporary upgrades
--- Note: Execute objects.sql after this file for views, triggers, and procedures
--- ===================================================
 
 -- Drop database if exists and create new one
 DROP DATABASE IF EXISTS dbshatteredtimeline;
@@ -60,7 +55,7 @@ CREATE TABLE sessions (
 CREATE TABLE user_run_progress (
     progress_id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
-    current_run_number INT DEFAULT 1,
+    current_run_number INT DEFAULT 0,
     highest_floor_reached INT DEFAULT 1,
     total_completed_runs INT DEFAULT 0,
     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -389,28 +384,6 @@ TOTAL TABLES: 12
 - Player State: 3 (save_states, permanent_player_upgrades, weapon_upgrades_temp)  
 - Analytics: 5 (player_stats, run_history, weapon_upgrade_purchases, enemy_kills, boss_kills)
 - Configuration: 1 (player_settings)
-
-STRUCTURE FEATURES:
-
-#1 RUN PERSISTENCE (CRITICAL FIX):
-- NEW TABLE: user_run_progress with current_run_number
-- ENHANCED: All analytics tables now store run_number
-- RESULT: Run number persists across logout/login
-
-#2 PERMANENT UPGRADES (ENHANCED):
-- NEW COLUMNS: current_value, base_value in permanent_player_upgrades
-- RESULT: Frontend can read calculated values directly from DB
-
-#3 TEMPORARY UPGRADES (ENHANCED):
-- NEW COLUMN: is_active in weapon_upgrades_temp
-- NEW COLUMN: run_number for validation
-- RESULT: Upgrades persist between logout/login until run ends
-
-#4 ADDITIONAL ENHANCEMENTS:
-- ENHANCED: All tables track run_number for better analytics
-- ENHANCED: player_stats tracks highest_floor_ever
-- ENHANCED: user_run_progress tracks highest_floor_reached
-- ENHANCED: Complete foreign key constraint enforcement
 
 NEXT STEP: Execute objects.sql for views, triggers, and procedures
 

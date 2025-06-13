@@ -92,7 +92,7 @@ export class Room {
         this.backgroundImage = await backgroundManager.loadBackground('/assets/backgrounds/floor1/cave.png');
         this.backgroundPath = '/assets/backgrounds/floor1/cave.png';
         this.backgroundLoaded = true;
-        log.warn('Using fallback background due to loading error');
+      log.warn('Using fallback background due to loading error');
       } catch (fallbackError) {
         log.error('Failed to load fallback background:', fallbackError);
         // Final fallback: no background image
@@ -332,7 +332,7 @@ export class Room {
 
     // CRITICAL: Clean enemies array before drawing
     this.cleanEnemiesArray();
-    
+
     // Draw coins
     this.objects.coins.forEach((coin) => coin.draw(ctx));
 

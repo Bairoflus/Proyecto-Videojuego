@@ -1,7 +1,6 @@
 -- ===================================================
 -- ADMIN USER SETUP FOR SHATTERED TIMELINE
 -- ===================================================
--- Purpose: Create admin user for accessing the optimized admin dashboard
 -- Execute: After dbshatteredtimeline3forperm.sql and objects3.sql
 -- ===================================================
 
