@@ -1,10 +1,15 @@
 -- ===================================================
--- SHATTERED TIMELINE - DATABASE OBJECTS v3.0
+-- SHATTERED TIMELINE - DATABASE OBJECTS v3.1
 -- ===================================================
--- Version: 3.0 - Views, triggers, and procedures for enhanced functionality
+-- Version: 3.1 - Enhanced run tracking with login/logout/completion synchronization
 -- Focus: Database objects only (views, triggers, procedures, permissions)
 -- Objective: Complete database objects for run persistence, permanent & temporary upgrades
 -- Note: Execute this file AFTER dbshatteredtimeline3forperm.sql
+-- 
+-- NEW v3.1 FEATURES:
+-- - total_runs increments on LOGIN, LOGOUT, and COMPLETION for complete tracking
+-- - current_run_number starts at 0 for new users (first run becomes run 1)
+-- - Synchronized run tracking across all user interaction events
 -- ===================================================
 
 USE dbshatteredtimeline;
@@ -68,7 +73,7 @@ SELECT
 FROM user_run_progress urp
 LEFT JOIN run_history rh ON urp.user_id = rh.user_id 
     AND rh.ended_at IS NULL 
-    AND rh.run_number = urp.current_run_number - 1; -- Current active run
+    AND rh.run_number = urp.current_run_number; -- FIXED: Current active run should match current_run_number
 
 -- ===================================================
 -- GAME STATE VIEWS (ENHANCED)
@@ -890,21 +895,30 @@ OPTIMIZATION BENEFITS:
 - Enhanced with first-run masters tracking for exceptional players
 
 TRIGGERS:
-- tr_create_user_run_progress: Auto-initialize new users
+- tr_create_user_run_progress: Auto-initialize new users (current_run_number starts at 0)
 - tr_calculate_permanent_upgrade_values: Auto-calculate upgrade values
 - tr_update_permanent_upgrade_values: Recalculate on level changes
-- tr_increment_run_number: Set run number (fixed to not increment on creation)
-- tr_update_player_stats_after_run: Update stats and increment run number on completion
+- tr_increment_run_number: Set run number and increment current_run_number on run creation
+- tr_update_player_stats_after_run: Update stats including total_runs increment on completion
 - tr_update_run_gold_spent: Track gold spending during runs
 
-DATABASE OPTIMIZATION:
+ENHANCED v3.1 RUN TRACKING:
+- total_runs increments on LOGIN (session start)
+- total_runs increments on LOGOUT (session end with gold sync)  
+- total_runs increments on COMPLETION (run finish)
+- current_run_number starts at 0, increments to 1 on first run creation
+- Synchronized tracking across all user interaction events
+
+DATABASE OPTIMIZATION v3.1:
 - Complete run persistence across sessions
+- Triple-event total_runs tracking (login/logout/completion)
 - Automatic permanent upgrade calculation
 - Temporary upgrade persistence until run completion
 - One-query player initialization
-- Enhanced analytics with run tracking
+- Enhanced analytics with comprehensive run tracking
 - Ready-for-frontend calculated values
 - Optimized admin views focused on useful metrics only
+- Zero-start run numbering for proper synchronization
 */
 
 -- ===================================================

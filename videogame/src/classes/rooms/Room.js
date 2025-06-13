@@ -87,12 +87,20 @@ export class Room {
     } catch (error) {
       log.error('Failed to load room background:', error);
       
-      // Fallback to global background
-      this.backgroundImage = variables.backgroundImage;
-      this.backgroundPath = '/assets/backgrounds/backgroundfloor1.jpg';
-      this.backgroundLoaded = variables.backgroundImage && variables.backgroundImage.complete;
-      
-      log.warn('Using fallback background due to loading error');
+      // Fallback to a valid background from BackgroundManager
+      try {
+        this.backgroundImage = await backgroundManager.loadBackground('/assets/backgrounds/floor1/cave.png');
+        this.backgroundPath = '/assets/backgrounds/floor1/cave.png';
+        this.backgroundLoaded = true;
+        log.warn('Using fallback background due to loading error');
+      } catch (fallbackError) {
+        log.error('Failed to load fallback background:', fallbackError);
+        // Final fallback: no background image
+        this.backgroundImage = null;
+        this.backgroundPath = null;
+        this.backgroundLoaded = false;
+        log.warn('No background will be used - using solid color only');
+      }
     }
   }
 
@@ -189,13 +197,108 @@ export class Room {
     }
   }
 
+  /**
+   * Draws visual indicators for transition zones when they are active
+   * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+   */
+  drawTransitionZoneVisuals(ctx) {
+    // Only draw if transitions are possible
+    if (!this.canTransition()) {
+      return;
+    }
+
+    // ENHANCED: Additional validation for boss rooms - ensure boss is actually dead
+    if (this.roomType === 'boss') {
+      const allEnemies = this.objects.enemies;
+      const aliveBosses = allEnemies.filter(e => 
+        e !== undefined && e !== null && e.state !== 'dead' && e.health > 0 && (
+          e.constructor.name.includes('Boss') || 
+          e.type === 'boss' || 
+          e.isBoss === true ||
+          e.constructor.name === 'DragonBoss' ||
+          e.constructor.name === 'Supersoldier'
+        )
+      );
+      
+      // If there are still alive bosses, don't show the visual
+      if (aliveBosses.length > 0) {
+        return;
+      }
+      
+      // Also check if boss defeat was confirmed
+      if (!window.game?.bossJustDefeated && !this.bossDefeated) {
+        return;
+      }
+    }
+
+    // Check if player is in the right transition zone
+    const playerInRightZone = this.isPlayerAtRightEdge(window.game?.player);
+
+    // Visual style configuration
+    const activeColor = 'rgba(0, 255, 0, 0.3)'; // Green when player is in zone
+    const inactiveColor = 'rgba(255, 255, 0, 0.2)'; // Yellow when zone is available
+    const borderActiveColor = 'rgba(0, 255, 0, 0.8)';
+    const borderInactiveColor = 'rgba(255, 255, 0, 0.6)';
+
+    // Calculate the actual transition zone dimensions to match the real logic
+    const zoneWidth = this.transitionZone;
+    const middleY = variables.canvasHeight / 2;
+    
+    // The transition zone is centered vertically and has a height equal to player height
+    // Based on isPlayerAtRightEdge logic: player must be at middle Y
+    const playerHeight = 64; // Approximate player height for visual zone
+    const zoneHeight = playerHeight * 2; // Make it a bit larger for visibility
+    const zoneY = middleY - zoneHeight / 2;
+
+    // Draw right transition zone only
+    const rightZoneX = variables.canvasWidth - zoneWidth;
+    const rightZoneColor = playerInRightZone ? activeColor : inactiveColor;
+    const rightBorderColor = playerInRightZone ? borderActiveColor : borderInactiveColor;
+
+    // Fill right zone
+    ctx.fillStyle = rightZoneColor;
+    ctx.fillRect(rightZoneX, zoneY, zoneWidth, zoneHeight);
+
+    // Border for right zone
+    ctx.strokeStyle = rightBorderColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rightZoneX, zoneY, zoneWidth, zoneHeight);
+
+    // Draw activation instructions if player is in the transition zone
+    if (playerInRightZone) {
+      ctx.save();
+      
+      // Semi-transparent background for text
+      const textBackground = 'rgba(0, 0, 0, 0.7)';
+      const textX = variables.canvasWidth / 2;
+      const textY = 50;
+      const textWidth = 300;
+      const textHeight = 40;
+      
+      ctx.fillStyle = textBackground;
+      ctx.fillRect(textX - textWidth/2, textY - textHeight/2, textWidth, textHeight);
+      
+      // Border around text background
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(textX - textWidth/2, textY - textHeight/2, textWidth, textHeight);
+      
+      // Text
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      ctx.fillText('TRANSITION ZONE ACTIVE', textX, textY);
+      
+      ctx.restore();
+    }
+  }
+
   // Draws all room objects
   draw(ctx) {
-    // CRITICAL: Clean enemies array before drawing
-    this.cleanEnemiesArray();
-    
     // Draw background first - Use room-specific background
-    if (this.backgroundImage && this.backgroundLoaded) {
+    if (this.backgroundImage && this.backgroundLoaded && this.backgroundImage.complete && this.backgroundImage.naturalWidth > 0) {
       ctx.drawImage(
         this.backgroundImage,
         0,
@@ -203,7 +306,7 @@ export class Room {
         variables.canvasWidth,
         variables.canvasHeight
       );
-    } else if (variables.backgroundImage && variables.backgroundImage.complete) {
+    } else if (variables.backgroundImage && variables.backgroundImage.complete && variables.backgroundImage.naturalWidth > 0) {
       // Fallback to global background if room background not loaded
       ctx.drawImage(
         variables.backgroundImage,
@@ -212,14 +315,24 @@ export class Room {
         variables.canvasWidth,
         variables.canvasHeight
       );
+    } else {
+      // Ultimate fallback: use solid color
+      ctx.fillStyle = "#2a2a2a";
+      ctx.fillRect(0, 0, variables.canvasWidth, variables.canvasHeight);
     }
 
-    // Draw walls
-    ctx.fillStyle = "#666666";
+    // Draw walls with dark gray color
+    ctx.fillStyle = "#404040";
     this.objects.walls.forEach((wall) => {
       ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
     });
 
+    // Draw transition zone visuals before other elements
+    this.drawTransitionZoneVisuals(ctx);
+
+    // CRITICAL: Clean enemies array before drawing
+    this.cleanEnemiesArray();
+    
     // Draw coins
     this.objects.coins.forEach((coin) => coin.draw(ctx));
 

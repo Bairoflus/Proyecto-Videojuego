@@ -361,7 +361,41 @@ export class FloorGenerator {
         this.runCount++;
         console.log(`DEATH: Starting run ${this.runCount}`);
 
-        // NEW: Create new run in backend after death
+        // NEW: Complete current run BEFORE creating new one to prevent multiple active runs
+        try {
+            const currentRunId = localStorage.getItem('currentRunId');
+            
+            if (currentRunId && window.game) {
+                console.log(`Completing current run (ID: ${currentRunId}) due to death...`);
+                
+                // Get run statistics from game instance
+                const runStats = window.game.getRunStats();
+                
+                const completionData = {
+                    goldCollected: runStats.goldCollected,
+                    goldSpent: runStats.goldSpent, 
+                    totalKills: runStats.totalKills,
+                    maxDamageHit: runStats.maxDamageHit,
+                    deathCause: 'death' // Mark as death
+                };
+                
+                console.log(`Death completion data for run ${currentRunId}:`, completionData);
+                const result = await completeRun(currentRunId, completionData);
+                console.log(`Run ${currentRunId} completed for death:`, result);
+                
+                // Clear old runId after completion
+                localStorage.removeItem('currentRunId');
+                console.log(`Cleared completed runId ${currentRunId} from localStorage`);
+                
+            } else {
+                console.log("No current run ID found or game instance missing - skipping run completion");
+            }
+        } catch (error) {
+            console.error("Failed to complete run on death:", error);
+            // Continue with reset even if completion fails
+        }
+
+        // NEW: Create new run in backend after completing previous run
         try {
             const userId = localStorage.getItem('currentUserId');
             if (userId) {

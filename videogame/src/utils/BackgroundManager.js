@@ -62,8 +62,8 @@ export class BackgroundManager {
 
         } catch (error) {
             log.error('Error getting background path:', error);
-            // Ultimate fallback to original background
-            return '/assets/backgrounds/backgroundfloor1.jpg';
+            // Ultimate fallback to a valid background
+            return '/assets/backgrounds/floor1/cave.png';
         }
     }
 
@@ -91,9 +91,9 @@ export class BackgroundManager {
             img.onerror = (error) => {
                 log.error(`Failed to load background: ${backgroundPath}`, error);
                 // Try to load fallback background
-                if (backgroundPath !== '/assets/backgrounds/backgroundfloor1.jpg') {
+                if (backgroundPath !== '/assets/backgrounds/floor1/cave.png') {
                     log.info('Attempting to load fallback background');
-                    this.loadBackground('/assets/backgrounds/backgroundfloor1.jpg').then(resolve).catch(reject);
+                    this.loadBackground('/assets/backgrounds/floor1/cave.png').then(resolve).catch(reject);
                 } else {
                     reject(error);
                 }

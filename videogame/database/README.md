@@ -1,6 +1,11 @@
-# Shattered Timeline Database Structure
+# Shattered Timeline Database Structure v3.1
 
 Complete MySQL database structure for the Shattered Timeline videogame with support for user management, game progression, analytics, and admin dashboard functionality.
+
+**NEW v3.1 FEATURES:**
+- **Enhanced Run Tracking:** `total_runs` now increments on LOGIN, LOGOUT, and COMPLETION
+- **Zero-Start Run Numbering:** `current_run_number` starts at 0 for proper first-run synchronization
+- **Comprehensive Session Tracking:** Complete user interaction event monitoring
 
 ## File Structure
 
@@ -8,7 +13,7 @@ Complete MySQL database structure for the Shattered Timeline videogame with supp
 videogame/database/
 ├── README.md                    # This documentation file
 ├── dbshatteredtimeline.sql      # Main database schema and tables
-├── objects.sql                  # Views, triggers, and procedures
+├── objects.sql                  # Views, triggers, and procedures (v3.1)
 ├── admin_user_setup.sql         # Admin user creation script
 └── ERDV4.pdf                   # Entity Relationship Diagram
 ```
@@ -84,15 +89,26 @@ mysql -u root -p < admin_user_setup.sql
 - **Normalization:** 1NF, 2NF, 3NF compliant design
 - **Referential Integrity:** Complete foreign key constraint enforcement
 
-### 2. `objects.sql` - Database Objects
+### 2. `objects.sql` - Database Objects (v3.1)
 
 **Purpose:** Creates views, triggers, and procedures for enhanced functionality and data access optimization.
 
+**v3.1 ENHANCEMENTS:**
+- **Triple-Event Run Tracking:** `total_runs` increments on login, logout, and completion
+- **Zero-Start Run System:** `current_run_number` begins at 0 for proper synchronization  
+- **Enhanced Triggers:** Updated for comprehensive user interaction tracking
+
 **Contains:**
 - **25+ Optimized Views** for data access and API integration
-- **Triggers** for automatic data management
+- **Enhanced Triggers** for automatic data management with v3.1 run tracking
 - **Procedures** for complex operations
 - **Admin Dashboard Views** for analytics
+
+**NEW v3.1 Trigger Behavior:**
+- **tr_increment_run_number:** Sets run number and increments current_run_number on run creation
+- **tr_update_player_stats_after_run:** Updates stats including total_runs increment on completion
+- **API Login Integration:** Backend increments total_runs on successful login
+- **API Logout Integration:** Backend increments total_runs on logout with gold sync
 
 **Key View Categories:**
 
@@ -156,27 +172,34 @@ mysql -u root -p < admin_user_setup.sql
 
 ### Core Design Principles
 
-1. **Run Persistence:** 
+1. **Enhanced Run Tracking (v3.1):** 
+   - `user_run_progress` table with `current_run_number` starting at 0
+   - `total_runs` increments on three events: LOGIN, LOGOUT, and COMPLETION
+   - Complete user interaction event monitoring for comprehensive analytics
+   - Synchronized run numbering across all database tables
+
+2. **Run Persistence:** 
    - `user_run_progress` table ensures run numbers persist across sessions
    - All analytics tables store `run_number` for better tracking
+   - Zero-start system ensures first run is properly numbered as run 1
 
-2. **Upgrade Management:**
+3. **Upgrade Management:**
    - **Permanent Upgrades:** Stored in `permanent_player_upgrades` with calculated values
    - **Temporary Upgrades:** Stored in `weapon_upgrades_temp` with active status tracking
 
-3. **Save State System:**
+4. **Save State System:**
    - `save_states` table with session and run linking
    - Automatic cleanup on player death or logout
 
-4. **Analytics & Tracking:**
+5. **Analytics & Tracking:**
    - Comprehensive event tracking (kills, purchases, sessions)
-   - Aggregated statistics in `player_stats`
-   - Detailed history in `run_history`
+   - Aggregated statistics in `player_stats` with enhanced total_runs tracking
+   - Detailed history in `run_history` with synchronized run numbering
 
-5. **Admin Dashboard:**
+6. **Admin Dashboard:**
    - Optimized views for real-time monitoring
    - Chart data endpoints for visualizations
-   - Player progression analytics
+   - Player progression analytics with v3.1 enhanced tracking
 
 ### Performance Optimizations
 
@@ -302,6 +325,6 @@ WHERE table_schema = 'dbshatteredtimeline';
 
 ## Version Information
 
-- **Database Version:** v3.0 Enhanced
+- **Database Version:** v3.1 Enhanced
 - **Last Updated:** Current version with run persistence and enhanced analytics
 - **Compatibility:** MySQL 8.0+, works with mysql2 Node.js driver 

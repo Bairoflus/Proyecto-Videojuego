@@ -3,14 +3,16 @@
     margin: 0;
     padding: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
+}
 
 body {
   color: #fff;
   min-height: 100vh;
   background-image: url('../../assets/backgrounds/pages_background.png');
-  background-size: 100%;
+  background-size: cover;
   background-position: center;
+  background-attachment: fixed;
+  padding: 40px 20px;
 }  
 
 .logo {
@@ -20,7 +22,6 @@ body {
 }
 
 .credits-container {
-    top: 100px;
     max-width: 1000px;
     margin: 0 auto;
     padding: 40px 20px;

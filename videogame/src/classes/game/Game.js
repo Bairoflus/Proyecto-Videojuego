@@ -2278,6 +2278,10 @@ export class Game {
       // Hide pause menu first
       this.hidePause();
 
+      // NEW: Force sync run stats before logout to ensure total gold earned is updated
+      console.log('Syncing run stats before logout...');
+      await this.syncRunStatsWithBackend();
+
       // Save current state before logout
       console.log('Saving state before logout...');
       await this.saveCurrentState();
@@ -2374,7 +2378,7 @@ export class Game {
       // Initialize floor music when game is ready
       if (this.audioManager) {
         const currentFloor = this.floorGenerator.getCurrentFloor();
-        console.log(`🎵 Starting floor ${currentFloor} music`);
+        console.log(`Starting floor ${currentFloor} music`);
         await this.audioManager.playFloorMusic(currentFloor);
       }
 
@@ -2725,7 +2729,7 @@ export class Game {
             <div class="stat-item">Total kills: <span>${historicalStats.totalKills}</span></div>
             <div class="stat-item">Best run kills: <span>${historicalStats.bestRunKills}</span></div>
             <div class="stat-item">Max damage hit: <span>${historicalStats.maxDamageHit}</span></div>
-            <div class="stat-item">Total gold earned: <span>${historicalStats.totalGoldEarned || 'N/A'}</span></div>
+            <div class="stat-item">Total gold earned: <span>${historicalStats.goldEarned || 'N/A'}</span></div>
             <div class="stat-item">Total gold spent: <span>${historicalStats.goldSpent}</span></div>
             <div class="stat-item">Total sessions: <span>${historicalStats.totalSessions}</span></div>
           </div>

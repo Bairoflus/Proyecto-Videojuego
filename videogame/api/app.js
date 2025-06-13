@@ -164,6 +164,19 @@ app.post('/api/auth/login', async (req, res) => {
             [user.user_id]
         );
         
+        // NEW: Increment total_runs on login to keep track synchronized
+        // This ensures total_runs counts login + logout + completion events
+        await connection.execute(
+            `INSERT INTO player_stats (user_id, total_runs, last_updated) 
+             VALUES (?, 1, NOW()) 
+             ON DUPLICATE KEY UPDATE 
+             total_runs = total_runs + 1,
+             last_updated = NOW()`,
+            [user.user_id]
+        );
+        
+        console.log(`User ${user.user_id} login: total_runs incremented`);
+        
         res.status(200).json({
             success: true,
             userId: user.user_id,
@@ -198,11 +211,77 @@ app.post('/api/auth/logout', async (req, res) => {
         
         connection = await createConnection();
         
-        // FIXED: Remove affectedRows check - logout should always succeed even if session was already inactive
+        // Get user ID from session token for run tracking
+        const [sessionRows] = await connection.execute(
+            'SELECT user_id FROM sessions WHERE session_token = ? AND is_active = TRUE',
+            [sessionToken]
+        );
+        
+        let userId = null;
+        if (sessionRows.length > 0) {
+            userId = sessionRows[0].user_id;
+        }
+        
+        // Invalidate session
         await connection.execute(
             'UPDATE sessions SET is_active = FALSE WHERE session_token = ?',
             [sessionToken]
         );
+        
+        // NEW: Increment total_runs in player_stats when user logs out
+        // This differentiates between "runs started" (logout) vs "runs completed" (death/victory)
+        if (userId) {
+            // NEW: Get current run progress to sync run_number properly
+            const [runProgressData] = await connection.execute(
+                'SELECT current_run_number FROM user_run_progress WHERE user_id = ?',
+                [userId]
+            );
+            
+            const currentRunNumber = runProgressData.length > 0 ? runProgressData[0].current_run_number : 1;
+            
+            // NEW: Also accumulate current run's gold to total_gold_earned on logout
+            const [currentRunData] = await connection.execute(
+                'SELECT run_id, final_gold, max_damage_hit FROM run_history WHERE user_id = ? AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1',
+                [userId]
+            );
+            
+            const currentGold = currentRunData.length > 0 ? (currentRunData[0].final_gold || 0) : 0;
+            const currentMaxDamage = currentRunData.length > 0 ? (currentRunData[0].max_damage_hit || 0) : 0;
+            
+            // NEW: CRITICAL FIX - Sync run_number in run_history for current active run
+            if (currentRunData.length > 0) {
+                const currentRunId = currentRunData[0].run_id;
+                
+                // Update run_number in run_history to match user_run_progress
+                await connection.execute(
+                    'UPDATE run_history SET run_number = ? WHERE run_id = ? AND ended_at IS NULL',
+                    [currentRunNumber, currentRunId]
+                );
+                
+                console.log(`Run number synchronized: runId ${currentRunId} set to run_number ${currentRunNumber}`);
+                
+                // Also update save_states if they exist to keep run_number in sync
+                await connection.execute(
+                    'UPDATE save_states SET run_number = ? WHERE user_id = ? AND is_active = TRUE',
+                    [currentRunNumber, userId]
+                );
+                
+                console.log(`Save states run_number synchronized to ${currentRunNumber}`);
+            }
+            
+            await connection.execute(
+                `INSERT INTO player_stats (user_id, total_runs, total_gold_earned, max_damage_hit, last_updated) 
+                 VALUES (?, 1, ?, ?, NOW()) 
+                 ON DUPLICATE KEY UPDATE 
+                 total_runs = total_runs + 1,
+                 total_gold_earned = total_gold_earned + ?,
+                 max_damage_hit = GREATEST(max_damage_hit, ?),
+                 last_updated = NOW()`,
+                [userId, currentGold, currentMaxDamage, currentGold, currentMaxDamage]
+            );
+            
+            console.log(`User ${userId} logout: total_runs incremented, +${currentGold} gold added to total, max damage: ${currentMaxDamage}, run_number synced: ${currentRunNumber}`);
+        }
 
         res.status(200).json({
             success: true,
@@ -486,6 +565,8 @@ app.put('/api/runs/:runId/complete', async (req, res) => {
         const { finalFloor, finalGold, causeOfDeath, totalKills, bossesKilled, durationSeconds, maxDamageHit } = req.body;
         
         connection = await createConnection();
+        
+        // Update run completion
         await connection.execute(
             `UPDATE run_history SET 
                 ended_at = NOW(), 
@@ -499,6 +580,10 @@ app.put('/api/runs/:runId/complete', async (req, res) => {
              WHERE run_id = ?`,
             [finalFloor || 1, finalGold || 0, causeOfDeath || 'active', totalKills || 0, bossesKilled || 0, durationSeconds || 0, maxDamageHit || 0, runId]
         );
+        
+        // REMOVED: Manual player_stats update - the trigger tr_update_player_stats_after_run handles this automatically
+        // This prevents duplication when the run ends
+        console.log(`Run ${runId} completed - trigger will handle all stats updates automatically`);
         
         res.json({
             success: true,
@@ -516,7 +601,7 @@ app.put('/api/runs/:runId/complete', async (req, res) => {
     }
 });
 
-// NEW: PUT /api/runs/:runId/stats - Update run statistics during gameplay
+// NEW: PUT /api/runs/:runId/stats - Update run statistics during gameplay (ENHANCED)
 app.put('/api/runs/:runId/stats', async (req, res) => {
     let connection;
     try {
@@ -525,7 +610,7 @@ app.put('/api/runs/:runId/stats', async (req, res) => {
         
         connection = await createConnection();
         
-        // Build dynamic update query
+        // Build dynamic update query for run_history
         const updateFields = [];
         const updateValues = [];
         
@@ -553,10 +638,43 @@ app.put('/api/runs/:runId/stats', async (req, res) => {
         
         updateValues.push(runId);
         
+        // Update current run stats
         await connection.execute(
             `UPDATE run_history SET ${updateFields.join(', ')} WHERE run_id = ? AND ended_at IS NULL`,
             updateValues
         );
+        
+        // NEW: Also update historical player_stats with current run data
+        if (totalGoldEarned !== undefined || maxDamageHit !== undefined) {
+            // Get user_id for this run
+            const [runData] = await connection.execute(
+                'SELECT user_id FROM run_history WHERE run_id = ?',
+                [runId]
+            );
+            
+            if (runData.length > 0) {
+                const userId = runData[0].user_id;
+                
+                // SIMPLIFIED: Just update max values - total accumulation will happen on run completion
+                if (maxDamageHit !== undefined) {
+                    await connection.execute(
+                        `INSERT INTO player_stats (user_id, max_damage_hit, last_updated) 
+                         VALUES (?, ?, NOW()) 
+                         ON DUPLICATE KEY UPDATE 
+                         max_damage_hit = GREATEST(max_damage_hit, ?), 
+                         last_updated = NOW()`,
+                        [userId, maxDamageHit, maxDamageHit]
+                    );
+                    
+                    console.log(`Player max damage updated for user ${userId}: ${maxDamageHit}`);
+                }
+                
+                // NOTE: total_gold_earned will be updated when run completes to avoid double counting
+                if (totalGoldEarned !== undefined) {
+                    console.log(`Current run gold for user ${userId}: ${totalGoldEarned} (will be added to total on run completion)`);
+                }
+            }
+        }
         
         res.json({
             success: true,
@@ -692,7 +810,7 @@ app.put('/api/users/:userId/weapon-upgrades/:runId', async (req, res) => {
             [userId]
         );
         
-        const currentRunNumber = runProgress.length > 0 ? runProgress[0].current_run_number - 1 : 1;
+        const currentRunNumber = runProgress.length > 0 ? runProgress[0].current_run_number : 1;
         
         // ENHANCED v3.0: Include run_number and is_active
         await connection.execute(
@@ -802,7 +920,7 @@ app.post('/api/users/:userId/save-state', async (req, res) => {
             [userId]
         );
         
-        const currentRunNumber = runProgress.length > 0 ? runProgress[0].current_run_number - 1 : 1;
+        const currentRunNumber = runProgress.length > 0 ? runProgress[0].current_run_number : 1;
         
         // Mark previous save states as inactive
         await connection.execute(
