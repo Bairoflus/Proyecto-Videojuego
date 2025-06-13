@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - Shattered Timeline</title>
+    <link rel="stylesheet" href="../css/admin.css" />
+    <!-- Chart.js for graphs - Ready for future implementation -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+</head>
+
+<body class="admin-page">
+    <!-- Admin Login Form (Initially shown) -->
+    <div id="admin-login" class="admin-login-container">
+        <div class="login-card">
+            <h1>Admin Access</h1>
+            <h2>Shattered Timeline</h2>
+            
+            <form id="admin-login-form">
+                <div class="form-group">
+                    <label for="admin-username">Admin Username:</label>
+                    <input type="text" id="admin-username" name="username" required 
+                           placeholder="Enter admin username" autocomplete="username" />
+                </div>
+                
+                <div class="form-group">
+                    <label for="admin-password">Admin Password:</label>
+                    <input type="password" id="admin-password" name="password" required 
+                           placeholder="Enter admin password" autocomplete="current-password" />
+                </div>
+                
+                <button type="submit" class="login-btn">Access Admin Dashboard</button>
+            </form>
+            
+            <div id="admin-login-error" class="login-error" style="display: none;"></div>
+            
+            <div class="login-help" style="margin-top: 20px; font-size: 12px; color: #888;">
+                <p><strong>Admin Credentials:</strong></p>
+                <p>Username: <code>admin</code> | Password: <code>admin123</code></p>
+                <p>Username: <code>devteam</code> | Password: <code>devteam2024</code></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard (Initially hidden) -->
+    <div id="admin-dashboard" class="admin-dashboard-container" style="display: none;">
+        <header class="admin-header">
+            <div class="header-content">
+                <h1>Admin Dashboard - Shattered Timeline</h1>
+                <div class="header-actions">
+                    <span id="admin-user"></span>
+                    <button id="logout-btn" class="logout-btn">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Simplified Navigation -->
+        <nav class="admin-nav">
+            <button class="nav-btn active" data-section="dashboard">Dashboard</button>
+            <button class="nav-btn" data-section="analytics">Analytics</button>
+            <button class="nav-btn" data-section="players">Players</button>
+        </nav>
+
+        <main class="admin-main">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="admin-section active">
+                <h2>Game Overview</h2>
+                
+                <!-- Simplified Metrics focused on useful data -->
+                <div class="dashboard-cards">
+                    <div class="metric-card">
+                        <div class="metric-value" id="total-players">-</div>
+                        <div class="metric-label">Total Players</div>
+                        <div class="metric-description">Registered users in the system</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="active-today">-</div>
+                        <div class="metric-label">Active Today</div>
+                        <div class="metric-description">Players who logged in today</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="current-games">-</div>
+                        <div class="metric-label">Active Games</div>
+                        <div class="metric-description">Currently running game sessions</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-content">
+                    <div class="content-row">
+                        <div class="chart-container">
+                            <h3>Runs Leaderboard</h3>
+                            <div id="playtime-leaderboard" class="table-container">
+                                <div class="loading">Loading runs leaderboard...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics" class="admin-section">
+                <h2>Game Analytics</h2>
+                
+                <div class="analytics-tabs">
+                    <button class="tab-btn active" data-analytics="upgrade-adoption">Upgrade Adoption</button>
+                    <button class="tab-btn" data-analytics="player-progression">Player Progression</button>
+                </div>
+
+                <div class="analytics-content">
+                    <!-- Permanent Upgrade Adoption -->
+                    <div id="analytics-upgrade-adoption" class="analytics-table active">
+                        <h4>Permanent Upgrade Adoption Analysis</h4>
+                        <div class="loading">Loading upgrade adoption data...</div>
+                    </div>
+                    
+                    <!-- Player Progression -->
+                    <div id="analytics-player-progression" class="analytics-table">
+                        <h4>Player Progression (Experience Tiers Based on Runs)</h4>
+                        <div class="loading">Loading player progression...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Players Section -->
+            <section id="players" class="admin-section">
+                <h2>Active Players Management</h2>
+                
+                <div class="player-controls">
+                    <input type="text" id="player-search" placeholder="Search players..." />
+                    <button id="refresh-players">Refresh</button>
+                    <div class="filter-controls">
+                        <select id="activity-filter">
+                            <option value="all">All Players</option>
+                            <option value="Active">Active (Last 24h)</option>
+                            <option value="Recent">Recent (Last 7 days)</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="players-table" class="table-container">
+                    <div class="loading">Loading active players...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Messages -->
+    <div id="error-message" class="message error" style="display: none;"></div>
+    <div id="success-message" class="message success" style="display: none;"></div>
+    <div id="info-message" class="message info" style="display: none;"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading...</div>
+        <div class="loading-subtitle" style="margin-top: 10px; color: #888; font-size: 12px;">
+            Fetching the latest data...
+        </div>
+    </div>
+
+    <script type="module" src="../js/admin.js"></script>
+    
+    <!-- Version info -->
+    <div style="position: fixed; bottom: 10px; right: 10px; color: #555; font-size: 10px;">
+        Admin Dashboard v2.1 | Simplified for Development Use
+    </div>
+</body>
+
+</html> 

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Game - Shattered Timeline</title>
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+
+<body class="game-page">
+  <header class="game-header">
+    <span id="welcome-msg">Welcome, username</span>
+    <div class="pause-indicator">
+      Press <kbd>P</kbd> to pause
+    </div>
+  </header>
+  <main>
+    <div id="status">Loading game...</div>
+    <canvas id="gameCanvas"></canvas>
+  </main>
+
+  <script type="module">
+    import { createRun } from '../../utils/api.js';
+    import { SimpleAudioManager } from '../../utils/SimpleAudioManager.js';
+    
+    const status = document.getElementById('status');
+    
+    // Clean up menu music when entering game
+    const menuAudioManager = new SimpleAudioManager();
+    menuAudioManager.cleanupForGamePage();
+    console.log('Menu music cleaned up for game page');
+
+    /**
+     * Clear all session data for complete logout
+     * Issue #7: Enhanced logout flow with comprehensive session cleanup
+     */
+    function clearAllSessionData() {
+      console.log('Clearing all session data...');
+      const sessionKeys = [
+        'sessionToken', 
+        'currentUserId', 
+        'currentSessionId', 
+        'currentRunId',
+        'runCreationFailed'
+      ];
+      
+      sessionKeys.forEach(key => {
+        const value = localStorage.getItem(key);
+        if (value) {
+          localStorage.removeItem(key);
+          console.log(`Cleared ${key}: ${value}`);
+        }
+      });
+      
+      console.log('Session data cleanup complete');
+    }
+
+    /**
+     * NEW: Ensure run data exists for gameplay
+     */
+    async function ensureRunData() {
+      const userId = localStorage.getItem('currentUserId');
+      const runId = localStorage.getItem('currentRunId');
+      
+      if (runId) {
+        console.log('Run data exists:', runId);
+        
+        // ENHANCED: Verify the run is still valid/active by checking with backend
+        try {
+          // Import API function to check if run is still active
+          const { getCurrentRunStats } = await import('../../utils/api.js');
+          const runStats = await getCurrentRunStats(userId);
+          
+          if (runStats && runStats.runId == runId) {
+            console.log('Run verified as active:', runId);
+            return true;
+          } else {
+            console.warn('Stored runId is not active, may need new run');
+          }
+        } catch (error) {
+          console.warn('Could not verify run status, assuming valid:', error);
+          return true; // Assume valid if we can't verify
+        }
+      }
+      
+      // ENHANCED: Only create new run if absolutely necessary and no active run exists
+      console.log('No valid run data found, checking for existing active runs...');
+      
+      try {
+        // Check if user has any active runs before creating new one
+        const response = await fetch(`/api/users/${userId}/current-run-info`);
+        if (response.ok) {
+          const runInfo = await response.json();
+          if (runInfo.success && runInfo.data.run_status === 'active' && runInfo.data.current_run_id > 0) {
+            console.log('Found existing active run, using it:', runInfo.data.current_run_id);
+            localStorage.setItem('currentRunId', runInfo.data.current_run_id);
+            return true;
+          }
+        }
+        
+        // No active runs found, create new one
+        console.log('No active runs found, creating new run...');
+        const runData = await createRun(parseInt(userId));
+        localStorage.setItem('currentRunId', runData.runId);
+        console.log('New run created successfully:', runData.runId);
+        return true;
+        
+      } catch (error) {
+        console.error('Failed to create run:', error);
+        
+        // Set test mode flag
+        localStorage.setItem('testMode', 'true');
+        console.warn('Running in test mode - some features may be limited');
+        return true; // Allow test mode
+      }
+    }
+
+    /**
+     * Validate session data on page load
+     */
+    function validateSession() {
+      const sessionToken = localStorage.getItem('sessionToken');
+      const userId = localStorage.getItem('currentUserId');
+      const sessionId = localStorage.getItem('currentSessionId');
+      
+      if (!sessionToken || !userId || !sessionId) {
+        console.warn('Incomplete session data detected, redirecting to login');
+        console.log('Session validation failed:', {
+          hasSessionToken: !!sessionToken,
+          hasUserId: !!userId,
+          hasSessionId: !!sessionId
+        });
+        
+        // Clear any partial session data
+        clearAllSessionData();
+        
+        // Redirect to login
+        window.location.href = 'login.html';
+        return false;
+      }
+      
+      console.log('Session validation passed');
+      return true;
+    }
+
+    // Validate session before initializing game
+    if (validateSession()) {
+      // NEW: Initialize game with run data validation
+      async function initializeGame() {
+        try {
+          status.textContent = 'Validating session...';
+          
+          // Ensure run data exists
+          const runDataReady = await ensureRunData();
+          if (!runDataReady) {
+            throw new Error('Failed to initialize run data');
+          }
+          
+          status.textContent = 'Loading modules...';
+
+          // Import main game module
+          const { main } = await import('/main.js');
+
+          status.textContent = 'Starting game...';
+          main();
+          status.style.display = 'none'; // Hide status once game is running
+
+        } catch (error) {
+          status.textContent = 'Error loading game: ' + error.message;
+          console.error('Game initialization error:', error);
+        }
+      }
+      
+      // Start game initialization
+      initializeGame();
+    }
+  </script>
+
+</body>
+
+</html>

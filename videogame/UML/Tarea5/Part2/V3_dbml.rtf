@@ -1,0 +1,262 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 .AppleSystemUIFontMonospaced-Regular;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww14880\viewh16620\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 Project ShatteredTimeline \{\
+  database_type: 'MySQL'\
+  Note: 'Database for the roguelite Shattered Timeline with refined modular weapon system for MVP'\
+\}\
+\
+Enum event_type_enum \{\
+  dash\
+  attack\
+  collected_gold\
+  used_item\
+  room_entered\
+  room_exit\
+\}\
+\
+Enum weapon_slot_enum \{\
+  melee\
+  range\
+\}\
+\
+Enum upgrade_type_enum \{\
+  health\
+  stamina\
+  melee\
+  range\
+  velocity\
+\}\
+\
+Enum boss_result_enum \{\
+  win\
+  loss\
+\}\
+\
+Table users \{\
+  user_id int [pk, increment]\
+  username varchar(30) [not null, unique]\
+  email varchar(100) [not null, unique]\
+  password_hash char(60) [not null]\
+  created_at timestamp [default: `now()`]\
+  Note: 'Player account data'\
+\}\
+\
+Table sessions \{\
+  session_id int [pk, increment]\
+  user_id int [not null, ref: > users.user_id]\
+  started_at timestamp [default: `now()`]\
+  last_active timestamp\
+  Note: 'Active sessions per player'\
+\}\
+\
+Table player_stats \{\
+  user_id int [pk, not null, ref: > users.user_id]\
+  total_runs int [default: 0]\
+  runs_completed int [default: 0]\
+  total_kills int [default: 0]\
+  best_single_run_kills int [default: 0]\
+  highest_damage_hit int [default: 0]\
+  total_gold_earned int [default: 0]\
+  total_gold_spent int [default: 0]\
+  total_playtime_seconds int [default: 0]\
+  updated_at timestamp [default: `now()`]\
+  Note: 'Player statistics visible in profile'\
+\}\
+\
+Table player_upgrades \{\
+  user_id int [not null, ref: > users.user_id]\
+  upgrade_type upgrade_type_enum [not null]\
+  level smallint [not null]\
+  updated_at timestamp [default: `now()`]\
+  indexes \{\
+    (user_id, upgrade_type) [pk]\
+  \}\
+  Note: 'Permanent upgrades between runs'\
+\}\
+\
+Table permanent_upgrade_purchases \{\
+  purchase_id int [pk, increment]\
+  user_id int [not null, ref: > users.user_id]\
+  run_id int [not null, ref: > run_history.run_id]\
+  upgrade_type upgrade_type_enum [not null]\
+  level_before smallint [not null]\
+  level_after smallint [not null]\
+  gold_spent int [not null]\
+  timestamp timestamp [default: `now()`]\
+  Note: 'Permanent upgrade purchase history'\
+\}\
+\
+Table equipped_weapons \{\
+  run_id int [not null, ref: > run_history.run_id]\
+  user_id int [not null, ref: > users.user_id]\
+  weapon_slot weapon_slot_enum [not null]\
+  indexes \{\
+    (run_id, user_id, weapon_slot) [pk]\
+  \}\
+  Note: 'Equipped weapons per type at run start'\
+\}\
+\
+Table weapon_upgrades_temp \{\
+  run_id int [not null, ref: > run_history.run_id]\
+  user_id int [not null, ref: > users.user_id]\
+  weapon_slot weapon_slot_enum [not null]\
+  level smallint [not null]\
+  damage_per_upgrade smallint [not null]\
+  gold_cost_per_upgrade smallint [not null]\
+  timestamp timestamp [default: `now()`]\
+  indexes \{\
+    (run_id, user_id, weapon_slot) [pk]\
+  \}\
+  Note: 'Temporary upgrade progress for equipped weapon'\
+\}\
+\
+Table enemy_types \{\
+  enemy_id int [pk, increment]\
+  name varchar(50) [not null]\
+  floor int [not null]\
+  is_boss boolean [default: false]\
+  is_rare boolean [default: false]\
+  base_hp smallint [not null]\
+  base_damage smallint [not null]\
+  movement_speed smallint [not null]\
+  attack_cooldown_seconds smallint [not null]\
+  attack_range smallint [not null]\
+  sprite_url varchar(255)\
+  boss_id int [ref: - bosses.boss_id]\
+  Note: 'Enemy catalog. Linked to boss if applicable.'\
+\}\
+\
+Table enemy_kills \{\
+  kill_id int [pk, increment]\
+  user_id int [not null, ref: > users.user_id]\
+  enemy_id int [not null, ref: > enemy_types.enemy_id]\
+  run_id int [not null, ref: > run_history.run_id]\
+  room_id int [not null, ref: > rooms.room_id]\
+  timestamp timestamp [default: `now()`]\
+  Note: 'Kill history for each player and enemy'\
+\}\
+\
+Table run_history \{\
+  run_id int [pk, increment]\
+  user_id int [not null, ref: > users.user_id]\
+  started_at timestamp [default: `now()`]\
+  ended_at timestamp\
+  completed boolean [default: false]\
+  gold_collected int [default: 0]\
+  gold_spent int [default: 0]\
+  total_kills int [default: 0]\
+  death_cause text\
+  last_room_id int [ref: > rooms.room_id, note: 'Last room visited']\
+  Note: 'Each gameplay run per player'\
+\}\
+\
+Table rooms \{\
+  room_id int [pk, increment]\
+  floor int [not null]\
+  name varchar(50) [not null]\
+  type varchar(20) [not null, note: 'combat, shop, boss']\
+  sequence_order smallint [not null, note: 'Sequential order within floor']\
+  Note: 'Rooms by floor and type'\
+\}\
+\
+Table save_states \{\
+  save_id int [pk, increment]\
+  user_id int [not null, ref: > users.user_id]\
+  session_id int [not null, ref: > sessions.session_id]\
+  run_id int [not null, ref: > run_history.run_id]\
+  room_id int [not null, ref: > rooms.room_id]\
+  current_hp smallint [not null]\
+  current_stamina smallint [not null]\
+  gold int [not null]\
+  saved_at timestamp [default: `now()`]\
+  Note: 'Autosave system per room'\
+\}\
+\
+Table bosses \{\
+  boss_id int [pk, increment]\
+  name varchar(50) [not null]\
+  floor int [not null]\
+  max_hp int [not null]\
+  description text\
+  Note: 'Unique bosses catalog'\
+\}\
+\
+Table boss_moves \{\
+  move_id int [pk, increment]\
+  boss_id int [not null, ref: > bosses.boss_id]\
+  name varchar(50) [not null]\
+  description text\
+  phase smallint [not null]\
+  Note: 'Special moves per boss'\
+\}\
+\
+Table boss_encounters \{\
+  encounter_id int [pk, increment]\
+  user_id int [not null, ref: > users.user_id]\
+  run_id int [not null, ref: > run_history.run_id]\
+  boss_id int [not null, ref: > bosses.boss_id]\
+  damage_dealt int [not null]\
+  damage_taken int [not null]\
+  result boss_result_enum [not null]\
+  timestamp timestamp [default: `now()`]\
+  Note: 'Boss fight stats per encounter'\
+\}\
+\
+Table boss_kills \{\
+  kill_id int [pk, increment]\
+  user_id int [not null, ref: > users.user_id]\
+  boss_id int [not null, ref: > bosses.boss_id]\
+  run_id int [not null, ref: > run_history.run_id]\
+  room_id int [not null, ref: > rooms.room_id]\
+  timestamp timestamp [default: `now()`]\
+  Note: 'Boss kill history per player'\
+\}\
+\
+Table shop_purchases \{\
+  purchase_id int [pk, increment]\
+  user_id int [not null, ref: > users.user_id]\
+  run_id int [not null, ref: > run_history.run_id]\
+  room_id int [not null, ref: > rooms.room_id]\
+  item_type varchar(20) [not null, note: 'permanent or temporary']\
+  item_name varchar(50) [not null]\
+  gold_spent int [not null]\
+  timestamp timestamp [default: `now()`]\
+  Note: 'Shop purchase history'\
+\}\
+\
+Table chest_events \{\
+  event_id int [pk, increment]\
+  user_id int [not null, ref: > users.user_id]\
+  run_id int [not null, ref: > run_history.run_id]\
+  room_id int [not null, ref: > rooms.room_id]\
+  gold_received int [not null]\
+  timestamp timestamp [default: `now()`]\
+  Note: 'Chest opening log per player'\
+\}\
+\
+Table player_settings \{\
+  user_id int [pk, not null, ref: > users.user_id]\
+  music_volume int [not null, note: '0 to 100']\
+  sfx_volume int [not null, note: '0 to 100']\
+  last_updated timestamp [default: `now()`]\
+  Note: 'Audio configuration per player'\
+\}\
+\
+Table player_events \{\
+  event_id int [pk, increment]\
+  run_id int [not null, ref: > run_history.run_id]\
+  user_id int [not null, ref: > users.user_id]\
+  room_id int [not null, ref: > rooms.room_id]\
+  event_type event_type_enum [not null]\
+  value int [not null]\
+  weapon_type varchar(20) [note: 'Weapon type if applicable']\
+  context varchar(50) [note: 'Additional context for event']\
+  timestamp timestamp [default: `now()`]\
+  Note: 'Player action log, for stats and game balancing'\
+\}\
+}
