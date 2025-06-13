@@ -1,15 +1,9 @@
 -- ===================================================
--- SHATTERED TIMELINE - DATABASE OBJECTS v3.1
+-- SHATTERED TIMELINE - DATABASE OBJECTS
 -- ===================================================
--- Version: 3.1 - Enhanced run tracking with login/logout/completion synchronization
 -- Focus: Database objects only (views, triggers, procedures, permissions)
 -- Objective: Complete database objects for run persistence, permanent & temporary upgrades
--- Note: Execute this file AFTER dbshatteredtimeline3forperm.sql
--- 
--- NEW v3.1 FEATURES:
--- - total_runs increments on LOGIN, LOGOUT, and COMPLETION for complete tracking
--- - current_run_number starts at 0 for new users (first run becomes run 1)
--- - Synchronized run tracking across all user interaction events
+-- Note: Execute this file AFTER dbshatteredtimeline.sql
 -- ===================================================
 
 USE dbshatteredtimeline;
@@ -73,7 +67,7 @@ SELECT
 FROM user_run_progress urp
 LEFT JOIN run_history rh ON urp.user_id = rh.user_id 
     AND rh.ended_at IS NULL 
-    AND rh.run_number = urp.current_run_number; -- FIXED: Current active run should match current_run_number
+    AND rh.run_number = urp.current_run_number; 
 
 -- ===================================================
 -- GAME STATE VIEWS (ENHANCED)

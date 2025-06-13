@@ -383,7 +383,7 @@ ORDER BY TABLE_NAME, COLUMN_NAME;
 -- DATABASE STRUCTURE SUMMARY
 -- ===================================================
 /*
-TOTAL TABLES: 12 (NEW: +1 user_run_progress)
+TOTAL TABLES: 12 
 - Authentication: 2 (users, sessions)
 - User Progress: 1 (user_run_progress) - CRITICAL FIX
 - Player State: 3 (save_states, permanent_player_upgrades, weapon_upgrades_temp)  
