@@ -626,7 +626,7 @@ export class Supersoldier extends Boss {
         const projectile = {
             position: new Vec(sourcePosition.x, sourcePosition.y),
             velocity: new Vec(this.shotDirection.x * 400, this.shotDirection.y * 400), // High velocity
-            damage: 200, // High damage
+            damage: 100, // High damage
             radius: 15, // Large radius
             isActive: true,
             fromPlayer: false,
