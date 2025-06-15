@@ -1762,8 +1762,14 @@ export class Game {
         const rect = window.canvas.getBoundingClientRect();
         this.player.mousePosition.x = e.clientX - rect.left;
         this.player.mousePosition.y = e.clientY - rect.top;
+
+        // Actualizar la posición del mouse en el jugador
+        if (typeof this.player.updateMousePosition === 'function') {
+          this.player.updateMousePosition(e.clientX - rect.left, e.clientY - rect.top);
+        }
       }
     });
+
     addEventListener("keydown", (e) => {
       const key = e.key.toLowerCase();
 

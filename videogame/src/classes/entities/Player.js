@@ -38,6 +38,10 @@ export class Player extends AnimatedObject {
     this.previousDirection = "down";
     this.currentDirection = "down";
 
+    // Mouse aiming properties
+    this.mousePosition = new Vec(0, 0);
+    this.isAimingWithMouse = true;
+
     // Dash properties
     this.dashDuration = PLAYER_CONSTANTS.DASH_DURATION;
     this.dashSpeed = variables.playerSpeed * PLAYER_CONSTANTS.DASH_MULTIPLIER;
@@ -1609,6 +1613,8 @@ export class Player extends AnimatedObject {
     //   }) - ${this.sheetCols} columns`
     // );
   }
+  
+
 
   /**
    * Get current weapon level for the specified weapon type
@@ -1679,6 +1685,70 @@ export class Player extends AnimatedObject {
    */
   switchToRangedWeapon() {
     this.setWeapon("ranged");
+  }
+  
+  /**
+   * Actualiza la posición del mouse para apuntar
+   * @param {number} x - Coordenada X del mouse
+   * @param {number} y - Coordenada Y del mouse
+   */
+  updateMousePosition(x, y) {
+    this.mousePosition.x = x;
+    this.mousePosition.y = y;
+  }
+  
+  /**
+   * Dispara un proyectil secundario hacia la posición del mouse
+   */
+  fireSecondaryWeapon() {
+    // Verificar si el jugador puede disparar (no está atacando y no está en cooldown)
+    if (this.isAttacking || this.attackCooldown > 0) {
+      return;
+    }
+    
+    const weaponInfo = this.getWeaponInfo();
+    const staminaCost = weaponInfo.staminaCost * 0.7; // Costo reducido para arma secundaria
+    
+    if (this.stamina < staminaCost) {
+      console.log(`No hay suficiente energía para disparar el arma secundaria (necesita ${staminaCost}, tiene ${Math.floor(this.stamina)})`);
+      return;
+    }
+    
+    // Consumir energía
+    this.stamina -= staminaCost;
+    this.staminaRegenCooldown = this.staminaRegenDelay;
+    
+    // Calcular posición de origen (centro del jugador)
+    const spawnPos = new Vec(
+      this.position.x + this.width / 2,
+      this.position.y + this.height / 2
+    );
+    
+    // Usar la posición del mouse como objetivo
+    const targetPos = new Vec(this.mousePosition.x, this.mousePosition.y);
+    
+    // Crear un objeto temporal para el objetivo
+    const target = { position: targetPos };
+    
+    // Crear el proyectil con velocidad y daño ligeramente diferentes al arma principal
+    const projectileSpeed = weaponInfo.projectileSpeed * 1.2; // 20% más rápido
+    const projectileDamage = this.getWeaponDamage() * 0.8; // 20% menos de daño
+    
+    const projectile = new Projectile(
+      spawnPos,
+      target,
+      projectileSpeed,
+      projectileDamage
+    );
+    
+    // Establecer la referencia a la sala actual para detección de colisiones con paredes
+    projectile.setCurrentRoom(this.currentRoom);
+    this.projectiles.push(projectile);
+    
+    // Aplicar un pequeño cooldown (menor que el del arma principal)
+    this.attackCooldown = weaponInfo.cooldown * 0.5;
+    
+    console.log(`Disparo secundario hacia (${Math.round(targetPos.x)}, ${Math.round(targetPos.y)})`);
   }
 
   /**
