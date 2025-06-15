@@ -36,9 +36,13 @@ export class DragonBoss extends Boss {
                         const px = tx * room.tileSize;
                         const py = ty * room.tileSize;
                         const delay = Math.random() * self.fireDuration;
-                        self.fireEvents.push({ position: new Vec(px, py), delay, spawned: false });
+                        self.fireEvents.push({
+                            position: new Vec(px, py),
+                            delay,
+                            spawned: false,
+                        });
                     }
-                }
+                },
             },
             {
                 name: "Fire Breath",
@@ -59,15 +63,15 @@ export class DragonBoss extends Boss {
                         self.breathWaves.push({
                             delay: w * self.breathInterval,
                             spawned: false,
-                            index: w
+                            index: w,
                         });
                     }
                 },
             },
             {
-                name: "Fire Walls",     // ← nombre que aparecerá en el patrón de ataques
+                name: "Fire Walls", // ← nombre que aparecerá en el patrón de ataques
                 phase: 3,
-                cooldown: 4000,
+                cooldown: 10000,
                 execute: (self) => {
                     console.log("DragonBoss uses Fire Walls!");
                     const room = self.currentRoom;
@@ -77,7 +81,6 @@ export class DragonBoss extends Boss {
 
                     // Reiniciamos estado de “Fire Walls”
                     self.wallWaves = [];
-                    self.wallProjectiles = [];
                     self.wallTime = 0;
 
                     // Calculamos qué “filas centrales” queremos cubrir (centro ± halfCenter)
@@ -87,7 +90,8 @@ export class DragonBoss extends Boss {
                     const endCenterRow = midRow + halfCenter;
 
                     // Elegimos un gapStart aleatorio inicial
-                    let prevGap = Math.floor(Math.random() * (cols - self.wallGapSize - 2)) + 1;
+                    let prevGap =
+                        Math.floor(Math.random() * (cols - self.wallGapSize - 2)) + 1;
 
                     // Creamos N sub-olas “center”, una por cada fila entre startCenterRow..endCenterRow
                     // Cada sub-ola tendrá un delay base (w * wallInterval) + offset según su fila,
@@ -108,7 +112,8 @@ export class DragonBoss extends Boss {
                             // Calculamos un retraso adicional para que cada línea nazca escalonada:
                             // cuando la línea row haya de aparecer X tiles más abajo, esperamos X * (tileSize/velocidad).
                             const verticalOffsetMs =
-                                (row - startCenterRow) * ((room.tileSize / self.wallProjectileSpeed) * 1000);
+                                (row - startCenterRow) *
+                                ((room.tileSize / self.wallProjectileSpeed) * 1000);
 
                             // Guardamos la sub-ola en wallWaves
                             self.wallWaves.push({
@@ -117,11 +122,11 @@ export class DragonBoss extends Boss {
                                 gapStart,
                                 row,
                                 spawned: false,
-                                isLast: row === endCenterRow  // marcamos si es la última línea de esta ola
+                                isLast: row === endCenterRow, // marcamos si es la última línea de esta ola
                             });
                         }
                     }
-                }
+                },
             },
         ];
 
@@ -129,21 +134,21 @@ export class DragonBoss extends Boss {
         this.displayName = "Dragon Boss";
 
         // === Fire Ball configuration ===
-        this.fireDuration = 4000;      // ms window
+        this.fireDuration = 4000; // ms window
         this.fireCount = 15;
         this.fireEvents = [];
         this.fireMarkers = [];
         this.explosions = [];
         this.fireTime = 0;
         this.markerTime = 1000;
-        this.damage = 200;
-        this.markerRadius = 1.5;      // multiplier for tileSize
+        this.damage = 20;
+        this.markerRadius = 1.5; // multiplier for tileSize
 
         // === Fire Breath configuration ===
         this.breathWaveCount = 6;
         this.breathInterval = 800;
         this.breathGapSize = 2;
-        this.breathDamage = 300;
+        this.breathDamage = 30;
         this.breathProjectileSpeed = 250;
         this.breathGapSize = 2;
         this.breathProjectileCount = 30;
@@ -154,7 +159,7 @@ export class DragonBoss extends Boss {
         // === Fire Pillar configuration ===
         this.wallWaveCount = 6;
         this.wallInterval = 500;
-        this.wallDamage = 200;
+        this.wallDamage = 50;
         this.wallProjectileSpeed = 200;
         this.wallProjectiles = [];
         this.wallWaves = [];
@@ -175,7 +180,10 @@ export class DragonBoss extends Boss {
         this.fireTime += deltaTime;
         for (let evt of this.fireEvents) {
             if (!evt.spawned && this.fireTime >= evt.delay) {
-                this.fireMarkers.push({ position: new Vec(evt.position.x, evt.position.y), timer: this.markerTime });
+                this.fireMarkers.push({
+                    position: new Vec(evt.position.x, evt.position.y),
+                    timer: this.markerTime,
+                });
                 evt.spawned = true;
             }
         }
@@ -187,13 +195,17 @@ export class DragonBoss extends Boss {
                 const cx = m.position.x + room.tileSize / 2;
                 const cy = m.position.y + room.tileSize / 2;
                 const r = room.tileSize * this.markerRadius;
-                const dx = (player.position.x + player.width / 2) - cx;
-                const dy = (player.position.y + player.height / 2) - cy;
+                const dx = player.position.x + player.width / 2 - cx;
+                const dy = player.position.y + player.height / 2 - cy;
                 const playerHalf = player.width / 2;
                 const hitRadius = r + playerHalf;
                 if (dx * dx + dy * dy <= hitRadius * hitRadius)
                     player.takeDamage(this.damage);
-                this.explosions.push({ position: new Vec(m.position.x, m.position.y), timer: 300, maxRadius: room.tileSize });
+                this.explosions.push({
+                    position: new Vec(m.position.x, m.position.y),
+                    timer: 300,
+                    maxRadius: room.tileSize,
+                });
                 this.fireMarkers.splice(i, 1);
             }
         }
@@ -219,7 +231,8 @@ export class DragonBoss extends Boss {
                 const baseOffset = (Math.PI / this.breathProjectileCount) * wave.index;
 
                 for (let i = 0; i < this.breathProjectileCount; i++) {
-                    const angle = baseOffset + (Math.PI * 2 / this.breathProjectileCount) * i;
+                    const angle =
+                        baseOffset + ((Math.PI * 2) / this.breathProjectileCount) * i;
                     const dirX = Math.cos(angle);
                     const dirY = Math.sin(angle);
 
@@ -233,7 +246,12 @@ export class DragonBoss extends Boss {
                     const endY = center.y + dirY * maxDistance;
                     const end = new Vec(endX, endY);
 
-                    const proj = new Projectile(start, end, this.breathProjectileSpeed, this.breathDamage);
+                    const proj = new Projectile(
+                        start,
+                        end,
+                        this.breathProjectileSpeed,
+                        this.breathDamage
+                    );
                     proj.setCurrentRoom(room);
                     proj.color = "white";
                     this.breathProjectiles.push(proj);
@@ -341,7 +359,7 @@ export class DragonBoss extends Boss {
 
         // Draw Fire Ball zones
         ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
-        this.fireMarkers.forEach(m => {
+        this.fireMarkers.forEach((m) => {
             const cx = m.position.x + room.tileSize / 2;
             const cy = m.position.y + room.tileSize / 2;
             const r = room.tileSize * this.markerRadius;
@@ -351,8 +369,8 @@ export class DragonBoss extends Boss {
         });
         // Draw explosion animations
         ctx.strokeStyle = "orange";
-        this.explosions.forEach(e => {
-            const progress = 1 - (e.timer / 300);
+        this.explosions.forEach((e) => {
+            const progress = 1 - e.timer / 300;
             const r = e.maxRadius * progress;
             const cx = e.position.x + room.tileSize / 2;
             const cy = e.position.y + room.tileSize / 2;
@@ -363,7 +381,7 @@ export class DragonBoss extends Boss {
         });
 
         // Draw Fire Breath projectiles
-        this.breathProjectiles.forEach(p => p.draw(ctx));
+        this.breathProjectiles.forEach((p) => p.draw(ctx));
 
         // Draw Fire Walls projectiles
         this.wallProjectiles.forEach((p) => p.draw(ctx));
