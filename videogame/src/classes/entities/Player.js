@@ -329,7 +329,7 @@ export class Player extends AnimatedObject {
     if (amount > 0) {
       this.gold += amount;
       log.info(`Player collected ${amount} gold. Total: ${this.gold}`);
-      
+
       // NEW: Track total gold earned for statistics
       if (window.game && typeof window.game.trackGoldEarned === 'function') {
         window.game.trackGoldEarned(amount);
@@ -575,8 +575,7 @@ export class Player extends AnimatedObject {
 
     if (this.stamina < staminaCost) {
       console.log(
-        `Not enough stamina to attack with ${
-          this.weaponType
+        `Not enough stamina to attack with ${this.weaponType
         } (need ${staminaCost}, have ${Math.floor(this.stamina)})`
       );
       return;
@@ -654,8 +653,8 @@ export class Player extends AnimatedObject {
         this.isAttacking
           ? "Attack blocked: Already attacking"
           : `Attack blocked: Cooldown remaining ${Math.round(
-              this.attackCooldown
-            )}ms`
+            this.attackCooldown
+          )}ms`
       );
     }
   }
@@ -694,12 +693,12 @@ export class Player extends AnimatedObject {
           const damage = this.getWeaponDamage();
           enemy.takeDamage(damage);
           enemiesHit++;
-          
+
           // NEW: Track maximum damage hit for statistics
           if (window.game && typeof window.game.trackDamageDealt === 'function') {
             window.game.trackDamageDealt(damage);
           }
-          
+
           console.log(
             `${this.getCurrentWeapon()} hit ${enemy.type} for ${damage} damage`
           );
@@ -801,20 +800,27 @@ export class Player extends AnimatedObject {
           );
 
           // Create a target position based on player's direction
-          let targetPos = new Vec(spawnPos.x, spawnPos.y);
-          switch (this.currentDirection) {
-            case "up":
-              targetPos.y -= 100;
-              break;
-            case "down":
-              targetPos.y += 100;
-              break;
-            case "left":
-              targetPos.x -= 100;
-              break;
-            case "right":
-              targetPos.x += 100;
-              break;
+          let targetPos;
+          if (this.isAimingWithMouse && this.mousePosition.x !== 0 && this.mousePosition.y !== 0) {
+            targetPos = new Vec(this.mousePosition.x, this.mousePosition.y);
+            console.log(`Apuntando a: (${targetPos.x}, ${targetPos.y})`);
+          }
+          else {
+            targetPos = new Vec(spawnPos.x, spawnPos.y); // Default to spawn position if no mouse position
+            switch (this.currentDirection) {
+              case "up":
+                targetPos.y -= 100;
+                break;
+              case "down":
+                targetPos.y += 100;
+                break;
+              case "left":
+                targetPos.x -= 100;
+                break;
+              case "right":
+                targetPos.x += 100;
+                break;
+            }
           }
 
           // Create a temporary target object for the projectile
@@ -891,8 +897,8 @@ export class Player extends AnimatedObject {
         const roomEnemies =
           this.currentRoom && this.currentRoom.objects.enemies
             ? this.currentRoom.objects.enemies.filter(
-                (enemy) => enemy.state !== "dead"
-              )
+              (enemy) => enemy.state !== "dead"
+            )
             : [];
 
         projectile.update(deltaTime, roomEnemies);
@@ -1342,13 +1348,13 @@ export class Player extends AnimatedObject {
           ? v.y > 0
             ? "down"
             : v.y < 0
-            ? "up"
-            : this.currentDirection
+              ? "up"
+              : this.currentDirection
           : v.x > 0
-          ? "right"
-          : v.x < 0
-          ? "left"
-          : this.currentDirection;
+            ? "right"
+            : v.x < 0
+              ? "left"
+              : this.currentDirection;
 
       if (newDirection !== this.currentDirection) {
         this.currentDirection = newDirection;
@@ -1372,8 +1378,8 @@ export class Player extends AnimatedObject {
     const roomEnemyCount =
       this.currentRoom && this.currentRoom.objects.enemies
         ? this.currentRoom.objects.enemies.filter(
-            (enemy) => enemy.state !== "dead"
-          ).length
+          (enemy) => enemy.state !== "dead"
+        ).length
         : 0;
 
     return {
@@ -1727,8 +1733,7 @@ export class Player extends AnimatedObject {
         const speedMultiplier = 1 + upgradeInfo.value * level;
         // Note: This would need to be applied to the movement logic in setVelocity()
         console.log(
-          `Permanent movement speed upgrade applied: +${
-            upgradeInfo.value * level * 100
+          `Permanent movement speed upgrade applied: +${upgradeInfo.value * level * 100
           }% (level ${level})`
         );
         // TODO: Implement movement speed boost in setVelocity method

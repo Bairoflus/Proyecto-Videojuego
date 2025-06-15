@@ -9,6 +9,7 @@ import { log } from '../../utils/Logger.js';
 import { FLOOR_CONSTANTS } from '../../constants/gameConstants.js';
 import { DragonBoss } from '../enemies/floor1/DragonBoss.js';
 import { Supersoldier } from "../enemies/floor2/SupersoldierBoss.js";
+import { MechaBoss } from "../enemies/floor3/MechaBoss.js";
 import { Vec } from '../../utils/Vec.js';
 import { createRun, completeRun } from '../../utils/api.js';
 import { roomMapping } from '../../utils/roomMapping.js';
@@ -218,7 +219,7 @@ export class FloorGenerator {
                 window.game.bossUpgradeShown = false;
                 console.log('Boss room created - reset bossUpgradeShown flag for permanent upgrade popup');
             }
-            
+
             let boss;
             if (this.floorCount === 1) {
                 // Floor 1 boss
@@ -229,13 +230,24 @@ export class FloorGenerator {
                 // Floor 2 boss
                 boss = new Supersoldier(new Vec(380, 75));
                 console.log(`Floor 2 boss (Supersoldier) created for room ${roomIndex}`);
-            } else {
-                // Floor 3+ boss (use DragonBoss as fallback)
-                console.warn(`No specific boss defined for floor ${this.floorCount}, using DragonBoss as fallback`);
-                boss = new DragonBoss(new Vec(380, 75));
-                console.log(`Floor ${this.floorCount} boss (DragonBoss fallback) created for room ${roomIndex}`);
             }
-            
+            else if (this.floorCount === 3) {
+                // Floor 3 boss
+                boss = new MechaBoss(new Vec(380, 75));
+                console.log(
+                    `Floor 3 boss (MechaBoss) created for room ${roomIndex}`
+                );
+            } else {
+                // Floor 4+ boss (use DragonBoss as fallback)
+                console.warn(
+                    `No specific boss defined for floor ${this.floorCount}, using DragonBoss as fallback`
+                );
+                boss = new DragonBoss(new Vec(380, 75));
+                console.log(
+                    `Floor ${this.floorCount} boss (DragonBoss fallback) created for room ${roomIndex}`
+                );
+            }
+
             // CRITICAL: Verify boss was created before adding to enemies
             if (boss) {
                 room.objects.enemies.push(boss);
@@ -364,29 +376,29 @@ export class FloorGenerator {
         // NEW: Complete current run BEFORE creating new one to prevent multiple active runs
         try {
             const currentRunId = localStorage.getItem('currentRunId');
-            
+
             if (currentRunId && window.game) {
                 console.log(`Completing current run (ID: ${currentRunId}) due to death...`);
-                
+
                 // Get run statistics from game instance
                 const runStats = window.game.getRunStats();
-                
+
                 const completionData = {
                     goldCollected: runStats.goldCollected,
-                    goldSpent: runStats.goldSpent, 
+                    goldSpent: runStats.goldSpent,
                     totalKills: runStats.totalKills,
                     maxDamageHit: runStats.maxDamageHit,
                     deathCause: 'death' // Mark as death
                 };
-                
+
                 console.log(`Death completion data for run ${currentRunId}:`, completionData);
                 const result = await completeRun(currentRunId, completionData);
                 console.log(`Run ${currentRunId} completed for death:`, result);
-                
+
                 // Clear old runId after completion
                 localStorage.removeItem('currentRunId');
                 console.log(`Cleared completed runId ${currentRunId} from localStorage`);
-                
+
             } else {
                 console.log("No current run ID found or game instance missing - skipping run completion");
             }
@@ -561,12 +573,12 @@ export class FloorGenerator {
                 if (userId) {
                     console.log(`Creating new run for victory progression (user ${userId})...`);
                     const newRunData = await createRun(parseInt(userId));
-                    
+
                     if (newRunData && newRunData.runId) {
                         newRunId = newRunData.runId;
                         localStorage.setItem('currentRunId', newRunId);
                         console.log(`NEW RUN CREATED: runId ${newRunId} stored in localStorage`);
-                        
+
                         // VERIFICATION: Double-check localStorage was updated
                         const verifyRunId = localStorage.getItem('currentRunId');
                         if (verifyRunId === newRunId.toString()) {
@@ -593,18 +605,18 @@ export class FloorGenerator {
             // Generate new floor and reset room index
             console.log(`Generating new floor ${this.floorCount}...`);
             this.generateFloor();
-            
+
             // FINAL STATUS LOG
             const finalRunId = localStorage.getItem('currentRunId');
             console.log(`NEW RUN COMPLETE: Run ${this.runCount}, Floor ${this.floorCount}, Room ${this.currentRoomIndex + 1}, RunId ${finalRunId}`);
-            
+
             // SYNC CHECK: Verify everything is properly synchronized
             if (finalRunId && finalRunId !== beforeRunId) {
                 console.log(`RUN TRANSITION SUCCESS: ${beforeRunId} → ${finalRunId}`);
             } else {
                 console.error(`RUN TRANSITION ISSUE: Before=${beforeRunId}, After=${finalRunId}`);
             }
-            
+
             // CRITICAL: Return true to indicate successful run transition
             return true;
         }

@@ -4,7 +4,7 @@ import { variables, keyDirections } from "../../config.js";
 import { FloorGenerator } from "./FloorGenerator.js";
 import { Shop } from "../entities/Shop.js";
 import { Boss } from "../entities/Boss.js";
-import { createRun, getPermanentUpgrades} from "../../utils/api.js";
+import { createRun, getPermanentUpgrades } from "../../utils/api.js";
 import { saveStateManager } from "../../utils/saveStateManager.js";
 import { weaponUpgradeManager } from "../../utils/weaponUpgradeManager.js";
 import { PermanentUpgradePopup } from "../ui/PermanentUpgradePopup.js";
@@ -73,7 +73,7 @@ export class Game {
     // Initialize game components
     this.globalShop = new Shop();
     this.permanentUpgradePopup = new PermanentUpgradePopup();
-    
+
     // Initialize audio manager for floor music
     this.audioManager = null;
     try {
@@ -151,21 +151,21 @@ export class Game {
 
         // NEW v3.0: Auto-sync localStorage runId with database if inconsistent
         const localStorageRunId = parseInt(localStorage.getItem('currentRunId'));
-        
+
         // FIXED: Don't compare runId with runNumber - they are different values
         // runId = unique database ID for the run (e.g., 68, 69, 70...)
         // runNumber = user's run counter (e.g., 1, 2, 3...)
         // We only need to ensure we have a valid runId, not sync with runNumber
-        
+
         if (!localStorageRunId || isNaN(localStorageRunId)) {
           console.warn(`Invalid runId in localStorage: ${localStorageRunId}, creating new run...`);
 
           try {
             // Create a new run since we don't have a valid runId
-              const { createRun } = await import('../../utils/api.js');
-              const newRunResult = await createRun(userId);
-              if (newRunResult.success) {
-                localStorage.setItem('currentRunId', newRunResult.runId);
+            const { createRun } = await import('../../utils/api.js');
+            const newRunResult = await createRun(userId);
+            if (newRunResult.success) {
+              localStorage.setItem('currentRunId', newRunResult.runId);
               console.log(`New run created: runId ${newRunResult.runId} for user's run number ${this.runNumber}`);
             }
           } catch (error) {
@@ -374,10 +374,10 @@ export class Game {
         transition: {
           debug: () => {
             if (!window.game) return null;
-            
+
             const fg = window.game.floorGenerator;
             const beforeRunId = localStorage.getItem('currentRunId');
-            
+
             return {
               currentState: {
                 floor: fg.getCurrentFloor(),
@@ -396,17 +396,17 @@ export class Game {
           },
           simulate: async () => {
             if (!window.game) return null;
-            
+
             console.log('SIMULATING RUN TRANSITION...');
             const before = window.gameSessionDebug.transition.debug();
             console.log('Before transition:', before);
-            
+
             try {
               await window.game.floorGenerator.nextFloor();
-              
+
               const after = window.gameSessionDebug.transition.debug();
               console.log('After transition:', after);
-              
+
               const result = {
                 success: true,
                 before: before,
@@ -414,10 +414,10 @@ export class Game {
                 runIdChanged: before.currentState.runId !== after.currentState.runId,
                 transitionType: before.nextTransition.willCreateNewRun ? 'NEW_RUN' : 'NEXT_FLOOR'
               };
-              
+
               console.log('SIMULATION RESULT:', result);
               return result;
-              
+
             } catch (error) {
               console.error('SIMULATION FAILED:', error);
               return { success: false, error: error.message };
@@ -462,7 +462,7 @@ export class Game {
 
             // Clear transition lock
             window.game.isTransitioning = false;
-            
+
             // Close shop if open
             if (window.game.currentRoom.objects?.shop?.isOpen) {
               window.game.currentRoom.objects.shop.close();
@@ -482,7 +482,7 @@ export class Game {
               window.game.currentRoom.objects.enemies = window.game.currentRoom.objects.enemies.filter(
                 enemy => enemy.state !== 'dead'
               );
-              }
+            }
 
             console.log('Transition forced - try moving to right edge');
             return true;
@@ -494,28 +494,28 @@ export class Game {
                 console.error('Game or current room not found');
                 return null;
               }
-              
+
               const room = window.game.currentRoom;
               const fg = window.game.floorGenerator;
-              
+
               if (room.roomType !== 'boss') {
                 console.log('Not currently in a boss room');
                 return { error: 'Not in boss room' };
               }
-              
+
               const allEnemies = room.objects.enemies;
               const aliveEnemies = allEnemies.filter(e => e !== undefined && e !== null && e.state !== 'dead');
-              const bosses = allEnemies.filter(e => 
-                e.constructor.name.includes('Boss') || 
-                e.type === 'boss' || 
+              const bosses = allEnemies.filter(e =>
+                e.constructor.name.includes('Boss') ||
+                e.type === 'boss' ||
                 e.isBoss === true
               );
-              const aliveBosses = aliveEnemies.filter(e => 
-                e.constructor.name.includes('Boss') || 
-                e.type === 'boss' || 
+              const aliveBosses = aliveEnemies.filter(e =>
+                e.constructor.name.includes('Boss') ||
+                e.type === 'boss' ||
                 e.isBoss === true
               );
-              
+
               const status = {
                 floor: fg.getCurrentFloor(),
                 roomType: room.roomType,
@@ -538,7 +538,7 @@ export class Game {
                   constructor: e.constructor.name
                 }))
               };
-              
+
               console.log('BOSS ROOM STATUS:');
               console.table(status.enemies);
               console.log('Summary:', {
@@ -549,32 +549,32 @@ export class Game {
                 chestSpawned: status.chestSpawned,
                 chestCollected: status.chestCollected
               });
-              
+
               return status;
             },
             kill: () => {
               if (!window.game || !window.game.currentRoom) {
                 console.error('Game or current room not found');
-              return false;
-            }
+                return false;
+              }
 
               const room = window.game.currentRoom;
-              
+
               if (room.roomType !== 'boss') {
                 console.log('Not currently in a boss room');
                 return false;
               }
-              
-              const bosses = room.objects.enemies.filter(e => 
-                e.constructor.name.includes('Boss') || 
-                e.type === 'boss' || 
+
+              const bosses = room.objects.enemies.filter(e =>
+                e.constructor.name.includes('Boss') ||
+                e.type === 'boss' ||
                 e.isBoss === true
               );
-              
+
               if (bosses.length === 0) {
                 console.log('No bosses found in room');
                 return false;
-            }
+              }
 
               console.log(`Force killing ${bosses.length} boss(es)...`);
               bosses.forEach(boss => {
@@ -582,25 +582,25 @@ export class Game {
                 boss.health = 0;
                 boss.die();
               });
-              
+
               console.log('All bosses killed - check transition status');
-            return true;
-          },
+              return true;
+            },
             fix: () => {
               if (!window.game || !window.game.currentRoom) {
                 console.error('Game or current room not found');
-              return false;
-            }
+                return false;
+              }
 
               const room = window.game.currentRoom;
-              
+
               if (room.roomType !== 'boss') {
                 console.log('Not currently in a boss room');
-              return false;
-            }
-              
+                return false;
+              }
+
               console.log('Fixing boss room state...');
-              
+
               // Force kill all enemies
               room.objects.enemies.forEach(enemy => {
                 if (enemy.state !== 'dead') {
@@ -608,14 +608,14 @@ export class Game {
                   enemy.state = 'dead';
                 }
               });
-              
+
               // Set boss defeated flags
               window.game.bossJustDefeated = true;
               room.bossDefeated = true;
-              
+
               // Clean enemies array
               room.objects.enemies = room.objects.enemies.filter(e => e.state !== 'dead');
-              
+
               // Force collect chest if spawned
               if (room.chestSpawned && !room.chestCollected) {
                 room.chestCollected = true;
@@ -625,7 +625,7 @@ export class Game {
                 }
                 console.log('Chest automatically collected');
               }
-              
+
               console.log('Boss room fixed - should be able to transition now');
               return true;
             }
@@ -643,38 +643,38 @@ export class Game {
       console.log('  gameSessionDebug.boss.fix() - Fix boss room transition issues');
       console.log('  quickBossCheck() - Quick boss status check (global function)');
       console.log('  supersoldierDebug() - Detailed Supersoldier analysis (global function)');
-      
+
       // Add global quick boss check function
       window.quickBossCheck = () => {
         if (!window.game || !window.game.currentRoom) {
           console.log('No game or room found');
           return;
         }
-        
+
         const room = window.game.currentRoom;
-        
+
         if (room.roomType !== 'boss') {
           console.log('Not in boss room');
           return;
         }
-        
+
         const allEnemies = room.objects.enemies;
         const aliveEnemies = allEnemies.filter(e => e !== undefined && e !== null && e.state !== 'dead');
-        const bosses = allEnemies.filter(e => 
-          e.constructor.name.includes('Boss') || 
-          e.type === 'boss' || 
+        const bosses = allEnemies.filter(e =>
+          e.constructor.name.includes('Boss') ||
+          e.type === 'boss' ||
           e.isBoss === true ||
           e.constructor.name === 'DragonBoss' ||
           e.constructor.name === 'Supersoldier'
         );
-        const aliveBosses = aliveEnemies.filter(e => 
-          e.constructor.name.includes('Boss') || 
-          e.type === 'boss' || 
+        const aliveBosses = aliveEnemies.filter(e =>
+          e.constructor.name.includes('Boss') ||
+          e.type === 'boss' ||
           e.isBoss === true ||
           e.constructor.name === 'DragonBoss' ||
           e.constructor.name === 'Supersoldier'
         );
-        
+
         console.log('QUICK BOSS CHECK:');
         console.log(`Total enemies: ${allEnemies.length}`);
         console.log(`Alive enemies: ${aliveEnemies.length}`);
@@ -684,16 +684,16 @@ export class Game {
         console.log(`Boss defeated flag: ${window.game.bossJustDefeated}`);
         console.log(`Chest spawned: ${room.chestSpawned}`);
         console.log(`Chest collected: ${room.chestCollected}`);
-        
+
         if (aliveBosses.length > 0) {
           console.log('ALIVE BOSSES:');
           aliveBosses.forEach(boss => {
             console.log(`  - ${boss.constructor.name}: ${boss.health}/${boss.maxHealth} HP (state: ${boss.state})`);
           });
-              } else {
+        } else {
           console.log('No alive bosses found');
         }
-        
+
         if (room.chestSpawned && !room.chestCollected) {
           console.log('CHEST NEEDS TO BE COLLECTED');
         } else if (room.chestSpawned && room.chestCollected) {
@@ -701,7 +701,7 @@ export class Game {
         } else {
           console.log('No chest in this room');
         }
-        
+
         return {
           canTransition: room.canTransition(),
           aliveBosses: aliveBosses.length,
@@ -711,20 +711,20 @@ export class Game {
           chestCollected: room.chestCollected
         };
       };
-      
+
       // Add specific Supersoldier debug function
       window.supersoldierDebug = () => {
         if (!window.game || !window.game.currentRoom) {
           console.log('No game or room found');
           return;
         }
-        
+
         const room = window.game.currentRoom;
         const allEnemies = room.objects.enemies;
-        
+
         console.log('SUPERSOLDIER DEBUG:');
         console.log(`Total enemies in room: ${allEnemies.length}`);
-        
+
         allEnemies.forEach((enemy, index) => {
           console.log(`Enemy ${index + 1}:`, {
             name: enemy.constructor.name,
@@ -732,19 +732,19 @@ export class Game {
             health: `${enemy.health}/${enemy.maxHealth}`,
             state: enemy.state,
             isBoss: enemy.isBoss,
-            isDrone: enemy.constructor.name === 'Drone',
+            isDrone: enemy.constructor.name === 'Turret',
             isSupersoldier: enemy.constructor.name === 'Supersoldier'
           });
         });
-        
+
         const supersoldiers = allEnemies.filter(e => e.constructor.name === 'Supersoldier');
         const aliveSupersolders = supersoldiers.filter(e => e.state !== 'dead' && e.health > 0);
-        
+
         console.log(`Supersoldiers found: ${supersoldiers.length}`);
         console.log(`Alive Supersoldiers: ${aliveSupersolders.length}`);
         console.log(`Chest spawned: ${room.chestSpawned}`);
         console.log(`Chest collected: ${room.chestCollected}`);
-        
+
         return {
           totalEnemies: allEnemies.length,
           supersoldiers: supersoldiers.length,
@@ -1267,8 +1267,8 @@ export class Game {
 
     // SIMPLIFIED: Basic lock to prevent double transitions
     if (this.isTransitioning) {
-        console.log('Already transitioning - blocking');
-        return;
+      console.log('Already transitioning - blocking');
+      return;
     }
 
     try {
@@ -1280,23 +1280,23 @@ export class Game {
 
       if (wasInBossRoom) {
         console.log("ATTEMPTING BOSS ROOM TRANSITION - Performing final validation...");
-        
+
         // CRITICAL SAFETY CHECK: Verify boss is actually dead before proceeding
         const allEnemies = this.currentRoom.objects.enemies;
         const aliveEnemies = allEnemies.filter(e => e !== undefined && e !== null && e.state !== 'dead');
-        const aliveBosses = aliveEnemies.filter(e => 
-          e.constructor.name.includes('Boss') || 
-          e.type === 'boss' || 
+        const aliveBosses = aliveEnemies.filter(e =>
+          e.constructor.name.includes('Boss') ||
+          e.type === 'boss' ||
           e.isBoss === true ||
           e.constructor.name === 'DragonBoss' ||
           e.constructor.name === 'Supersoldier'
         );
-        
+
         // CHECK: Chest requirement
         const chestSpawned = this.currentRoom.chestSpawned;
         const chestCollected = this.currentRoom.chestCollected;
         const chestRequirementMet = !chestSpawned || chestCollected;
-        
+
         console.log('BOSS ROOM SAFETY CHECK:', {
           allEnemies: allEnemies.length,
           aliveEnemies: aliveEnemies.length,
@@ -1306,7 +1306,7 @@ export class Game {
           chestCollected: chestCollected,
           chestRequirementMet: chestRequirementMet
         });
-        
+
         if (aliveBosses.length > 0) {
           console.log('BLOCKING BOSS ROOM TRANSITION: Boss still alive!');
           return;
@@ -1318,7 +1318,7 @@ export class Game {
           return;
         } else {
           console.log('BOSS ROOM TRANSITION: All checks passed - advancing to next floor');
-          
+
           // FIXED: Handle boss room floor transition directly here - no recursive calls
           console.log("Boss defeated! Advancing to next floor...");
 
@@ -1333,27 +1333,27 @@ export class Game {
             currentRoomIndex: this.floorGenerator.getCurrentRoomIndex(),
             currentRun: this.floorGenerator.getCurrentRun()
           });
-          
+
           // CRITICAL FIX: Advance to next floor and WAIT for completion
           console.log("CALLING nextFloor() and waiting for completion...");
           const nextFloorResult = await this.floorGenerator.nextFloor();
-          
+
           if (!nextFloorResult && nextFloorResult !== undefined) {
             console.warn("Cannot advance to next floor - game completed or error");
             return;
           }
-          
+
           // CRITICAL: Add small delay to ensure complete state synchronization
           console.log("WAITING for state synchronization...");
           await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
-          
+
           // CRITICAL DEBUG: Log state after nextFloor()
           console.log("AFTER nextFloor():", {
             currentFloor: this.floorGenerator.getCurrentFloor(),
             currentRoomIndex: this.floorGenerator.getCurrentRoomIndex(),
             currentRun: this.floorGenerator.getCurrentRun()
           });
-          
+
           // CRITICAL FIX: Sync frontend run number after successful run completion
           const beforeRunNumber = this.runNumber;
           this.runNumber = this.floorGenerator.getCurrentRun();
@@ -1391,7 +1391,7 @@ export class Game {
       // CRITICAL FIX: Update game state with proper debugging
       console.log("UPDATING GAME STATE - Getting new current room...");
       const newCurrentRoom = this.floorGenerator.getCurrentRoom();
-      
+
       console.log("NEW ROOM INFO:", {
         roomType: newCurrentRoom ? newCurrentRoom.roomType : 'null',
         isCombatRoom: newCurrentRoom ? newCurrentRoom.isCombatRoom : 'null',
@@ -1399,30 +1399,30 @@ export class Game {
         roomIndex: this.floorGenerator.getCurrentRoomIndex(),
         roomTypesArray: this.floorGenerator.roomTypes
       });
-      
+
       this.currentRoom = newCurrentRoom;
-      
+
       // FIXED: Only call resetBossState() if the new room is actually a boss room
       if (this.currentRoom && this.currentRoom.roomType === 'boss') {
         console.log("New room IS a boss room - calling resetBossState()");
-            this.currentRoom.resetBossState();
+        this.currentRoom.resetBossState();
       } else {
         console.log("New room is NOT a boss room - skipping resetBossState()");
-          }
+      }
 
       // Update player position
-          this.player.setCurrentRoom(this.currentRoom);
-          this.player.position = this.currentRoom.getPlayerStartPosition();
-          this.player.velocity = new Vec(0, 0);
-          this.player.keys = [];
-      
+      this.player.setCurrentRoom(this.currentRoom);
+      this.player.position = this.currentRoom.getPlayerStartPosition();
+      this.player.velocity = new Vec(0, 0);
+      this.player.keys = [];
+
       // CRITICAL FIX: After successful floor transition, add a brief transition cooldown
       // to prevent immediate re-triggering of transitions
       if (wasInBossRoom) {
         console.log("Setting transition cooldown after floor completion to prevent immediate re-triggers");
         this.lastFloorTransition = Date.now();
         this.floorTransitionCooldown = 2000; // 2 second cooldown
-        
+
         // ADDITIONAL DEBUG: Verify player position and room state after floor transition
         console.log("AFTER FLOOR TRANSITION STATE:", {
           playerPosition: `(${Math.round(this.player.position.x)}, ${Math.round(this.player.position.y)})`,
@@ -1432,10 +1432,10 @@ export class Game {
           currentTime: Date.now()
         });
       }
-      
+
       // Update enemies
       this.enemies = this.currentRoom.objects.enemies;
-      
+
       // FINAL VERIFICATION: Ensure everything is in the expected state
       console.log("FINAL TRANSITION STATE:", {
         currentFloor: this.floorGenerator.getCurrentFloor(),
@@ -1478,42 +1478,42 @@ export class Game {
   // SIMPLIFIED: Non-blocking transition starter
   startRoomTransition(direction) {
     console.log(`ROOM TRANSITION INITIATED with direction: ${direction}`);
-    
+
     if (this.currentRoom.roomType === 'boss') {
       console.log('BOSS ROOM TRANSITION INITIATED');
-      
+
       // Last-chance safety check
       const allEnemies = this.currentRoom.objects.enemies;
-      const aliveBosses = allEnemies.filter(e => 
+      const aliveBosses = allEnemies.filter(e =>
         e !== undefined && e !== null && e.state !== 'dead' && (
-          e.constructor.name.includes('Boss') || 
-          e.type === 'boss' || 
+          e.constructor.name.includes('Boss') ||
+          e.type === 'boss' ||
           e.isBoss === true ||
           e.constructor.name === 'DragonBoss' ||
           e.constructor.name === 'Supersoldier'
         )
       );
-      
+
       // CHECK: Chest requirement
       const chestSpawned = this.currentRoom.chestSpawned;
       const chestCollected = this.currentRoom.chestCollected;
       const chestRequirementMet = !chestSpawned || chestCollected;
-      
+
       if (aliveBosses.length > 0) {
         console.log('EMERGENCY STOP: Boss still alive in startRoomTransition!');
         return; // Emergency stop
       }
-      
+
       if (!chestRequirementMet) {
         console.log('EMERGENCY STOP: Chest not collected in startRoomTransition!');
         return; // Emergency stop
       }
     }
-    
+
     this.handleRoomTransition(direction).catch(error => {
       console.error("Error in room transition:", error);
       this.isTransitioning = false; // Emergency cleanup
-      });
+    });
   }
 
   async update(deltaTime) {
@@ -1562,7 +1562,7 @@ export class Game {
     if (this.currentRoom?.objects.shop?.isOpen) {
       // FIXED: Allow player movement and transition checks even when shop is open
       this.player.update(deltaTime);
-      
+
       // Check wall collisions
       if (this.currentRoom.checkWallCollision(this.player)) {
         this.player.position = this.player.previousPosition;
@@ -1585,7 +1585,7 @@ export class Game {
         }
         this.startRoomTransition("right");
       }
-      
+
       return;
     }
 
@@ -1617,12 +1617,12 @@ export class Game {
     const playerAtRightEdge = this.currentRoom.isPlayerAtRightEdge(this.player);
     const notTransitioning = !this.isTransitioning;
     const canTransition = this.currentRoom.canTransition();
-    
+
     // CRITICAL FIX: Check for floor transition cooldown
     const now = Date.now();
-    const inFloorTransitionCooldown = this.lastFloorTransition && 
+    const inFloorTransitionCooldown = this.lastFloorTransition &&
       (now - this.lastFloorTransition < this.floorTransitionCooldown);
-    
+
     if (inFloorTransitionCooldown) {
       // Skip transition checks during cooldown period
       const remainingCooldown = Math.ceil((this.floorTransitionCooldown - (now - this.lastFloorTransition)) / 1000);
@@ -1638,23 +1638,23 @@ export class Game {
         const now = Date.now();
         if (!this.lastBossTransitionAttempt || now - this.lastBossTransitionAttempt > 5000) {
           console.log('BOSS ROOM TRANSITION TRIGGERED - Starting safety checks...');
-          
+
           // Double-check boss room state before allowing transition
           const allEnemies = this.currentRoom.objects.enemies;
           const aliveEnemies = allEnemies.filter(e => e !== undefined && e !== null && e.state !== 'dead');
-          const aliveBosses = aliveEnemies.filter(e => 
-            e.constructor.name.includes('Boss') || 
-            e.type === 'boss' || 
+          const aliveBosses = aliveEnemies.filter(e =>
+            e.constructor.name.includes('Boss') ||
+            e.type === 'boss' ||
             e.isBoss === true ||
             e.constructor.name === 'DragonBoss' ||
             e.constructor.name === 'Supersoldier'
           );
-          
+
           // CHECK: Chest requirement
           const chestSpawned = this.currentRoom.chestSpawned;
           const chestCollected = this.currentRoom.chestCollected;
           const chestRequirementMet = !chestSpawned || chestCollected;
-          
+
           console.log('BOSS ROOM SAFETY CHECK:', {
             allEnemies: allEnemies.length,
             aliveEnemies: aliveEnemies.length,
@@ -1664,7 +1664,7 @@ export class Game {
             chestCollected: chestCollected,
             chestRequirementMet: chestRequirementMet
           });
-          
+
           if (aliveBosses.length > 0) {
             console.log('GAME.JS BLOCKING BOSS ROOM TRANSITION: Boss still alive!');
             console.log('TIP: Defeat all bosses AND collect the chest to enable floor transition');
@@ -1690,7 +1690,7 @@ export class Game {
         this.startRoomTransition("right");
       }
     }
-    
+
     // FIXED: Only log boss room diagnostics when specifically needed and heavily throttled
     if (this.currentRoom.roomType === 'boss' && playerAtRightEdge && !canTransition) {
       // Only log once every 10 seconds to avoid spam
@@ -1699,7 +1699,7 @@ export class Game {
         console.log('BOSS ROOM: Player at right edge but cannot transition');
         console.log(`  - Can transition: ${canTransition}`);
         console.log('TIP: Defeat all bosses AND collect the chest to enable floor transition');
-        
+
         this.lastBossConditionLog = now;
       }
     }
@@ -1757,6 +1757,13 @@ export class Game {
 
   // Event listeners
   createEventListeners() {
+    addEventListener("mousemove", (e) => {
+      if (this.player && this.player.isAimingWithMouse) {
+        const rect = window.canvas.getBoundingClientRect();
+        this.player.mousePosition.x = e.clientX - rect.left;
+        this.player.mousePosition.y = e.clientY - rect.top;
+      }
+    });
     addEventListener("keydown", (e) => {
       const key = e.key.toLowerCase();
 
@@ -1872,14 +1879,14 @@ export class Game {
     try {
       const runId = localStorage.getItem('currentRunId');
       const testMode = localStorage.getItem('testMode') === 'true';
-      
+
       // Skip if no runId or in test mode
       if (!runId || testMode) {
         return;
       }
 
       const { updateRunStats } = await import('../../utils/api.js');
-      
+
       const statsData = {
         maxDamageHit: this.runStats.maxDamageHit,
         totalGoldEarned: this.runStats.totalGoldEarned,
@@ -1888,7 +1895,7 @@ export class Game {
 
       await updateRunStats(runId, statsData);
       console.log('Run stats synced with backend:', statsData);
-      
+
     } catch (error) {
       console.warn('Failed to sync run stats (non-critical):', error);
     }
@@ -2093,7 +2100,7 @@ export class Game {
 
     // Setup settings event listeners
     this.setupSettingsEventListeners();
-    
+
     // ENHANCED: Load saved settings when pause is opened
     this.loadGameSettings();
   }
@@ -2109,7 +2116,7 @@ export class Game {
     musicSlider?.addEventListener('input', (e) => {
       const volume = e.target.value;
       musicValue.textContent = volume + '%';
-      
+
       // Real-time audio update for immediate feedback
       if (this.audioManager) {
         this.audioManager.musicVolume = parseInt(volume) / 100;
@@ -2122,7 +2129,7 @@ export class Game {
     sfxSlider?.addEventListener('input', (e) => {
       const volume = e.target.value;
       sfxValue.textContent = volume + '%';
-      
+
       // Real-time audio update for immediate feedback
       if (this.audioManager) {
         this.audioManager.sfxVolume = parseInt(volume) / 100;
@@ -2153,18 +2160,18 @@ export class Game {
           console.log('Loading audio settings from backend for user:', userId);
           settings = await getPlayerSettings(parseInt(userId));
           console.log('Settings loaded from backend:', settings);
-          
+
           // CRITICAL FIX: Backend returns different field names
           if (settings && typeof settings === 'object') {
             // Normalize field names - backend uses different naming
             settings = {
               music_volume: settings.music_volume || settings.musicVolume || 0.7,
               sfx_volume: settings.sfx_volume || settings.sfxVolume || 0.8,
-              auto_save_enabled: settings.auto_save_enabled !== undefined ? 
-                settings.auto_save_enabled : 
+              auto_save_enabled: settings.auto_save_enabled !== undefined ?
+                settings.auto_save_enabled :
                 (settings.autoSaveEnabled !== undefined ? settings.autoSaveEnabled : true)
             };
-            
+
             console.log('Normalized backend settings:', settings);
           }
         } catch (error) {
@@ -2172,7 +2179,7 @@ export class Game {
           settings = null; // Ensure we try localStorage fallback
         }
       }
-      
+
       // Fallback to localStorage if backend fails or test mode
       if (!settings) {
         console.log('Trying localStorage fallback for audio settings...');
@@ -2200,7 +2207,7 @@ export class Game {
         const musicVolume = Math.round(Math.max(0, Math.min(100, (settings.music_volume || 0.7) * 100)));
         const sfxVolume = Math.round(Math.max(0, Math.min(100, (settings.sfx_volume || 0.8) * 100)));
         const autoSave = settings.auto_save_enabled !== false; // Default to true
-        
+
         // ENHANCED: Always update UI elements if pause overlay exists
         if (this.pauseOverlay) {
           const musicSlider = this.pauseOverlay.querySelector('#musicVolume');
@@ -2208,44 +2215,44 @@ export class Game {
           const musicValue = this.pauseOverlay.querySelector('#musicVolumeValue');
           const sfxValue = this.pauseOverlay.querySelector('#sfxVolumeValue');
           const autoSaveCheckbox = this.pauseOverlay.querySelector('#autoSave');
-          
+
           if (musicSlider) {
             musicSlider.value = musicVolume;
             if (musicValue) musicValue.textContent = musicVolume + '%';
           }
-          
+
           if (sfxSlider) {
             sfxSlider.value = sfxVolume;
             if (sfxValue) sfxValue.textContent = sfxVolume + '%';
           }
-          
+
           if (autoSaveCheckbox) {
             autoSaveCheckbox.checked = autoSave;
           }
         }
-        
+
         // CRITICAL FIX: Always update AudioManager with proper values
         if (this.audioManager) {
           const normalizedMusicVolume = Math.max(0, Math.min(1, settings.music_volume || 0.7));
           const normalizedSfxVolume = Math.max(0, Math.min(1, settings.sfx_volume || 0.8));
-          
+
           this.audioManager.musicVolume = normalizedMusicVolume;
           this.audioManager.sfxVolume = normalizedSfxVolume;
-          
+
           // ENHANCED: Update current playing music volume immediately
           if (this.audioManager.audio && !this.audioManager.audio.paused) {
             this.audioManager.audio.volume = normalizedMusicVolume;
           }
-          
+
           console.log('AudioManager updated with loaded settings:', {
             musicVolume: normalizedMusicVolume,
             sfxVolume: normalizedSfxVolume,
             source: userId && !testMode ? 'backend' : 'localStorage'
           });
         }
-        
+
         return true; // Settings loaded successfully
-        
+
       } else {
         // Use default settings
         console.log('Using default audio settings (no saved settings found)');
@@ -2256,7 +2263,7 @@ export class Game {
         }
         return false; // Using defaults
       }
-      
+
     } catch (error) {
       console.error('Error loading game settings:', error);
       // Use safe defaults on error
@@ -2295,7 +2302,7 @@ export class Game {
       // Use centralized enhanced logout
       console.log('Using enhanced logout for complete session cleanup...');
       const logoutSuccess = await enhancedLogout(sessionToken);
-      
+
       if (!logoutSuccess) {
         console.warn('Backend logout failed, but localStorage was cleared');
       }
@@ -2305,12 +2312,12 @@ export class Game {
 
     } catch (error) {
       console.error('Logout error:', error);
-      
+
       // Force logout even if save/logout API fails
       console.log('Force logout with emergency localStorage cleanup...');
       const { clearSessionLocalStorage } = await import('../../utils/api.js');
       clearSessionLocalStorage();
-      
+
       window.location.href = 'landing.html';
     }
   }
@@ -2358,7 +2365,7 @@ export class Game {
       // THEN load saved state
       await this.loadSavedState().then(() => {
         // FINALLY initialize objects with all data available
-        this.initObjects(); 
+        this.initObjects();
       }).catch(error => {
         console.error("Failed to load saved state, starting fresh:", error);
         this.initObjects(); // Fallback to fresh start
@@ -2772,10 +2779,10 @@ export class Game {
       const musicVolume = this.pauseOverlay.querySelector('#musicVolume').value;
       const sfxVolume = this.pauseOverlay.querySelector('#sfxVolume').value;
       const autoSave = this.pauseOverlay.querySelector('#autoSave').checked;
-      
+
       const saveBtn = this.pauseOverlay.querySelector('#saveSettings');
       const originalText = saveBtn.textContent;
-      
+
       // Show saving state
       saveBtn.textContent = 'Saving...';
       saveBtn.disabled = true;
@@ -2783,17 +2790,17 @@ export class Game {
       // Convert to normalized values for AudioManager (0-1)
       const normalizedMusicVolume = parseInt(musicVolume) / 100;
       const normalizedSfxVolume = parseInt(sfxVolume) / 100;
-      
+
       // Update AudioManager immediately for real-time feedback
       if (this.audioManager) {
         this.audioManager.musicVolume = normalizedMusicVolume;
         this.audioManager.sfxVolume = normalizedSfxVolume;
-        
+
         // Update current playing music volume if active
         if (this.audioManager.audio && !this.audioManager.audio.paused) {
           this.audioManager.audio.volume = normalizedMusicVolume;
         }
-        
+
         console.log('AudioManager updated with new volumes:', {
           musicVolume: normalizedMusicVolume,
           sfxVolume: normalizedSfxVolume
@@ -2803,62 +2810,62 @@ export class Game {
       // Save to backend
       const userId = localStorage.getItem('currentUserId');
       const testMode = localStorage.getItem('testMode') === 'true';
-      
+
       if (userId && !testMode) {
         // Import API functions
         const { updatePlayerSettings } = await import('../../utils/api.js');
-        
+
         // CRITICAL FIX: Use correct field names that backend expects
         const settingsData = {
           musicVolume: normalizedMusicVolume,    // Backend expects musicVolume (0-1 range)
           sfxVolume: normalizedSfxVolume,        // Backend expects sfxVolume (0-1 range)
           autoSaveEnabled: autoSave              // Backend expects autoSaveEnabled
         };
-        
+
         console.log('Saving settings to backend:', settingsData);
-        
+
         const result = await updatePlayerSettings(parseInt(userId), settingsData);
-        
+
         if (result.success) {
           console.log('Settings saved to backend successfully');
-          
+
           // Also save to localStorage as backup with UI format (0-100)
           localStorage.setItem('gameSettings', JSON.stringify({
             musicVolume: parseInt(musicVolume), // localStorage keeps 0-100 for UI
             sfxVolume: parseInt(sfxVolume),     // localStorage keeps 0-100 for UI
             autoSave: autoSave
           }));
-          
+
           // Show success feedback
           saveBtn.textContent = 'Saved!';
           saveBtn.style.backgroundColor = '#4CAF50';
-          
+
         } else {
           throw new Error(result.message || 'Failed to save settings');
         }
-        
+
       } else {
         console.log('Test mode or no user ID - saving locally only');
-        
+
         // Save to localStorage only (test mode or no user)
         localStorage.setItem('gameSettings', JSON.stringify({
           musicVolume: parseInt(musicVolume),
           sfxVolume: parseInt(sfxVolume),
           autoSave: autoSave
         }));
-        
+
         saveBtn.textContent = 'Saved locally!';
         saveBtn.style.backgroundColor = '#FF9800';
       }
-      
+
     } catch (error) {
       console.error('Failed to save settings:', error);
-      
+
       const saveBtn = this.pauseOverlay.querySelector('#saveSettings');
       saveBtn.textContent = 'Error - Try again';
       saveBtn.style.backgroundColor = '#F44336';
     }
-    
+
     // Reset button after delay
     setTimeout(() => {
       const saveBtn = this.pauseOverlay.querySelector('#saveSettings');

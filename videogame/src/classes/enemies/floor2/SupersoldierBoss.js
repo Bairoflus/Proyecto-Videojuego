@@ -1,7 +1,7 @@
 import { Boss } from "../../entities/Boss.js";
 import { Vec } from "../../../utils/Vec.js";
 import { variables } from "../../../config.js";
-import { Drone } from "./Drone.js";
+import { Turret } from "./Turret.js";
 
 export class Supersoldier extends Boss {
     constructor(position) {
@@ -10,21 +10,21 @@ export class Supersoldier extends Boss {
         const maxHp = 1000;
         const color = "#2a75f3"; // metallic blue
 
-        // Define attacks by phase: phase 1 = drones, phase 2 = shield, phase 3 = charged attack
+        // Define attacks by phase: phase 1 = turrets, phase 2 = shield, phase 3 = charged attack
         const attacks = [
             {
-                name: "Drone Summon",
+                name: "Turret Summon",
                 phase: 1,
                 cooldown: 12000, // 12s between summons
                 execute: (self) => {
-                    // Don't summon drones during initial delay period
+                    // Don't summon turrets during initial delay period
                     if (self.initialDelay) {
                         return;
                     }
-                    
-                    // Only summon if we haven't reached the drone limit
-                    if (self.drones.length < self.maxDrones) {
-                        // Calculate position for the new drone (around the boss)
+
+                    // Only summon if we haven't reached the turret limit
+                    if (self.turrets.length < self.maxTurrets) {
+                        // Calculate position for the new turret (around the boss)
                         const angle = Math.random() * Math.PI * 2; // Random angle
                         const distance = 100; // Distance from boss
                         const spawnPos = new Vec(
@@ -33,20 +33,22 @@ export class Supersoldier extends Boss {
                         );
 
                         // Clean and direct implementation
-                        const drone = new Drone(spawnPos);
-                        drone.setCurrentRoom(self.currentRoom);   // so room.update() handles it properly
-                        drone.parent = self;                      // for damage to boss
-                        self.currentRoom.objects.enemies.push(drone);
-                        self.drones.push(drone);
+                        const turret = new Turret(spawnPos);
+                        turret.setCurrentRoom(self.currentRoom); // so room.update() handles it properly
+                        turret.parent = self; // for damage to boss
+                        self.currentRoom.objects.enemies.push(turret);
+                        self.turrets.push(turret);
 
-                        console.log("Supersoldier has summoned a drone at position:",
-                            { x: Math.round(spawnPos.x), y: Math.round(spawnPos.y) });
+                        console.log("Supersoldier has summoned a turret at position:", {
+                            x: Math.round(spawnPos.x),
+                            y: Math.round(spawnPos.y),
+                        });
 
-                        console.log("Supersoldier has summoned a drone");
+                        console.log("Supersoldier has summoned a turret");
                     } else {
-                        console.log("Supersoldier already has maximum drones");
+                        console.log("Supersoldier already has maximum turrets");
                     }
-                }
+                },
             },
             {
                 name: "Shield Regen",
@@ -57,7 +59,7 @@ export class Supersoldier extends Boss {
                     if (self.initialDelay) {
                         return;
                     }
-                    
+
                     // Start gradual regeneration (100 total points)
                     self.isRegenerating = true;
                     self.totalRegenAmount = 100;
@@ -90,14 +92,15 @@ export class Supersoldier extends Boss {
                             }
 
                             if (self.currentRoom.originalCheckWallCollision) {
-                                self.currentRoom.checkWallCollision = self.currentRoom.originalCheckWallCollision;
+                                self.currentRoom.checkWallCollision =
+                                    self.currentRoom.originalCheckWallCollision;
                                 self.currentRoom.originalCheckWallCollision = null;
                             }
 
                             self.barrierWallRegistered = false;
                         }
                     }, 3000);
-                }
+                },
             },
             {
                 name: "Charged Shot",
@@ -108,7 +111,7 @@ export class Supersoldier extends Boss {
                     if (self.initialDelay) {
                         return;
                     }
-                    
+
                     // Start charged attack
                     self.isChargingShot = true;
                     self.chargeTime = 0;
@@ -132,12 +135,12 @@ export class Supersoldier extends Boss {
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     self.shotDirection = {
                         x: dx / distance,
-                        y: dy / distance
+                        y: dy / distance,
                     };
 
                     console.log("Supersoldier is charging a powerful shot");
-                }
-            }
+                },
+            },
         ];
 
         super(position, width, height, color, maxHp, attacks, "supersoldier");
@@ -160,9 +163,9 @@ export class Supersoldier extends Boss {
         this.shotDirection = null;
         this.laserColor = "red";
 
-        // Properties for drones
-        this.drones = [];
-        this.maxDrones = 2; // Maximum 2 active drones at once
+        // Properties for turrets
+        this.turrets = [];
+        this.maxTurrets = 2; // Maximum 2 active turrets at once
     }
 
     drawUI(ctx) {
@@ -185,16 +188,36 @@ export class Supersoldier extends Boss {
             // Draw barrier based on direction
             switch (this.shieldDir) {
                 case "up":
-                    ctx.fillRect(-barrierLength / 2, -this.height / 2 - barrierDistance - barrierThickness, barrierLength, barrierThickness);
+                    ctx.fillRect(
+                        -barrierLength / 2,
+                        -this.height / 2 - barrierDistance - barrierThickness,
+                        barrierLength,
+                        barrierThickness
+                    );
                     break;
                 case "down":
-                    ctx.fillRect(-barrierLength / 2, this.height / 2 + barrierDistance, barrierLength, barrierThickness);
+                    ctx.fillRect(
+                        -barrierLength / 2,
+                        this.height / 2 + barrierDistance,
+                        barrierLength,
+                        barrierThickness
+                    );
                     break;
                 case "left":
-                    ctx.fillRect(-this.width / 2 - barrierDistance - barrierThickness, - barrierLength / 2, barrierThickness, barrierLength);
+                    ctx.fillRect(
+                        -this.width / 2 - barrierDistance - barrierThickness,
+                        -barrierLength / 2,
+                        barrierThickness,
+                        barrierLength
+                    );
                     break;
                 case "right":
-                    ctx.fillRect(this.width / 2 + barrierDistance, - barrierLength / 2, barrierThickness, barrierLength);
+                    ctx.fillRect(
+                        this.width / 2 + barrierDistance,
+                        -barrierLength / 2,
+                        barrierThickness,
+                        barrierLength
+                    );
                     break;
             }
             ctx.restore();
@@ -209,7 +232,12 @@ export class Supersoldier extends Boss {
             if (this.chargeTime >= this.warningStartTime) {
                 // Fast blinking between red and yellow
                 const blinkRate = 100; // ms per blink
-                this.laserColor = Math.floor((this.chargeTime - this.warningStartTime) / blinkRate) % 2 === 0 ? "red" : "yellow";
+                this.laserColor =
+                    Math.floor((this.chargeTime - this.warningStartTime) / blinkRate) %
+                        2 ===
+                        0
+                        ? "red"
+                        : "yellow";
             } else {
                 this.laserColor = "red";
             }
@@ -260,7 +288,8 @@ export class Supersoldier extends Boss {
             this.chargeTime += deltaTime;
 
             // Update target position during the entire charge
-            if (window.game && window.game.player) { // Always follow player
+            if (window.game && window.game.player) {
+                // Always follow player
                 const player = window.game.player;
                 this.targetPosition = new Vec(
                     player.position.x + player.width / 2,
@@ -277,7 +306,7 @@ export class Supersoldier extends Boss {
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 this.shotDirection = {
                     x: dx / distance,
-                    y: dy / distance
+                    y: dy / distance,
                 };
             }
 
@@ -289,7 +318,13 @@ export class Supersoldier extends Boss {
         }
 
         // Chase player when not stunned, no active barrier, and not charging a shot
-        if (!this.stunned && !this.shieldDir && !this.isChargingShot && window.game && window.game.player) {
+        if (
+            !this.stunned &&
+            !this.shieldDir &&
+            !this.isChargingShot &&
+            window.game &&
+            window.game.player
+        ) {
             const player = window.game.player;
             const moveSpeed = 0.3; // Movement speed
 
@@ -301,8 +336,8 @@ export class Supersoldier extends Boss {
             // Only move if player is at a certain distance
             if (distance > 100) {
                 // Normalize and apply speed
-                const moveX = dx / distance * moveSpeed;
-                const moveY = dy / distance * moveSpeed;
+                const moveX = (dx / distance) * moveSpeed;
+                const moveY = (dy / distance) * moveSpeed;
 
                 // Move boss toward player
                 this.position.x += moveX;
@@ -317,9 +352,12 @@ export class Supersoldier extends Boss {
         }
 
         // Gradual health regeneration (up to 100 total points)
-        if (this.isRegenerating && this.currentRegenAmount < this.totalRegenAmount) {
+        if (
+            this.isRegenerating &&
+            this.currentRegenAmount < this.totalRegenAmount
+        ) {
             // 20 points per second = 20 * deltaTime / 1000 per frame
-            const regenAmount = 20 * deltaTime / 1000;
+            const regenAmount = (20 * deltaTime) / 1000;
             this.health = Math.min(this.maxHealth, this.health + regenAmount);
             this.currentRegenAmount += regenAmount;
 
@@ -329,23 +367,23 @@ export class Supersoldier extends Boss {
             }
         }
 
-        // Update drone list (remove destroyed ones)
-        if (this.drones.length > 0) {
-            // Filter destroyed drones
-            const destroyedDrones = this.drones.filter(drone => drone.health <= 0);
+        // Update turret list (remove destroyed ones)
+        if (this.turrets.length > 0) {
+            // Filter destroyed turrets
+            const destroyedTurrets = this.turrets.filter((turret) => turret.health <= 0);
 
-            // For each destroyed drone, damage the boss
-            destroyedDrones.forEach(drone => {
-                this.damageFromDrone();
+            // For each destroyed turret, damage the boss
+            destroyedTurrets.forEach((turret) => {
+                this.damageFromTurret();
             });
 
-            // Update the list of active drones
-            this.drones = this.drones.filter(drone => drone.health > 0);
+            // Update the list of active turrets
+            this.turrets = this.turrets.filter((turret) => turret.health > 0);
 
-            // Update each active drone
-            this.drones.forEach(drone => {
+            // Update each active turret
+            this.turrets.forEach((turret) => {
                 if (window.game && window.game.player) {
-                    drone.update(deltaTime, window.game.player, this.currentRoom);
+                    turret.update(deltaTime, window.game.player, this.currentRoom);
                 }
             });
         }
@@ -356,8 +394,8 @@ export class Supersoldier extends Boss {
                 const projectile = this.projectiles[i];
 
                 // Update position
-                projectile.position.x += projectile.velocity.x * deltaTime / 1000;
-                projectile.position.y += projectile.velocity.y * deltaTime / 1000;
+                projectile.position.x += (projectile.velocity.x * deltaTime) / 1000;
+                projectile.position.y += (projectile.velocity.y * deltaTime) / 1000;
 
                 // Update lifetime
                 projectile.timeAlive += deltaTime;
@@ -377,8 +415,8 @@ export class Supersoldier extends Boss {
                             x: projectile.position.x - projectile.radius,
                             y: projectile.position.y - projectile.radius,
                             width: projectile.radius * 2,
-                            height: projectile.radius * 2
-                        })
+                            height: projectile.radius * 2,
+                        }),
                     };
 
                     if (this.currentRoom.checkWallCollision(tempObj)) {
@@ -396,14 +434,25 @@ export class Supersoldier extends Boss {
                         x: projectile.position.x - projectile.radius,
                         y: projectile.position.y - projectile.radius,
                         width: projectile.radius * 2,
-                        height: projectile.radius * 2
+                        height: projectile.radius * 2,
                     };
 
-                    if (this.checkCollision({ position: playerHitbox, width: playerHitbox.width, height: playerHitbox.height }, projectileHitbox)) {
+                    if (
+                        this.checkCollision(
+                            {
+                                position: playerHitbox,
+                                width: playerHitbox.width,
+                                height: playerHitbox.height,
+                            },
+                            projectileHitbox
+                        )
+                    ) {
                         player.takeDamage(projectile.damage);
                         projectile.isActive = false;
                         this.projectiles.splice(i, 1);
-                        console.log(`Charged projectile hit player for ${projectile.damage} damage`);
+                        console.log(
+                            `Charged projectile hit player for ${projectile.damage} damage`
+                        );
                     }
                 }
             }
@@ -423,9 +472,13 @@ export class Supersoldier extends Boss {
                 case "up":
                     barrierHitbox = {
                         x: this.position.x - barrierLength / 2,
-                        y: this.position.y - this.height / 2 - barrierDistance - barrierThickness,
+                        y:
+                            this.position.y -
+                            this.height / 2 -
+                            barrierDistance -
+                            barrierThickness,
                         width: barrierLength,
-                        height: barrierThickness
+                        height: barrierThickness,
                     };
                     break;
                 case "down":
@@ -433,15 +486,19 @@ export class Supersoldier extends Boss {
                         x: this.position.x - barrierLength / 2,
                         y: this.position.y + this.height / 2 + barrierDistance,
                         width: barrierLength,
-                        height: barrierThickness
+                        height: barrierThickness,
                     };
                     break;
                 case "left":
                     barrierHitbox = {
-                        x: this.position.x - this.width / 2 - barrierDistance - barrierThickness,
+                        x:
+                            this.position.x -
+                            this.width / 2 -
+                            barrierDistance -
+                            barrierThickness,
                         y: this.position.y - barrierLength / 2,
                         width: barrierThickness,
-                        height: barrierLength
+                        height: barrierLength,
                     };
                     break;
                 case "right":
@@ -449,7 +506,7 @@ export class Supersoldier extends Boss {
                         x: this.position.x + this.width / 2 + barrierDistance,
                         y: this.position.y - barrierLength / 2,
                         width: barrierThickness,
-                        height: barrierLength
+                        height: barrierLength,
                     };
                     break;
             }
@@ -461,7 +518,7 @@ export class Supersoldier extends Boss {
                     x: barrierHitbox.x,
                     y: barrierHitbox.y,
                     width: barrierHitbox.width,
-                    height: barrierHitbox.height
+                    height: barrierHitbox.height,
                 };
 
                 // Add barrier to room walls
@@ -472,7 +529,8 @@ export class Supersoldier extends Boss {
 
                 // Extend room's checkWallCollision method to include temporary walls
                 if (!this.currentRoom.originalCheckWallCollision) {
-                    this.currentRoom.originalCheckWallCollision = this.currentRoom.checkWallCollision;
+                    this.currentRoom.originalCheckWallCollision =
+                        this.currentRoom.checkWallCollision;
                     this.currentRoom.checkWallCollision = function (obj) {
                         // First check collision with normal walls
                         if (this.originalCheckWallCollision(obj)) {
@@ -482,11 +540,12 @@ export class Supersoldier extends Boss {
                         // Then check collision with temporary walls
                         if (this.objects.temporaryWalls) {
                             const objHitbox = obj.getHitboxBounds();
-                            return this.objects.temporaryWalls.some(wall =>
-                                objHitbox.x + objHitbox.width > wall.x &&
-                                objHitbox.x < wall.x + wall.width &&
-                                objHitbox.y + objHitbox.height > wall.y &&
-                                objHitbox.y < wall.y + wall.height
+                            return this.objects.temporaryWalls.some(
+                                (wall) =>
+                                    objHitbox.x + objHitbox.width > wall.x &&
+                                    objHitbox.x < wall.x + wall.width &&
+                                    objHitbox.y + objHitbox.height > wall.y &&
+                                    objHitbox.y < wall.y + wall.height
                             );
                         }
 
@@ -499,8 +558,11 @@ export class Supersoldier extends Boss {
 
             // Check collisions with player projectiles
             if (window.game.projectiles) {
-                window.game.projectiles.forEach(projectile => {
-                    if (projectile.fromPlayer && this.checkCollision(projectile, barrierHitbox)) {
+                window.game.projectiles.forEach((projectile) => {
+                    if (
+                        projectile.fromPlayer &&
+                        this.checkCollision(projectile, barrierHitbox)
+                    ) {
                         projectile.destroy();
                     }
                 });
@@ -513,7 +575,8 @@ export class Supersoldier extends Boss {
 
             // Restore original collision check method
             if (this.currentRoom.originalCheckWallCollision) {
-                this.currentRoom.checkWallCollision = this.currentRoom.originalCheckWallCollision;
+                this.currentRoom.checkWallCollision =
+                    this.currentRoom.originalCheckWallCollision;
                 this.currentRoom.originalCheckWallCollision = null;
             }
 
@@ -536,11 +599,13 @@ export class Supersoldier extends Boss {
         }
     }
 
-    // Method to take damage when a drone is destroyed
-    damageFromDrone() {
-        const damageAmount = 50; // Fixed damage amount per drone
+    // Method to take damage when a turret is destroyed
+    damageFromTurret() {
+        const damageAmount = 50; // Fixed damage amount per turret
         this.health = Math.max(0, this.health - damageAmount);
-        console.log(`Supersoldier took ${damageAmount} damage from a destroyed drone`);
+        console.log(
+            `Supersoldier took ${damageAmount} damage from a destroyed turret`
+        );
 
         // Check if boss died from this damage
         if (this.health <= 0) {
@@ -567,7 +632,7 @@ export class Supersoldier extends Boss {
             fromPlayer: false,
             color: "yellow",
             lifetime: 3000, // 3 seconds lifetime
-            timeAlive: 0
+            timeAlive: 0,
         };
 
         // Add projectile to projectiles list
@@ -582,21 +647,27 @@ export class Supersoldier extends Boss {
         // Draw the boss
         super.draw(ctx);
 
-        // Draw drones
-        if (this.drones && this.drones.length > 0) {
-            this.drones.forEach(drone => {
-                if (drone && typeof drone.draw === 'function') {
-                    drone.draw(ctx);
+        // Draw turrets
+        if (this.turrets && this.turrets.length > 0) {
+            this.turrets.forEach((turret) => {
+                if (turret && typeof turret.draw === "function") {
+                    turret.draw(ctx);
                 }
             });
         }
 
         // Draw projectiles
         if (this.projectiles && this.projectiles.length > 0) {
-            this.projectiles.forEach(projectile => {
+            this.projectiles.forEach((projectile) => {
                 if (projectile.isActive) {
                     ctx.beginPath();
-                    ctx.arc(projectile.position.x, projectile.position.y, projectile.radius, 0, Math.PI * 2);
+                    ctx.arc(
+                        projectile.position.x,
+                        projectile.position.y,
+                        projectile.radius,
+                        0,
+                        Math.PI * 2
+                    );
                     ctx.fillStyle = projectile.color || "yellow";
                     ctx.fill();
 
@@ -607,7 +678,13 @@ export class Supersoldier extends Boss {
 
                     // Glow effect
                     ctx.beginPath();
-                    ctx.arc(projectile.position.x, projectile.position.y, projectile.radius * 1.5, 0, Math.PI * 2);
+                    ctx.arc(
+                        projectile.position.x,
+                        projectile.position.y,
+                        projectile.radius * 1.5,
+                        0,
+                        Math.PI * 2
+                    );
                     ctx.strokeStyle = "rgba(255, 255, 0, 0.3)";
                     ctx.lineWidth = 3;
                     ctx.stroke();
@@ -622,25 +699,36 @@ export class Supersoldier extends Boss {
             x: this.position.x,
             y: this.position.y,
             width: this.width,
-            height: this.height
+            height: this.height,
         };
     }
 
     // Helper function to check collisions
     checkCollision(entity, rect) {
         // Verify that both objects exist and have the necessary properties
-        if (!entity || !rect || !entity.position || !rect.x || !rect.y ||
-            rect.width === undefined || rect.height === undefined || entity.width === undefined || entity.height === undefined) {
+        if (
+            !entity ||
+            !rect ||
+            !entity.position ||
+            !rect.x ||
+            !rect.y ||
+            rect.width === undefined ||
+            rect.height === undefined ||
+            entity.width === undefined ||
+            entity.height === undefined
+        ) {
             return false;
         }
 
         // Use getHitboxBounds if available
-        const entityBounds = entity.getHitboxBounds ? entity.getHitboxBounds() : {
-            x: entity.position.x,
-            y: entity.position.y,
-            width: entity.width,
-            height: entity.height
-        };
+        const entityBounds = entity.getHitboxBounds
+            ? entity.getHitboxBounds()
+            : {
+                x: entity.position.x,
+                y: entity.position.y,
+                width: entity.width,
+                height: entity.height,
+            };
 
         return (
             entityBounds.x < rect.x + rect.width &&
