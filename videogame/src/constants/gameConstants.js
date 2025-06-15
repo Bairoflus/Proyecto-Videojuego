@@ -24,9 +24,9 @@ export const PLAYER_CONSTANTS = {
   INVULNERABILITY_DURATION: 1000, // ms
 
   // Attack constants
-  DAGGER_ATTACK_RANGE: 1000,
-  DAGGER_ATTACK_WIDTH: 1000,
-  DAGGER_ATTACK_DAMAGE: 1000,
+  DAGGER_ATTACK_RANGE: 50,
+  DAGGER_ATTACK_WIDTH: 50,
+  DAGGER_ATTACK_DAMAGE: 15,
   DAGGER_STAMINA_COST: 8,
 
   SLINGSHOT_DAMAGE: 15,
@@ -118,9 +118,9 @@ export const ENEMY_CONSTANTS_V2 = {
     speed: PLAYER_CONSTANTS.BASE_SPEED * 0.7,
     attackRange: 32,
     attackCooldown: 1000,
-    backendType: 'common' // Explicit mapping
+    backendType: "common", // Explicit mapping
   },
-  
+
   SWORD_GOBLIN: {
     size: { width: 32, height: 32 },
     health: 35,
@@ -128,9 +128,9 @@ export const ENEMY_CONSTANTS_V2 = {
     speed: PLAYER_CONSTANTS.BASE_SPEED * 0.6,
     attackRange: 45,
     attackCooldown: 1200,
-    backendType: 'common' // Explicit mapping
+    backendType: "common", // Explicit mapping
   },
-  
+
   // RANGED ENEMIES (map to 'rare')
   GOBLIN_ARCHER: {
     size: { width: 32, height: 32 },
@@ -141,9 +141,9 @@ export const ENEMY_CONSTANTS_V2 = {
     attackCooldown: 2000,
     projectileSpeed: 250,
     retreatDistance: 80,
-    backendType: 'rare' // Explicit mapping
+    backendType: "rare", // Explicit mapping
   },
-  
+
   MAGE_GOBLIN: {
     size: { width: 32, height: 32 },
     health: 25,
@@ -153,9 +153,9 @@ export const ENEMY_CONSTANTS_V2 = {
     attackCooldown: 2500,
     projectileSpeed: 200,
     retreatDistance: 100,
-    backendType: 'rare' // Explicit mapping
+    backendType: "rare", // Explicit mapping
   },
-  
+
   GREAT_BOW_GOBLIN: {
     size: { width: 32, height: 32 },
     health: 40,
@@ -165,8 +165,8 @@ export const ENEMY_CONSTANTS_V2 = {
     attackCooldown: 3000,
     projectileSpeed: 350,
     retreatDistance: 120,
-    backendType: 'rare' // Explicit mapping
-  }
+    backendType: "rare", // Explicit mapping
+  },
 };
 
 // Room constants
