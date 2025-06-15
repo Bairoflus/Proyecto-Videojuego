@@ -1,265 +1,348 @@
-# Game Refactoring Summary
+# Shattered Timeline - Complete Game Project
 
-## 1. Logging System Implementation
+A full-stack 2D action videogame built with vanilla JavaScript, HTML5 Canvas, Express.js, and MySQL. Features include real-time combat, progressive difficulty, persistent player progress, and comprehensive analytics dashboard.
 
-### Created Files:
-- `src/utils/Logger.js` - Configurable logging system with multiple log levels
+## Project Overview
 
-### Changes Made:
-- Replaced all `console.log`, `console.warn`, and `console.error` calls with the new logging system
-- Log levels: ERROR (0), WARN (1), INFO (2), DEBUG (3), VERBOSE (4)
-- Removed repetitive logs (collision detection, transition zones)
-- Combat logs moved to VERBOSE level to reduce spam
-- Important events (room transitions, enemy deaths) remain at INFO level
+**Shattered Timeline** is a dungeon-crawler action game where players battle through procedurally generated floors, defeat bosses, upgrade weapons, and gain permanent character improvements. The game features a complete backend with user authentication, save state management, analytics tracking, and an administrative dashboard for monitoring player activity.
 
-## 2. Project Structure Reorganization
+### Game Features
+- **3 Floors** with 6 rooms each (18 total rooms per run)
+- **Combat System** with melee and ranged weapons
+- **Progressive Difficulty** with floor-specific enemies and bosses
+- **Weapon Upgrades** (temporary per run) and **Permanent Character Upgrades**
+- **Save State System** for session continuity
+- **Real-time Analytics** and player statistics
+- **Admin Dashboard** for game monitoring and analytics
 
-### New Folder Structure:
-```
-src/classes/
-├── entities/        # All game entities
-│   ├── Player.js
-│   ├── Enemy.js
-│   ├── MeleeEnemy.js
-│   ├── RangedEnemy.js
-│   ├── Projectile.js
-│   ├── Coin.js
-│   ├── Chest.js     # NEW: Gold chest entity
-│   ├── GameObject.js
-│   └── AnimatedObject.js
-├── enemies/         # Enemy type implementations
-│   └── floor1/
-│       ├── GoblinArcher.js
-│       └── GoblinDagger.js
-├── rooms/           # Room system
-│   ├── Room.js
-│   └── combatRooms.js
-├── game/            # Core game systems
-│   ├── Game.js
-│   └── FloorGenerator.js
-├── utils/           # Utility classes and functions
-│   ├── Vec.js
-│   ├── Rect.js
-│   ├── TextLabel.js
-│   └── utils.js
-└── config/          # Configuration files
-    └── gameConfig.js
-```
+## Quick Start Guide
 
-### Import Path Updates:
-- All files updated to use the new folder structure
-- Relative imports now properly reflect the new organization
-- Added proper file documentation headers in English
+### Prerequisites
+- **Node.js** v14 or higher
+- **MySQL** Server 8.0 or higher
+- Modern web browser with ES6 module support
 
-## 3. Performance Optimizations
+### Complete Setup (5 Steps)
 
-### Implemented Optimizations:
-1. **Removed Redundant Logs**: Eliminated logs that fire every frame or on common events
-2. **Event-Driven Updates**: Room state only updates on significant events (enemy death, transitions)
-3. **Early Returns**: Already implemented in collision detection and movement methods
-
-### Configuration System:
-- Created `gameConfig.js` for centralized game settings
-- Allows runtime configuration changes
-- Separates game balance constants from code
-
-## 4. Code Documentation
-
-### Added Documentation:
-- File-level documentation for all classes explaining their purpose
-- All comments and documentation in English
-- Clear explanation of class relationships and responsibilities
-
-## 5. Gold Chest System Implementation
-
-### New Features:
-- **Gold Chest Entity**: New `Chest` class that spawns after clearing all enemies in combat rooms
-- **Gold Currency**: Players now collect and accumulate gold (150 per chest)
-- **Persistent Gold**: Gold persists across rooms but resets to 0 on death
-- **Visual Feedback**: Gold counter displayed in top-right corner of screen
-
-### Technical Implementation:
-1. **Chest Spawning**:
-   - Automatically spawns when last enemy dies in combat room
-   - Positioned near transition zone but not blocking it
-   - Only spawns once per room (tracked via `chestSpawned` flag)
-
-2. **Gold Management**:
-   - Player class now has `gold` property
-   - `addGold()` method for collecting rewards
-   - Gold resets to 0 on death via `resetGold()`
-
-3. **Room State Persistence**:
-   - Chest state saved when leaving room (`chestSpawned`, `chestCollected`)
-   - Prevents chest respawning on room re-entry
-   - Integrated with existing room state system
-
-4. **Visual Elements**:
-   - Chest rendered with golden glow effect
-   - Gold counter UI in top-right corner
-   - Debug hitboxes available for testing
-
-### Usage:
-```javascript
-// Player automatically receives gold when touching chest
-player.addGold(150); // Called internally by Chest.collect()
-
-// Check player's current gold
-const currentGold = player.getGold();
-
-// Gold automatically resets on death
-player.resetGold(); // Called during death reset
-```
-
-### Future Expansion:
-- Gold amount is stored in `Chest.goldReward` for easy modification
-- Ready for upgrade system to modify gold rewards
-- Can easily add different chest types with varying rewards
-
-## 6. Benefits of Refactoring
-
-### Maintainability:
-- Clear folder structure makes finding files easier
-- Related files grouped together
-- Separation of concerns (entities, game logic, utilities)
-
-### Performance:
-- Configurable logging reduces console output overhead
-- No more frame-by-frame spam logs
-- Cleaner console output for actual debugging
-
-### Scalability:
-- Easy to add new enemy types in `enemies/` folder
-- Room types can be extended in `rooms/` folder
-- Utilities are centralized and reusable
-- Configuration system allows easy tweaking without code changes
-
-## 7. Usage Examples
-
-### Logging:
-```javascript
-import { log } from './utils/Logger.js';
-
-// Different log levels
-log.error('Critical error occurred');
-log.warn('Something might be wrong');
-log.info('Important event happened');
-log.debug('Debugging information');
-log.verbose('Detailed trace information');
-
-// Configure logging
-log.setLevel(log.LEVELS.WARN); // Only show warnings and errors
-log.setEnabled(false); // Disable all logging for production
-```
-
-### Configuration:
-```javascript
-import { gameConfig, updateConfig } from './classes/config/gameConfig.js';
-
-// Access configuration
-const playerHealth = gameConfig.balance.player.baseHealth;
-
-// Update configuration at runtime
-updateConfig('debug.showHitboxes', true);
-updateConfig('logging.level', 3); // Set to DEBUG
-```
-
-## 8. Next Steps
-
-### Recommended Future Improvements:
-1. Create separate room type classes (ShopRoom, BossRoom) extending base Room
-2. Implement object pooling for projectiles to reduce garbage collection
-3. Add state management system for game states (menu, playing, paused, game over)
-4. Create factory classes for entity creation
-5. Implement proper asset loading system
-6. Add unit tests for utility functions
-7. Create development vs production build configurations
-8. Implement shop system using accumulated gold
-9. Add more chest types with different rewards
-10. Create upgrade system that affects gold rewards
-
-## 9. Shop System Implementation
-
-### Overview
-The shop system provides a way for players to spend their accumulated gold on upgrades and health restoration. Shop rooms appear once per floor (room 5 out of 6) and automatically open when the player approaches the center of the room.
-
-### Features
-
-#### Shop Options:
-1. **Primary Weapon Upgrade (Melee)**
-   - Cost: 35 gold
-   - Effect: +3 melee damage per upgrade
-   - Limit: 15 upgrades per run
+1. **Setup Database**
+   ```bash
+   # Connect to MySQL
+   mysql -u root -p
    
-2. **Secondary Weapon Upgrade (Ranged)**
-   - Cost: 40 gold
-   - Effect: +4 ranged damage per upgrade
-   - Limit: 15 upgrades per run
+   # Execute database scripts in order
+   SOURCE /path/to/videogame/database/dbshatteredtimeline.sql;
+   SOURCE /path/to/videogame/database/objects.sql;
+   SOURCE /path/to/videogame/database/admin_user_setup.sql;
+   ```
+
+2. **Configure API**
+   ```bash
+   cd videogame/api
+   npm install
    
-3. **Full Health Restoration**
-   - Cost: 50 gold
-   - Effect: Restores HP to maximum
-   - Limit: No limit
+   # Edit app.js lines 18-23 to match your MySQL settings
+   # Default: host: localhost, user: tc2005b, password: qwer1234
+   ```
 
-#### Controls:
-- **W/S or ↑/↓**: Navigate between options
-- **Enter**: Purchase selected option
-- **ESC**: Exit shop
+3. **Start Backend API**
+   ```bash
+   cd videogame/api
+   npm start
+   # API will run on http://localhost:3000
+   ```
 
-#### Purchase Rules:
-- Purchases blocked if insufficient gold
-- Upgrade counters persist for entire run (reset on death)
-- Disabled options shown in gray
-- Visual feedback for affordable/unaffordable items
+4. **Start Frontend Server**
+   ```bash
+   cd videogame/src
+   node server.js
+   # Frontend will run on http://localhost:8080
+   ```
 
-### Technical Implementation
+5. **Access the Game**
+   - **Play Game:** `http://localhost:8080/`
+   - **Admin Dashboard:** `http://localhost:8080/pages/html/admin.html`
+   - **Admin Credentials:** Username: `admin`, Password: `admin123`
 
-#### New Files:
-- `src/classes/entities/Shop.js` - Shop class handling UI and purchase logic
+## Project Structure
 
-#### Modified Files:
-- `Player.js` - Added `meleeDamageBonus` and `rangedDamageBonus` properties
-- `Room.js` - Added shop creation and rendering logic
-- `Game.js` - Added shop input handling and state management
-- `FloorGenerator.js` - Passes room type when creating rooms
-
-#### Integration:
-```javascript
-// Shop automatically opens when player enters shop room center
-// Player damage calculation now includes bonuses:
-const meleeDamage = DAGGER_ATTACK_DAMAGE + this.meleeDamageBonus;
-const rangedDamage = 15 + this.rangedDamageBonus;
+```
+videogame/
+├── README.md                    # This overview document
+├── api/                         # Backend API (Express.js + MySQL)
+│   ├── README.md               # API documentation and endpoints
+│   ├── app.js                  # Main API server (47 endpoints)
+│   ├── package.json            # Node.js dependencies
+│   └── package-lock.json       # Lock file for dependencies
+├── database/                    # Database structure and setup
+│   ├── README.md               # Database documentation
+│   ├── dbshatteredtimeline.sql # Main database schema (12 tables)
+│   ├── objects.sql             # Views, triggers, procedures (25+ views)
+│   ├── admin_user_setup.sql    # Admin user creation
+│   └── ERDV4.pdf              # Entity Relationship Diagram
+├── src/                        # Frontend source code
+│   ├── README.md               # Frontend documentation
+│   ├── server.js               # Development HTTP server
+│   ├── main.js                 # Game entry point
+│   ├── config.js               # Game configuration
+│   ├── assets/                 # Game assets (sprites, audio, backgrounds)
+│   ├── pages/                  # HTML pages, CSS, and page scripts
+│   ├── classes/                # Core game logic and entities
+│   ├── utils/                  # Utility functions and managers
+│   ├── constants/              # Game constants and enumerations
+│   └── ui/                     # Reusable UI components
+└── [other project files]       # Additional documentation and assets
 ```
 
-### Usage Example:
-```javascript
-// Shop is created automatically in shop rooms
-// Players interact by moving to room center
-// All input handling is automatic via Game class
+## Core Components
 
-// Check current upgrades (for debugging)
-const upgrades = shop.getUpgradeCounts();
-console.log(`Melee upgrades: ${upgrades.melee}/15`);
-console.log(`Ranged upgrades: ${upgrades.ranged}/15`);
-```
+### Frontend (`src/`)
+**Technology:** Vanilla JavaScript, HTML5 Canvas, ES6 Modules  
+**Size:** 50+ files, ~500KB of source code
 
-### Visual Design:
-- Dark semi-transparent background overlay
-- Colored selection highlighting
-- Gold counter display
-- Purchase limits shown as fractions (e.g., "3/15")
-- Clear disabled state for maxed/unaffordable options
+**Key Features:**
+- **Game Engine:** Complete 2D game engine with sprite animation
+- **Player System:** Movement, combat, health, stamina, weapon switching
+- **Enemy AI:** Multiple enemy types with different behaviors
+- **Shop System:** Weapon upgrade purchasing with gold currency
+- **Save System:** Automatic and manual game state persistence
+- **Audio System:** Background music and sound effects
+- **UI Framework:** Menus, HUD, pause system, settings interface
 
-## 10. Next Steps
+**Major Files:**
+- `Game.js` (106KB) - Main game engine coordinating all systems
+- `Player.js` (55KB) - Complete player character implementation
+- `FloorGenerator.js` (26KB) - Level generation and progression
+- `api.js` (29KB) - Complete backend integration client
 
-### Recommended Future Improvements:
-1. Create separate room type classes (ShopRoom, BossRoom) extending base Room
-2. Implement object pooling for projectiles to reduce garbage collection
-3. Add state management system for game states (menu, playing, paused, game over)
-4. Create factory classes for entity creation
-5. Implement proper asset loading system
-6. Add unit tests for utility functions
-7. Create development vs production build configurations
-8. Implement shop system using accumulated gold
-9. Add more chest types with different rewards
-10. Create upgrade system that affects gold rewards 
+### Backend API (`api/`)
+**Technology:** Express.js, MySQL, bcrypt  
+**Size:** 47 REST endpoints, 1,897 lines of code
+
+**Key Features:**
+- **Authentication:** User registration, login, session management
+- **Game State:** Save/load player progress, weapon upgrades
+- **Analytics:** Player statistics, leaderboards, progression tracking
+- **Admin API:** Real-time monitoring, dashboard data
+- **Security:** Password hashing, session tokens, role-based access
+
+**Endpoint Categories:**
+- Authentication (3 endpoints)
+- User Management (5 endpoints)
+- Game Run Management (3 endpoints)
+- Combat & Events (3 endpoints)
+- Permanent & Weapon Upgrades (5 endpoints)
+- Save State Management (3 endpoints)
+- Analytics & Leaderboards (6 endpoints)
+- Admin Panel & Charts (19 endpoints)
+
+### Database (`database/`)
+**Technology:** MySQL 8.0, InnoDB engine  
+**Size:** 12 tables, 25+ views, comprehensive indexes
+
+**Key Features:**
+- **User Management:** Authentication, sessions, settings
+- **Game Progress:** Run tracking, persistent counters, save states
+- **Upgrade Systems:** Permanent upgrades, temporary weapon upgrades
+- **Analytics:** Detailed tracking of kills, purchases, playtime
+- **Admin Views:** Optimized queries for dashboard analytics
+
+**Database Structure:**
+- **Authentication:** `users`, `sessions`
+- **Game State:** `save_states`, `user_run_progress`, `permanent_player_upgrades`
+- **Analytics:** `player_stats`, `run_history`, `enemy_kills`, `boss_kills`
+- **Configuration:** `player_settings`
+
+## Game Mechanics
+
+### Core Gameplay Loop
+1. **Character Creation:** Register account and start first run
+2. **Room Progression:** Battle through 6 rooms per floor
+3. **Combat:** Use melee and ranged weapons against various enemies
+4. **Shopping:** Spend gold on temporary weapon upgrades
+5. **Boss Battles:** Defeat floor bosses for permanent upgrades
+6. **Floor Progression:** Advance through 3 increasingly difficult floors
+7. **Run Completion:** Complete run or restart on death with permanent upgrades
+
+### Progression Systems
+
+#### Temporary Upgrades (Per Run)
+- **Weapon Levels:** Increase damage for current run only
+- **Gold Currency:** Earned by defeating enemies, spent in shops
+- **Room Progression:** Linear advancement through floor rooms
+
+#### Permanent Upgrades (Persistent)
+- **Health Boost:** +15 Maximum Health per upgrade
+- **Stamina Boost:** +20 Maximum Stamina per upgrade
+- **Movement Speed:** Percentage increase in movement speed
+- **Progression:** Earned by defeating bosses, persist across runs
+
+### Technical Systems
+
+#### Save State Management
+- **Automatic Saving:** Every 30 seconds during gameplay
+- **Manual Saving:** On room transitions and significant events
+- **Session Restoration:** Continue where you left off after logout
+- **Data Validation:** Integrity checks for save state data
+
+#### Analytics Tracking
+- **Player Statistics:** Kills, damage dealt, playtime, gold earned
+- **Run History:** Complete records of all game attempts
+- **Performance Metrics:** Max damage hits, completion rates
+- **Admin Monitoring:** Real-time player activity tracking
+
+## Development Architecture
+
+### Frontend Architecture
+- **Module System:** ES6 modules with clear dependency management
+- **Class Hierarchy:** Object-oriented design for game entities
+- **Event System:** Keyboard input, collision detection, state changes
+- **Rendering Pipeline:** Optimized Canvas 2D with sprite animations
+- **State Management:** Game state, UI state, player progress
+
+### Backend Architecture
+- **REST API:** RESTful endpoints with standardized JSON responses
+- **Database ORM:** Direct MySQL queries with connection pooling
+- **Authentication:** Session-based auth with bcrypt password hashing
+- **Error Handling:** Comprehensive error catching and user feedback
+- **Logging:** Development and production logging systems
+
+### Database Design
+- **Normalization:** 3NF compliant schema design
+- **Referential Integrity:** Foreign key constraints throughout
+- **Performance:** Strategic indexing for frequently queried data
+- **Views:** Pre-computed complex queries for dashboard performance
+- **Triggers:** Automatic data management and validation
+
+## Administrative Features
+
+### Admin Dashboard
+**Access:** `http://localhost:8080/pages/html/admin.html`  
+**Credentials:** admin/admin123 or devteam/devteam2024
+
+**Features:**
+- **Player Monitoring:** Real-time active players and current games
+- **Analytics:** Player progression, upgrade adoption, playtime stats
+- **Leaderboards:** Top players by various metrics
+- **Charts:** Activity trends, session duration, player distribution
+- **System Status:** Database health, API performance monitoring
+
+### Debug Tools
+- **Console Commands:** Developer debugging interface in-game
+- **State Inspection:** Real-time game state debugging
+- **Room Debugging:** Force transitions, enemy manipulation
+- **Session Management:** User session debugging and recovery
+
+## Browser Compatibility
+
+### Supported Browsers
+- **Chrome** 88+ (recommended)
+- **Firefox** 84+
+- **Safari** 14+
+- **Edge** 88+
+
+### Required Features
+- ES6 Modules support
+- HTML5 Canvas and 2D Context
+- Web Audio API
+- Fetch API for HTTP requests
+- Local Storage API
+
+## Performance Specifications
+
+### Frontend Performance
+- **Target FPS:** 60 FPS gameplay
+- **Memory Usage:** <100MB typical, <200MB maximum
+- **Load Time:** <5 seconds on modern connections
+- **Asset Size:** ~50MB total assets (sprites, audio, backgrounds)
+
+### Backend Performance
+- **API Response Time:** <100ms average
+- **Database Queries:** <50ms average for complex queries
+- **Concurrent Users:** Tested up to 50 simultaneous players
+- **Session Management:** 24-hour session expiration
+
+## Security Features
+
+### Frontend Security
+- **Input Validation:** Client-side validation with server verification
+- **XSS Prevention:** Proper data sanitization and encoding
+- **CORS Configuration:** Restricted cross-origin requests
+- **Session Validation:** Token-based authentication
+
+### Backend Security
+- **Password Security:** bcrypt hashing with 10 salt rounds
+- **SQL Injection Prevention:** Parameterized queries throughout
+- **Session Management:** UUID tokens with expiration
+- **Role-Based Access:** Player and admin role differentiation
+- **Rate Limiting:** Protection against API abuse
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Database Connection Errors**
+   - Verify MySQL server is running
+   - Check credentials in `api/app.js`
+   - Ensure database `dbshatteredtimeline` exists
+
+2. **Frontend Not Loading**
+   - Confirm both servers are running (ports 3000 and 8080)
+   - Check browser console for ES6 module errors
+   - Verify CORS settings and file permissions
+
+3. **Game Performance Issues**
+   - Check browser developer tools for memory leaks
+   - Ensure hardware acceleration is enabled
+   - Close other browser tabs for better performance
+
+4. **Save State Problems**
+   - Check API connectivity and authentication
+   - Verify localStorage is not disabled
+   - Clear browser cache and try again
+
+### Support Resources
+- **API Documentation:** `api/README.md`
+- **Frontend Documentation:** `src/README.md`
+- **Database Documentation:** `database/README.md`
+- **Console Debugging:** Use browser developer tools and in-game debug commands
+
+## Development Status
+
+### Current Version
+- **Frontend:** v3.0 - Complete game engine with full feature set
+- **Backend:** v2.0 - Optimized API with comprehensive analytics
+- **Database:** v3.0 - Enhanced schema with run persistence
+
+### Recent Features
+- Complete save state system with session restoration
+- Permanent upgrade system with boss rewards
+- Admin dashboard with real-time analytics
+- Enhanced error handling and recovery systems
+- Performance optimizations for long play sessions
+
+### Technical Debt
+- Legacy game engine kept for reference (`Game.legacy.js`)
+- Some duplicate code between game systems
+- CSS could be better organized and modularized
+- Asset optimization for better loading performance
+
+## License & Credits
+
+### Development Team
+- **Game Engine:** Custom 2D engine built with HTML5 Canvas
+- **Backend:** Express.js with MySQL database
+- **Art Assets:** Sprite collections and background images
+- **Audio:** Background music and sound effect libraries
+
+### Third-Party Libraries
+- **Express.js** - Backend web framework
+- **MySQL2** - Database connectivity
+- **bcrypt** - Password hashing
+- **Native Browser APIs** - Canvas, Web Audio, Fetch, LocalStorage
+
+---
+
+**Project Type:** Educational/Academic Game Development  
+**Target Audience:** Developers learning full-stack game development  
+**Complexity Level:** Intermediate to Advanced  
+**Development Time:** Approximately 6 months for complete implementation 

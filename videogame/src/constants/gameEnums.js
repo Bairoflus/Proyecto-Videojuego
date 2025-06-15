@@ -1,13 +1,13 @@
 // ===================================================
 // GAME ENUMS - SHATTERED TIMELINE
 // ===================================================
-// Objetivo: Centralizar enums que antes estaban en BD
-// Beneficio: Mejor rendimiento, menos queries a BD
+// Objectives: Centralize enums that were previously in the DB
+// Benefits: Better performance, less queries to the DB
 // ===================================================
 
 export const GAME_ENUMS = {
   // ===================================================
-  // TIPOS DE EVENTOS DEL JUEGO
+  // GAME EVENT TYPES
   // ===================================================
   EVENT_TYPES: [
     "game_start", // Inicio de nueva partida
@@ -27,62 +27,61 @@ export const GAME_ENUMS = {
   ],
 
   // ===================================================
-  // TIPOS DE MEJORAS PERMANENTES
+  // PERMANENT UPGRADE TYPES
   // ===================================================
   UPGRADE_TYPES: [
-    "health_max", // Mejora HP máximo
-    "stamina_max", // Mejora Stamina máximo
-    "movement_speed", // Mejora velocidad de movimiento
+    'health_max',        // Health max upgrade
+    'stamina_max'        // Stamina max upgrade
   ],
 
   // ===================================================
-  // TIPOS DE ARMAS
+  // WEAPON TYPES
   // ===================================================
   WEAPON_SLOTS: ["melee", "ranged"],
 
   // ===================================================
-  // RESULTADOS DE COMBATE CON JEFES
+  // BOSS COMBAT RESULTS
   // ===================================================
   BOSS_RESULTS: [
-    "victory", // Victoria
-    "defeat", // Derrota
-    "escape", // Escape
-    "timeout", // Tiempo agotado
+    'victory',           // Victory
+    'defeat',            // Defeat
+    'escape',            // Escape
+    'timeout'            // Timeout
   ],
 
   // ===================================================
-  // TIPOS DE HABITACIONES
+  // ROOM TYPES
   // ===================================================
   ROOM_TYPES: ["combat", "shop", "boss"],
 
   // ===================================================
-  // CAUSAS DE MUERTE
+  // DEATH CAUSES
   // ===================================================
   DEATH_CAUSES: [
-    "enemy_kill", // Muerto por enemigo
-    "boss_kill", // Muerto por jefe
-    "timeout", // Timeout de sesión
-    "disconnect", // Desconexión
-    "active", // Run activo (no muerto)
+    'enemy_kill',        // Killed by enemy
+    'boss_kill',         // Killed by boss
+    'timeout',           // Session timeout
+    'disconnect',        // Connection lost
+    'active'             // Run active (not dead)
   ],
 
   // ===================================================
-  // TIPOS DE ENEMIGOS
+  // ENEMY TYPES
   // ===================================================
   ENEMY_TYPES: [
-    "basic", // Enemigo básico
-    "strong", // Enemigo fuerte
+    'basic',             // Basic enemy
+    'strong'             // Strong enemy
   ],
 
   // ===================================================
-  // TIPOS DE JEFES
+  // BOSS TYPES
   // ===================================================
   BOSS_TYPES: [
-    "dragon", // Jefe dragón (único actual)
+    'dragon'             // Dragon boss (only one currently)
   ],
 
   // ===================================================
-  // CONFIGURACIÓN DE MEJORAS PERMANENTES
+  // PERMANENT UPGRADES CONFIGURATION
   // ===================================================
   PERMANENT_UPGRADES: {
     health_max: {
@@ -94,19 +93,13 @@ export const GAME_ENUMS = {
     stamina_max: {
       name: "Stamina Boost",
       value: 20,
-      description: "+20 Maximum Stamina",
-      icon: "💪",
-    },
-    movement_speed: {
-      name: "Speed Boost",
-      value: 0.1,
-      description: "+10% Movement Speed",
-      icon: "💨",
-    },
+      description: '+20 Maximum Stamina',
+      icon: '💪'
+    }
   },
 
   // ===================================================
-  // CONFIGURACIÓN DE NIVELES DE ARMAS
+  // WEAPON LEVELS CONFIGURATION
   // ===================================================
   WEAPON_LEVELS: {
     MIN_LEVEL: 1,
@@ -122,19 +115,18 @@ export const GAME_ENUMS = {
   },
 
   // ===================================================
-  // CONFIGURACIÓN DE COSTOS DE TIENDA
+  // SHOP COSTS CONFIGURATION
   // ===================================================
   SHOP_COSTS: {
-    // Costo base para nivel 1, se incrementa por nivel
     BASE_COST: {
       melee: 10,
       ranged: 12,
     },
-    COST_MULTIPLIER: 1.5, // Multiplicador por nivel
+    COST_MULTIPLIER: 1.5
   },
 
   // ===================================================
-  // CONFIGURACIÓN DE JUEGO
+  // GAME CONFIGURATION
   // ===================================================
   GAME_CONFIG: {
     MAX_FLOORS: 10,
@@ -147,14 +139,14 @@ export const GAME_ENUMS = {
 };
 
 // ===================================================
-// FUNCIONES UTILITARIAS PARA ENUMS
+// UTILITY FUNCTIONS FOR ENUMS
 // ===================================================
 
 export const EnumUtils = {
   /**
-   * Verifica si un valor es válido para un enum específico
-   * @param {string} enumName - Nombre del enum en GAME_ENUMS
-   * @param {string} value - Valor a verificar
+   * Verifies if a value is valid for a specific enum
+   * @param {string} enumName - Name of the enum in GAME_ENUMS
+   * @param {string} value - Value to verify
    * @returns {boolean}
    */
   isValidEnumValue(enumName, value) {
@@ -163,8 +155,8 @@ export const EnumUtils = {
   },
 
   /**
-   * Obtiene información de mejora permanente
-   * @param {string} upgradeType - Tipo de mejora
+   * Gets information about permanent upgrade
+   * @param {string} upgradeType - Upgrade type
    * @returns {object|null}
    */
   getPermanentUpgradeInfo(upgradeType) {
@@ -172,9 +164,9 @@ export const EnumUtils = {
   },
 
   /**
-   * Calcula el daño de un arma basado en su nivel
-   * @param {string} weaponType - Tipo de arma ('melee' o 'ranged')
-   * @param {number} level - Nivel del arma (1-15)
+   * Calculates the damage of a weapon based on its level
+   * @param {string} weaponType - Weapon type ('melee' or 'ranged')
+   * @param {number} level - Weapon level (1-15)
    * @returns {number}
    */
   calculateWeaponDamage(weaponType, level) {
@@ -185,9 +177,9 @@ export const EnumUtils = {
   },
 
   /**
-   * Calcula el costo de mejora de arma en tienda
-   * @param {string} weaponType - Tipo de arma
-   * @param {number} targetLevel - Nivel objetivo
+   * Calculates the cost of weapon upgrade in shop
+   * @param {string} weaponType - Weapon type
+   * @param {number} targetLevel - Target level
    * @returns {number}
    */
   calculateUpgradeCost(weaponType, targetLevel) {
@@ -197,8 +189,8 @@ export const EnumUtils = {
   },
 
   /**
-   * Obtiene descripción legible de causa de muerte
-   * @param {string} deathCause - Causa de muerte
+   * Gets readable death cause description
+   * @param {string} deathCause - Death cause
    * @returns {string}
    */
   getDeathCauseDescription(deathCause) {
@@ -214,10 +206,10 @@ export const EnumUtils = {
 };
 
 // ===================================================
-// EXPORTACIONES ADICIONALES
+// ADDITIONAL EXPORTS
 // ===================================================
 
-// Exportar enums individuales para facilitar importación
+// Export enums individually for easier import
 export const {
   EVENT_TYPES,
   UPGRADE_TYPES,
@@ -233,5 +225,5 @@ export const {
   GAME_CONFIG,
 } = GAME_ENUMS;
 
-// Exportar por defecto
-export default GAME_ENUMS;
+// Export by default
+export default GAME_ENUMS; 

@@ -2,12 +2,8 @@
  * Enhanced Login page functionality with improved session management and user feedback
  * Issue #7: Frontend Login Flow Enhancement
  */
-import {
-  loginUser,
-  createRun,
-  clearSessionLocalStorage,
-} from "../../utils/api.js";
-import { SimpleAudioManager } from "../../utils/SimpleAudioManager.js";
+import { loginUser, createRun, clearSessionLocalStorage } from '../../utils/api.js';
+import { SimpleAudioManager } from '../../utils/SimpleAudioManager.js';
 
 // Initialize audio manager for menu music
 const audioManager = new SimpleAudioManager();
@@ -276,15 +272,15 @@ async function performLogin(username, password) {
 }
 
 // Wait for DOM to load
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.querySelector("form");
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('form');
 
   if (!form) {
-    console.error("Login form not found");
+    console.error('Login form not found');
     return;
   }
 
-  console.log("Login page initialized");
+  console.log('Login page initialized');
 
   // Clear any existing session data on page load
   clearSessionData();
@@ -293,12 +289,12 @@ document.addEventListener("DOMContentLoaded", () => {
   audioManager.playMainMenuMusic();
 
   // Handle form submission
-  form.addEventListener("submit", async (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     // Prevent multiple simultaneous submissions
     if (currentLoginState !== LOGIN_STATES.IDLE) {
-      console.log("Login already in progress, ignoring submission");
+      console.log('Login already in progress, ignoring submission');
       return;
     }
 
@@ -307,11 +303,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const passwordInput = form.querySelector('input[type="password"]');
 
     if (!usernameInput || !passwordInput) {
-      console.error("Username or password input not found");
-      updateLoginUI(
-        LOGIN_STATES.ERROR,
-        "Form configuration error. Please refresh the page."
-      );
+      console.error('Username or password input not found');
+      updateLoginUI(LOGIN_STATES.ERROR, 'Form configuration error. Please refresh the page.');
       return;
     }
 
@@ -321,7 +314,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Validate form input
     const validation = validateLoginForm(username, password);
     if (!validation.isValid) {
-      updateLoginUI(LOGIN_STATES.ERROR, validation.errors.join(". "));
+      updateLoginUI(LOGIN_STATES.ERROR, validation.errors.join('. '));
       return;
     }
 
@@ -331,9 +324,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (loginSuccess) {
       // Redirect to game after brief delay
       setTimeout(() => {
-        console.log("Redirecting to game...");
-        window.location.href = "game.html";
+        console.log('Redirecting to game...');
+        window.location.href = 'game.html';
       }, 1500);
     }
   });
-});
+}); 

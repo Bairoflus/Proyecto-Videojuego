@@ -1,34 +1,17 @@
 import { Enemy } from "./Enemy.js";
 import { AnimatedObject } from "./AnimatedObject.js";
-import { registerBossKill } from "../../utils/api.js";
 import { variables } from "../../config.js";
 
 export class Boss extends Enemy {
-  constructor(
-    position,
-    width,
-    height,
-    color,
-    maxHp,
-    attacks = [],
-    enemyTypeName = "dragon"
-  ) {
-    super(
-      position,
-      width,
-      height,
-      color,
-      1,
-      "boss",
-      0,
-      0,
-      maxHp,
-      enemyTypeName
-    );
+  constructor(position, width, height, color, maxHp, attacks = [], enemyTypeName = "dragon") {
+    super(position, width, height, color, 1, "boss", 0, 0, maxHp, enemyTypeName);
     this.attacks = attacks;
     this.phase = 1;
     this.nextAttackTime = 0;
     this.fightStartTime = Date.now(); // Track fight duration for boss kill registration
+
+    // CRITICAL FIX: Add isBoss property for proper boss detection in Room.js
+    this.isBoss = true;
 
     // Retraso inicial antes del primer ataque (para todos los jefes)
     this.initialDelay = true;
@@ -79,11 +62,11 @@ export class Boss extends Enemy {
     super.die();
 
     // Only add boss-specific behavior here
-    console.log(`🏆 Boss ${this.type} defeated!`);
+    console.log(`Boss ${this.type} defeated!`);
 
     // Calculate fight duration for metrics
     const fightDuration = Math.round((Date.now() - this.fightStartTime) / 1000);
-    console.log(`🕐 Boss fight duration: ${fightDuration} seconds`);
+    console.log(`Boss fight duration: ${fightDuration} seconds`);
   }
 
   draw(ctx) {

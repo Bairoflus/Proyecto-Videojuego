@@ -28,7 +28,7 @@
     // Clean up menu music when entering game
     const menuAudioManager = new SimpleAudioManager();
     menuAudioManager.cleanupForGamePage();
-    console.log('🎵 Menu music cleaned up for game page');
+    console.log('Menu music cleaned up for game page');
 
     /**
      * Clear all session data for complete logout
@@ -48,7 +48,7 @@
         const value = localStorage.getItem(key);
         if (value) {
           localStorage.removeItem(key);
-          console.log(`  Cleared ${key}: ${value}`);
+          console.log(`Cleared ${key}: ${value}`);
         }
       });
 
@@ -64,12 +64,42 @@
 
       if (runId) {
         console.log('Run data exists:', runId);
-        return true;
+
+        // ENHANCED: Verify the run is still valid/active by checking with backend
+        try {
+          // Import API function to check if run is still active
+          const { getCurrentRunStats } = await import('../../utils/api.js');
+          const runStats = await getCurrentRunStats(userId);
+
+          if (runStats && runStats.runId == runId) {
+            console.log('Run verified as active:', runId);
+            return true;
+          } else {
+            console.warn('Stored runId is not active, may need new run');
+          }
+        } catch (error) {
+          console.warn('Could not verify run status, assuming valid:', error);
+          return true; // Assume valid if we can't verify
+        }
       }
 
-      console.log('No run data found, creating new run...');
+      // ENHANCED: Only create new run if absolutely necessary and no active run exists
+      console.log('No valid run data found, checking for existing active runs...');
 
       try {
+        // Check if user has any active runs before creating new one
+        const response = await fetch(`/api/users/${userId}/current-run-info`);
+        if (response.ok) {
+          const runInfo = await response.json();
+          if (runInfo.success && runInfo.data.run_status === 'active' && runInfo.data.current_run_id > 0) {
+            console.log('Found existing active run, using it:', runInfo.data.current_run_id);
+            localStorage.setItem('currentRunId', runInfo.data.current_run_id);
+            return true;
+          }
+        }
+
+        // No active runs found, create new one
+        console.log('No active runs found, creating new run...');
         const runData = await createRun(parseInt(userId));
         localStorage.setItem('currentRunId', runData.runId);
         console.log('New run created successfully:', runData.runId);

@@ -16,19 +16,25 @@ import { MageGoblin } from "../enemies/floor1/MageGoblin.js";
 import { GreatBowGoblin } from "../enemies/floor1/GreatBowGoblin.js";
 import { variables } from "../../config.js";
 import { log } from "../../utils/Logger.js";
-import {
-  ROOM_CONSTANTS,
-  PHYSICS_CONSTANTS,
-} from "../../constants/gameConstants.js";
+import { ROOM_CONSTANTS } from "../../constants/gameConstants.js";
+import { backgroundManager } from "../../utils/BackgroundManager.js";
 
 export class Room {
-  constructor(layout, isCombatRoom = false, roomType = "combat") {
+  constructor(layout, isCombatRoom = false, roomType = "combat", floor = 1, roomIndex = 0) {
     this.layout = layout;
     this.isCombatRoom = isCombatRoom;
     this.roomType = roomType; // 'combat', 'shop', or 'boss'
+    this.floor = floor; // Current floor (1-3)
+    this.roomIndex = roomIndex; // Room index within floor (0-5)
     this.tileSize = ROOM_CONSTANTS.TILE_SIZE;
     this.transitionZone = ROOM_CONSTANTS.TRANSITION_ZONE_SIZE;
     this.minSafeDistance = ROOM_CONSTANTS.MIN_SAFE_DISTANCE;
+
+    // Dynamic background support
+    this.backgroundImage = null;
+    this.backgroundPath = null;
+    this.backgroundLoaded = false;
+
     this.objects = {
       walls: [],
       enemies: [],
@@ -45,6 +51,9 @@ export class Room {
 
     this.parseLayout();
 
+    // Initialize background for this room
+    this.initializeBackground();
+
     // Create shop instance for shop rooms
     if (this.roomType === "shop" && !this.objects.shop) {
       this.objects.shop = new Shop();
@@ -54,6 +63,47 @@ export class Room {
       log.info("Shop instance created in constructor for shop room");
     }
   }
+
+  /**
+   * Initialize background for this specific room
+   */
+  async initializeBackground() {
+    try {
+      // Get background path based on room properties
+      this.backgroundPath = backgroundManager.getBackgroundPath(
+        this.floor,
+        this.roomType,
+        this.roomIndex
+      );
+
+      log.info(`Initializing background for ${this.roomType} room: ${this.backgroundPath}`);
+
+      // Load background image
+      this.backgroundImage = await backgroundManager.loadBackground(this.backgroundPath);
+      this.backgroundLoaded = true;
+
+      log.verbose(`Background loaded successfully for floor ${this.floor}, room ${this.roomIndex + 1}`);
+
+    } catch (error) {
+      log.error('Failed to load room background:', error);
+
+      // Fallback to a valid background from BackgroundManager
+      try {
+        this.backgroundImage = await backgroundManager.loadBackground('/assets/backgrounds/floor1/cave.png');
+        this.backgroundPath = '/assets/backgrounds/floor1/cave.png';
+        this.backgroundLoaded = true;
+        log.warn('Using fallback background due to loading error');
+      } catch (fallbackError) {
+        log.error('Failed to load fallback background:', fallbackError);
+        // Final fallback: no background image
+        this.backgroundImage = null;
+        this.backgroundPath = null;
+        this.backgroundLoaded = false;
+        log.warn('No background will be used - using solid color only');
+      }
+    }
+  }
+
   addEntity(entity) {
     if (typeof entity.setCurrentRoom === "function") {
       entity.setCurrentRoom(this);
@@ -152,20 +202,221 @@ export class Room {
 
     if (originalLength !== cleanedLength) {
       console.warn(
-        `ENEMIES ARRAY CLEANED: Removed ${
-          originalLength - cleanedLength
+        `ENEMIES ARRAY CLEANED: Removed ${originalLength - cleanedLength
         } undefined/null entries`
       );
     }
   }
 
+  /**
+   * Draws visual indicators for transition zones when they are active
+   * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+   */
+  drawTransitionZoneVisuals(ctx) {
+    // Only draw if transitions are possible
+    if (!this.canTransition()) {
+      return;
+    }
+
+    // ENHANCED: Additional validation for boss rooms - ensure boss is actually dead
+    if (this.roomType === 'boss') {
+      const allEnemies = this.objects.enemies;
+      const aliveBosses = allEnemies.filter(e =>
+        e !== undefined && e !== null && e.state !== 'dead' && e.health > 0 && (
+          e.constructor.name.includes('Boss') ||
+          e.type === 'boss' ||
+          e.isBoss === true ||
+          e.constructor.name === 'DragonBoss' ||
+          e.constructor.name === 'Supersoldier'
+        )
+      );
+
+      // If there are still alive bosses, don't show the visual
+      if (aliveBosses.length > 0) {
+        return;
+      }
+
+      // Also check if boss defeat was confirmed
+      if (!window.game?.bossJustDefeated && !this.bossDefeated) {
+        return;
+      }
+    }
+
+    // Check if player is in the right transition zone
+    const playerInRightZone = this.isPlayerAtRightEdge(window.game?.player);
+
+    // Visual style configuration
+    const activeColor = 'rgba(0, 255, 0, 0.3)'; // Green when player is in zone
+    const inactiveColor = 'rgba(255, 255, 0, 0.2)'; // Yellow when zone is available
+    const borderActiveColor = 'rgba(0, 255, 0, 0.8)';
+    const borderInactiveColor = 'rgba(255, 255, 0, 0.6)';
+
+    // Calculate the actual transition zone dimensions to match the real logic
+    const zoneWidth = this.transitionZone;
+    const middleY = variables.canvasHeight / 2;
+
+    // The transition zone is centered vertically and has a height equal to player height
+    // Based on isPlayerAtRightEdge logic: player must be at middle Y
+    const playerHeight = 64; // Approximate player height for visual zone
+    const zoneHeight = playerHeight * 2; // Make it a bit larger for visibility
+    const zoneY = middleY - zoneHeight / 2;
+
+    // Draw right transition zone only
+    const rightZoneX = variables.canvasWidth - zoneWidth;
+    const rightZoneColor = playerInRightZone ? activeColor : inactiveColor;
+    const rightBorderColor = playerInRightZone ? borderActiveColor : borderInactiveColor;
+
+    // Fill right zone
+    ctx.fillStyle = rightZoneColor;
+    ctx.fillRect(rightZoneX, zoneY, zoneWidth, zoneHeight);
+
+    // Border for right zone
+    ctx.strokeStyle = rightBorderColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rightZoneX, zoneY, zoneWidth, zoneHeight);
+
+    // Draw activation instructions if player is in the transition zone
+    if (playerInRightZone) {
+      ctx.save();
+
+      // Semi-transparent background for text
+      const textBackground = 'rgba(0, 0, 0, 0.7)';
+      const textX = variables.canvasWidth / 2;
+      const textY = 50;
+      const textWidth = 300;
+      const textHeight = 40;
+
+      ctx.fillStyle = textBackground;
+      ctx.fillRect(textX - textWidth / 2, textY - textHeight / 2, textWidth, textHeight);
+
+      // Border around text background
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(textX - textWidth / 2, textY - textHeight / 2, textWidth, textHeight);
+
+      // Text
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillText('TRANSITION ZONE ACTIVE', textX, textY);
+
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Draws visual indicators for transition zones when they are active
+   * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+   */
+  drawTransitionZoneVisuals(ctx) {
+    // Only draw if transitions are possible
+    if (!this.canTransition()) {
+      return;
+    }
+
+    // ENHANCED: Additional validation for boss rooms - ensure boss is actually dead
+    if (this.roomType === 'boss') {
+      const allEnemies = this.objects.enemies;
+      const aliveBosses = allEnemies.filter(e =>
+        e !== undefined && e !== null && e.state !== 'dead' && e.health > 0 && (
+          e.constructor.name.includes('Boss') ||
+          e.type === 'boss' ||
+          e.isBoss === true ||
+          e.constructor.name === 'DragonBoss' ||
+          e.constructor.name === 'Supersoldier'
+        )
+      );
+
+      // If there are still alive bosses, don't show the visual
+      if (aliveBosses.length > 0) {
+        return;
+      }
+
+      // Also check if boss defeat was confirmed
+      if (!window.game?.bossJustDefeated && !this.bossDefeated) {
+        return;
+      }
+    }
+
+    // Check if player is in the right transition zone
+    const playerInRightZone = this.isPlayerAtRightEdge(window.game?.player);
+
+    // Visual style configuration
+    const activeColor = 'rgba(0, 255, 0, 0.3)'; // Green when player is in zone
+    const inactiveColor = 'rgba(255, 255, 0, 0.2)'; // Yellow when zone is available
+    const borderActiveColor = 'rgba(0, 255, 0, 0.8)';
+    const borderInactiveColor = 'rgba(255, 255, 0, 0.6)';
+
+    // Calculate the actual transition zone dimensions to match the real logic
+    const zoneWidth = this.transitionZone;
+    const middleY = variables.canvasHeight / 2;
+
+    // The transition zone is centered vertically and has a height equal to player height
+    // Based on isPlayerAtRightEdge logic: player must be at middle Y
+    const playerHeight = 64; // Approximate player height for visual zone
+    const zoneHeight = playerHeight * 2; // Make it a bit larger for visibility
+    const zoneY = middleY - zoneHeight / 2;
+
+    // Draw right transition zone only
+    const rightZoneX = variables.canvasWidth - zoneWidth;
+    const rightZoneColor = playerInRightZone ? activeColor : inactiveColor;
+    const rightBorderColor = playerInRightZone ? borderActiveColor : borderInactiveColor;
+
+    // Fill right zone
+    ctx.fillStyle = rightZoneColor;
+    ctx.fillRect(rightZoneX, zoneY, zoneWidth, zoneHeight);
+
+    // Border for right zone
+    ctx.strokeStyle = rightBorderColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rightZoneX, zoneY, zoneWidth, zoneHeight);
+
+    // Draw activation instructions if player is in the transition zone
+    if (playerInRightZone) {
+      ctx.save();
+
+      // Semi-transparent background for text
+      const textBackground = 'rgba(0, 0, 0, 0.7)';
+      const textX = variables.canvasWidth / 2;
+      const textY = 50;
+      const textWidth = 300;
+      const textHeight = 40;
+
+      ctx.fillStyle = textBackground;
+      ctx.fillRect(textX - textWidth / 2, textY - textHeight / 2, textWidth, textHeight);
+
+      // Border around text background
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(textX - textWidth / 2, textY - textHeight / 2, textWidth, textHeight);
+
+      // Text
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillText('TRANSITION ZONE ACTIVE', textX, textY);
+
+      ctx.restore();
+    }
+  }
+
   // Draws all room objects
   draw(ctx) {
-    // CRITICAL: Clean enemies array before drawing
-    this.cleanEnemiesArray();
-
-    // Draw background first
-    if (variables.backgroundImage && variables.backgroundImage.complete) {
+    // Draw background first - Use room-specific background
+    if (this.backgroundImage && this.backgroundLoaded && this.backgroundImage.complete && this.backgroundImage.naturalWidth > 0) {
+      ctx.drawImage(
+        this.backgroundImage,
+        0,
+        0,
+        variables.canvasWidth,
+        variables.canvasHeight
+      );
+    } else if (variables.backgroundImage && variables.backgroundImage.complete && variables.backgroundImage.naturalWidth > 0) {
+      // Fallback to global background if room background not loaded
       ctx.drawImage(
         variables.backgroundImage,
         0,
@@ -173,13 +424,23 @@ export class Room {
         variables.canvasWidth,
         variables.canvasHeight
       );
+    } else {
+      // Ultimate fallback: use solid color
+      ctx.fillStyle = "#2a2a2a";
+      ctx.fillRect(0, 0, variables.canvasWidth, variables.canvasHeight);
     }
 
-    // Draw walls - black and half transparent
-    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    // Draw walls with dark gray color
+    ctx.fillStyle = "#404040";
     this.objects.walls.forEach((wall) => {
       ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
     });
+
+    // Draw transition zone visuals before other elements
+    this.drawTransitionZoneVisuals(ctx);
+
+    // CRITICAL: Clean enemies array before drawing
+    this.cleanEnemiesArray();
 
     // Draw coins
     this.objects.coins.forEach((coin) => coin.draw(ctx));
@@ -283,20 +544,16 @@ export class Room {
             );
             enemy.moveTo(playerCenter);
 
-            // ✅ V2 RANGED ENEMIES ATTACK LOGIC
-            if (
-              enemy.type === "goblin_archer" ||
+            // V2 RANGED ENEMIES ATTACK LOGIC
+            if (enemy.type === "goblin_archer" ||
               enemy.type === "mage_goblin" ||
-              enemy.type === "great_bow_goblin"
-            ) {
+              enemy.type === "great_bow_goblin") {
               enemy.attack(window.game.player);
             }
 
             // V2 MELEE ENEMIES ATTACK LOGIC
-            if (
-              enemy.type === "goblin_dagger" ||
-              enemy.type === "sword_goblin"
-            ) {
+            if (enemy.type === "goblin_dagger" ||
+              enemy.type === "sword_goblin") {
               enemy.attack(window.game.player);
             }
           }
@@ -355,7 +612,7 @@ export class Room {
       console.log("ALL ENEMIES DEFEATED - Spawning chest");
       this.spawnChest();
 
-      // ✅ FORCE IMMEDIATE CLEANUP - Ensure no dead enemies remain
+      // FORCE IMMEDIATE CLEANUP - Ensure no dead enemies remain
       this.objects.enemies = this.objects.enemies.filter(
         (enemy) =>
           enemy !== undefined && enemy !== null && enemy.state !== "dead"
@@ -368,8 +625,7 @@ export class Room {
       );
       console.log(`  - Enemies remaining: ${this.objects.enemies.length}`);
       console.log(
-        `  - Alive enemies: ${
-          this.objects.enemies.filter((e) => e.state !== "dead").length
+        `  - Alive enemies: ${this.objects.enemies.filter((e) => e.state !== "dead").length
         }`
       );
       console.log(`  - Dead enemies removed: ${deadEnemies.length}`);
@@ -383,8 +639,7 @@ export class Room {
           console.error(
             `  - ALIVE: ${enemy.type} at (${Math.round(
               enemy.position.x
-            )}, ${Math.round(enemy.position.y)}) - Health: ${
-              enemy.health
+            )}, ${Math.round(enemy.position.y)}) - Health: ${enemy.health
             }, State: ${enemy.state}`
           );
         });
@@ -541,10 +796,10 @@ export class Room {
 
     return new Vec(
       variables.canvasWidth -
-        this.transitionZone -
-        this.minSafeDistance -
-        playerWidth +
-        hitboxOffset,
+      this.transitionZone -
+      this.minSafeDistance -
+      playerWidth +
+      hitboxOffset,
       variables.canvasHeight / 2 - 32
     );
   }
@@ -557,10 +812,10 @@ export class Room {
     const enemyCount =
       Math.floor(
         Math.random() *
-          (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)
+        (ROOM_CONSTANTS.MAX_ENEMIES - ROOM_CONSTANTS.MIN_ENEMIES + 1)
       ) + ROOM_CONSTANTS.MIN_ENEMIES;
 
-    // ✅ V2 ENEMY DISTRIBUTION WITH WEIGHTED SELECTION
+    // V2 ENEMY DISTRIBUTION WITH WEIGHTED SELECTION
     const enemyTypes = [
       { class: GoblinDagger, weight: 30, type: "melee", name: "GoblinDagger" }, // common
       { class: SwordGoblin, weight: 25, type: "melee", name: "SwordGoblin" }, // common
@@ -638,7 +893,7 @@ export class Room {
     log.debug(`Validation: ${totalValidEnemies} valid enemy instances created`);
   }
 
-  // ✅ V2 WEIGHTED RANDOM SELECTION
+  // V2 WEIGHTED RANDOM SELECTION
   weightedRandomSelect(types) {
     const totalWeight = types.reduce((sum, type) => sum + type.weight, 0);
     const random = Math.random() * totalWeight;
@@ -653,7 +908,7 @@ export class Room {
     return types[0]; // Fallback
   }
 
-  // ✅ V2 IMPROVED POSITION GENERATION
+  // V2 IMPROVED POSITION GENERATION
   getValidEnemyPositionV2(isMelee, safeZone) {
     let attempts = 0;
 
@@ -675,7 +930,7 @@ export class Room {
     return null;
   }
 
-  // ✅ V2 POSITION GENERATION WITH BETTER LOGIC
+  // V2 POSITION GENERATION WITH BETTER LOGIC
   generateRandomPositionV2(isMelee, safeZone) {
     let x, y;
 
@@ -694,7 +949,7 @@ export class Room {
       // Ranged enemies: prefer right side for better positioning
       x =
         Math.random() *
-          (variables.canvasWidth * 0.6 - ROOM_CONSTANTS.TILE_SIZE) +
+        (variables.canvasWidth * 0.6 - ROOM_CONSTANTS.TILE_SIZE) +
         variables.canvasWidth * 0.4;
       y = Math.random() * (variables.canvasHeight - ROOM_CONSTANTS.TILE_SIZE);
     }
@@ -712,7 +967,7 @@ export class Room {
     );
   }
 
-  // ✅ V2 VALIDATION WITH BETTER ENEMY DETECTION
+  // V2 VALIDATION WITH BETTER ENEMY DETECTION
   isValidEnemyPositionV2(position) {
     // Create a temporary enemy to test collision (use base enemy for testing)
     const tempEnemy = {
@@ -729,7 +984,7 @@ export class Room {
     return !this.checkWallCollision(tempEnemy);
   }
 
-  // SIMPLIFIED: Checks if the room allows transition - streamlined logic
+  // FIXED: Checks if the room allows transition with proper boss room handling
   canTransition() {
     // Clean enemies array first
     this.cleanEnemiesArray();
@@ -739,25 +994,149 @@ export class Room {
       return true;
     }
 
-    // Combat rooms: check if all enemies are dead
+    // CHECK 1: CHEST REQUIREMENT (applies to all combat rooms)
+    if (this.chestSpawned && !this.chestCollected) {
+      // FIXED: Throttle chest collection message to prevent spam
+      if (!this.lastChestCollectionLog || Date.now() - this.lastChestCollectionLog > 3000) {
+        console.log('TRANSITION BLOCKED: Chest not collected yet');
+        this.lastChestCollectionLog = Date.now();
+      }
+      return false;
+    }
+
+    // CRITICAL FIX: Boss room special handling with enhanced validation
+    if (this.roomType === 'boss') {
+      // For boss rooms, we need additional verification
+      const allEnemies = this.objects.enemies;
+      const aliveEnemies = allEnemies.filter(
+        e => e !== undefined && e !== null && e.state !== 'dead'
+      );
+
+      // ENHANCED: Multiple ways to detect bosses for maximum coverage
+      const bosses = allEnemies.filter(e =>
+        e !== undefined && e !== null && (
+          e.constructor.name.includes('Boss') ||
+          e.type === 'boss' ||
+          e.isBoss === true ||
+          e.constructor.name === 'DragonBoss' ||
+          e.constructor.name === 'Supersoldier'
+        )
+      );
+
+      const aliveBosses = aliveEnemies.filter(e =>
+        e !== undefined && e !== null && (
+          e.constructor.name.includes('Boss') ||
+          e.type === 'boss' ||
+          e.isBoss === true ||
+          e.constructor.name === 'DragonBoss' ||
+          e.constructor.name === 'Supersoldier'
+        )
+      );
+
+      // ULTRA-STRICT: Also check bosses with health > 0 regardless of state
+      const bossesWithHealth = allEnemies.filter(e =>
+        e !== undefined && e !== null && e.health > 0 && (
+          e.constructor.name.includes('Boss') ||
+          e.type === 'boss' ||
+          e.isBoss === true ||
+          e.constructor.name === 'DragonBoss' ||
+          e.constructor.name === 'Supersoldier'
+        )
+      );
+
+      // SUPERSOLDIER-SPECIFIC CHECK
+      const supersoldiers = allEnemies.filter(e => e.constructor.name === 'Supersoldier');
+      const aliveSupersoldiers = supersoldiers.filter(e => e.state !== 'dead' && e.health > 0);
+
+      // ENHANCED: Additional debugging for boss detection
+      const bossDefeated = window.game && window.game.bossJustDefeated;
+
+      // FIXED: Heavily throttled logging - only log detailed state every 10 seconds to prevent spam
+      if (!this.lastDetailedBossLog || Date.now() - this.lastDetailedBossLog > 10000) {
+        console.log('BOSS ROOM TRANSITION ATTEMPT:', {
+          allEnemies: allEnemies.length,
+          aliveEnemies: aliveEnemies.length,
+          totalBosses: bosses.length,
+          aliveBosses: aliveBosses.length,
+          bossesWithHealth: bossesWithHealth.length,
+          supersoldiers: supersoldiers.length,
+          aliveSupersoldiers: aliveSupersoldiers.length,
+          bossDefeated: bossDefeated,
+          roomBossDefeated: this.bossDefeated,
+          chestSpawned: this.chestSpawned,
+          chestCollected: this.chestCollected
+        });
+        this.lastDetailedBossLog = Date.now();
+      }
+
+      // ULTRA-STRICT BOSS ROOM LOGIC: ALL must be true for transition
+      const noAliveEnemies = aliveEnemies.length === 0;
+      const noAliveBosses = aliveBosses.length === 0;
+      const noBossesWithHealth = bossesWithHealth.length === 0;
+      const noAliveSupersoldiers = aliveSupersoldiers.length === 0;
+      const bossConfirmedDefeated = bossDefeated || this.bossDefeated;
+      const chestRequirementMet = !this.chestSpawned || this.chestCollected; // NEW: Chest check
+
+      // FIXED: Super-throttled validation logging - only log validation details every 10 seconds
+      if (!this.lastValidationLog || Date.now() - this.lastValidationLog > 10000) {
+        console.log('BOSS ROOM VALIDATION CHECKS:', {
+          noAliveEnemies: noAliveEnemies,
+          noAliveBosses: noAliveBosses,
+          noBossesWithHealth: noBossesWithHealth,
+          noAliveSupersoldiers: noAliveSupersoldiers,
+          bossConfirmedDefeated: bossConfirmedDefeated,
+          chestRequirementMet: chestRequirementMet
+        });
+        this.lastValidationLog = Date.now();
+      }
+
+      // CRITICAL: All conditions must be met for boss room transition
+      const canTransition = noAliveEnemies && noAliveBosses && noBossesWithHealth && noAliveSupersoldiers && bossConfirmedDefeated && chestRequirementMet;
+
+      // FIXED: Super-throttled result logging - only log result changes or every 15 seconds
+      if (canTransition !== this.lastCanTransition || !this.lastResultLog || Date.now() - this.lastResultLog > 15000) {
+        this.lastCanTransition = canTransition;
+        this.lastResultLog = Date.now();
+
+        if (canTransition) {
+          console.log(`BOSS ROOM TRANSITION ALLOWED - All checks passed`);
+        } else {
+          console.log(`BOSS ROOM TRANSITION BLOCKED:`);
+          if (!noAliveEnemies) console.log(`  BLOCKING: ${aliveEnemies.length} enemies still alive`);
+          if (!noAliveBosses) console.log(`  BLOCKING: ${aliveBosses.length} bosses still alive`);
+          if (!noBossesWithHealth) console.log(`  BLOCKING: ${bossesWithHealth.length} bosses still have health > 0`);
+          if (!noAliveSupersoldiers) console.log(`  BLOCKING: ${aliveSupersoldiers.length} Supersoldiers still alive`);
+          if (!bossConfirmedDefeated) console.log(`  BLOCKING: Boss defeat not confirmed`);
+          if (!chestRequirementMet) console.log(`  BLOCKING: Chest spawned but not collected yet`);
+        }
+      }
+
+      return canTransition;
+    }
+
+    // Regular combat rooms: check if all enemies are dead AND chest collected (if spawned)
     const aliveEnemies = this.objects.enemies.filter(
       (e) => e !== undefined && e !== null && e.state !== "dead"
     );
 
-    // SIMPLIFIED: Only one condition - no complex boss logic needed
-    const canTransition = aliveEnemies.length === 0;
+    const enemiesCleared = aliveEnemies.length === 0;
+    const chestRequirementMet = !this.chestSpawned || this.chestCollected;
+    const canTransition = enemiesCleared && chestRequirementMet;
 
-    // Only log when transition state changes to avoid spam
+    // FIXED: Only log when transition state changes to avoid spam - but throttle heavily
     if (canTransition !== this.lastCanTransition) {
-      this.lastCanTransition = canTransition;
-      if (canTransition) {
-        console.log(
-          `✅ Room cleared: All enemies defeated! Can transition now.`
-        );
-      } else {
-        console.log(
-          `🚫 Transition blocked: ${aliveEnemies.length} enemies still alive`
-        );
+      // Additional throttling even for state changes
+      if (!this.lastStateChangeLog || Date.now() - this.lastStateChangeLog > 2000) {
+        this.lastCanTransition = canTransition;
+        this.lastStateChangeLog = Date.now();
+
+        if (canTransition) {
+          console.log(`Combat room cleared: All enemies defeated and chest collected! Can transition now.`);
+        } else {
+          console.log(`Combat room transition blocked:`);
+          if (!enemiesCleared) console.log(`  ${aliveEnemies.length} enemies still alive`);
+          if (!chestRequirementMet) console.log(`  Chest spawned but not collected yet`);
+        }
       }
     }
 

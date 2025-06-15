@@ -8,52 +8,19 @@ export const HITBOX_SCALE = {
 };
 
 export const variables = {
-  // Dimensiones del canvas
+  // Canvas dimensions
   canvasWidth: 800, // 25 * 32
   canvasHeight: 608, // 19 * 32
-  // Retardo de animación en milisegundos
+  // Animation delay in milliseconds
   animationDelay: 100,
   playerSpeed: 0.3,
   ctx: null,
   game: null,
   oldTime: null,
   backgroundImage: new Image(),
-  showHitboxes: true, // Enable hitbox visualization for debugging
+  showHitboxes: true, // Enable hitbox visualization for debugging (for development)
 };
-
-// Background system for different floors and rooms
-export const BACKGROUND_CONFIG = {
-  // Floor 1 backgrounds (6 different backgrounds for 6 rooms)
-  floor1: [
-    "/assets/backgrounds/floor1/grass.png", // Room 1 (Combat)
-    "/assets/backgrounds/floor1/woods.png", // Room 2 (Combat)
-    "/assets/backgrounds/floor1/swamp.png", // Room 3 (Combat)
-    "/assets/backgrounds/floor1/cave.png", // Room 4 (Combat)
-    "/assets/backgrounds/floor1/store.png", // Room 5 (Shop)
-    "/assets/backgrounds/floor1/volcano.png", // Room 6 (Boss)
-  ],
-  // Floor 2 backgrounds (futuristic/industrial theme)
-  floor2: [
-    "/assets/backgrounds/floor2/factory.png", // Room 1 (Combat)
-    "/assets/backgrounds/floor2/factory2.png", // Room 2 (Combat)
-    "/assets/backgrounds/floor2/school.png", // Room 3 (Combat)
-    "/assets/backgrounds/floor2/street.png", // Room 4 (Combat)
-    "/assets/backgrounds/floor2/store.png", // Room 5 (Shop)
-    "/assets/backgrounds/floor2/boss.png", // Room 6 (Boss)
-  ],
-  // Floor 3 backgrounds (neon/cyberpunk theme)
-  floor3: [
-    "/assets/backgrounds/floor3/neon_room.png", // Room 1 (Combat)
-    "/assets/backgrounds/floor3/street2.png", // Room 2 (Combat)
-    "/assets/backgrounds/floor3/spaceship.png", // Room 3 (Combat)
-    "/assets/backgrounds/floor3/street.png", // Room 4 (Combat)
-    "/assets/backgrounds/floor3/store.png", // Room 5 (Shop)
-    "/assets/backgrounds/floor3/boss.png", // Room 6 (Boss)
-  ],
-};
-
-// Initialize with default background (will be updated dynamically)
-variables.backgroundImage.src = BACKGROUND_CONFIG.floor1[0];
+variables.backgroundImage.src = "/assets/backgrounds/floor1/cave.png";
 
 // Base walking animations (shared between weapons)
 // All walk.png sprites have 9 columns, 4 rows
@@ -214,8 +181,7 @@ export function updateBackgroundForRoom(floor, roomIndex) {
     // Only update if it's a different background
     if (variables.backgroundImage.src !== newBackgroundSrc) {
       console.log(
-        `Changing background for Floor ${floor}, Room ${
-          roomIndex + 1
+        `Changing background for Floor ${floor}, Room ${roomIndex + 1
         }: ${newBackgroundSrc}`
       );
       variables.backgroundImage.src = newBackgroundSrc;

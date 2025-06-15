@@ -181,15 +181,8 @@ export class Shop {
       }
 
       // Validate we have the required game data
-      if (
-        !this.gameData.runId ||
-        !this.gameData.userId ||
-        !this.gameData.roomId
-      ) {
-        log.warn(
-          "⚠️ Missing game data for backend registration:",
-          this.gameData
-        );
+      if (!this.gameData.runId || !this.gameData.userId || !this.gameData.roomId) {
+        log.warn('Missing game data for backend registration:', this.gameData);
         return;
       }
 
@@ -276,8 +269,7 @@ export class Shop {
             player.syncWeaponLevels();
 
             log.info(
-              `Melee weapon upgraded to level ${
-                upgradeResult.newLevel
+              `Melee weapon upgraded to level ${upgradeResult.newLevel
               }! Current weapon: ${player.getCurrentMeleeWeapon()}`
             );
           } else {
@@ -311,8 +303,7 @@ export class Shop {
             player.syncWeaponLevels();
 
             log.info(
-              `Ranged weapon upgraded to level ${
-                upgradeResult.newLevel
+              `Ranged weapon upgraded to level ${upgradeResult.newLevel
               }! Current weapon: ${player.getCurrentRangedWeapon()}`
             );
           } else {
@@ -448,8 +439,8 @@ export class Shop {
       ctx.fillStyle = isDisabled
         ? UI.DISABLED_COLOR
         : isSelected
-        ? UI.SELECTED_COLOR
-        : UI.TEXT_COLOR;
+          ? UI.SELECTED_COLOR
+          : UI.TEXT_COLOR;
 
       // Draw option name
       ctx.font = FONTS.OPTION_NAME;

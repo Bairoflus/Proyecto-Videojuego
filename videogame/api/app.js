@@ -164,11 +164,41 @@ app.post('/api/auth/login', async (req, res) => {
             [user.user_id]
         );
         
+        // REVERTED v3.4: Always increment total_runs AND current_run_number on login
+        // User wants BOTH login and completion to increment counters
+        await connection.execute(
+            `INSERT INTO player_stats (user_id, total_runs, last_updated) 
+             VALUES (?, 1, NOW()) 
+             ON DUPLICATE KEY UPDATE 
+             total_runs = total_runs + 1,
+             last_updated = NOW()`,
+            [user.user_id]
+        );
+        
+        // Always increment current_run_number in user_run_progress
+        await connection.execute(
+            `INSERT INTO user_run_progress (user_id, current_run_number, last_updated) 
+             VALUES (?, 1, NOW()) 
+             ON DUPLICATE KEY UPDATE 
+             current_run_number = current_run_number + 1,
+             last_updated = NOW()`,
+            [user.user_id]
+        );
+        
+        // Always create new run_history entry for this login session
+        const [runResult] = await connection.execute(
+            'INSERT INTO run_history (user_id) VALUES (?)',
+            [user.user_id]
+        );
+        
+        console.log(`User ${user.user_id} login: total_runs incremented, current_run_number incremented, new run_history entry created (runId: ${runResult.insertId})`);
+        
         res.status(200).json({
             success: true,
             userId: user.user_id,
             sessionToken: sessionToken,
             sessionId: sessionResult.insertId,
+            runId: runResult.insertId,
             expiresAt: expiresAt
         });
         
@@ -198,16 +228,79 @@ app.post('/api/auth/logout', async (req, res) => {
         
         connection = await createConnection();
         
-        const [result] = await connection.execute(
-            'UPDATE sessions SET is_active = FALSE, logout_at = NOW() WHERE session_token = ?',
+        // Get user ID from session token for run tracking
+        const [sessionRows] = await connection.execute(
+            'SELECT user_id FROM sessions WHERE session_token = ? AND is_active = TRUE',
             [sessionToken]
         );
         
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ 
-                success: false,
-                message: 'Session not found' 
-            });
+        let userId = null;
+        if (sessionRows.length > 0) {
+            userId = sessionRows[0].user_id;
+        }
+        
+        // Invalidate session
+        await connection.execute(
+            'UPDATE sessions SET is_active = FALSE WHERE session_token = ?',
+            [sessionToken]
+        );
+        
+        // FIXED: Only accumulate gold and sync data on logout - NO total_runs increment
+        if (userId) {
+            // NEW: Get current run progress to sync run_number properly
+            const [runProgressData] = await connection.execute(
+                'SELECT current_run_number FROM user_run_progress WHERE user_id = ?',
+                [userId]
+            );
+            
+            const currentRunNumber = runProgressData.length > 0 ? runProgressData[0].current_run_number : 1;
+            
+            // NEW: Also accumulate current run's gold to total_gold_earned on logout
+            const [currentRunData] = await connection.execute(
+                'SELECT run_id, final_gold, max_damage_hit FROM run_history WHERE user_id = ? AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1',
+                [userId]
+            );
+            
+            const currentGold = currentRunData.length > 0 ? (currentRunData[0].final_gold || 0) : 0;
+            const currentMaxDamage = currentRunData.length > 0 ? (currentRunData[0].max_damage_hit || 0) : 0;
+            
+            // NEW: CRITICAL FIX - Sync run_number in run_history for current active run
+            if (currentRunData.length > 0) {
+                const currentRunId = currentRunData[0].run_id;
+                
+                // Update run_number in run_history to match user_run_progress
+                await connection.execute(
+                    'UPDATE run_history SET run_number = ? WHERE run_id = ? AND ended_at IS NULL',
+                    [currentRunNumber, currentRunId]
+                );
+                
+                console.log(`Run number synchronized: runId ${currentRunId} set to run_number ${currentRunNumber}`);
+                
+                // Also update save_states if they exist to keep run_number in sync
+                await connection.execute(
+                    'UPDATE save_states SET run_number = ? WHERE user_id = ? AND is_active = TRUE',
+                    [currentRunNumber, userId]
+                );
+                
+                console.log(`Save states run_number synchronized to ${currentRunNumber}`);
+            }
+            
+            // FIXED: Only accumulate gold and max damage on logout, NO total_runs increment
+            if (currentGold > 0 || currentMaxDamage > 0) {
+                await connection.execute(
+                    `INSERT INTO player_stats (user_id, total_gold_earned, max_damage_hit, last_updated) 
+                     VALUES (?, ?, ?, NOW()) 
+                     ON DUPLICATE KEY UPDATE 
+                     total_gold_earned = total_gold_earned + ?,
+                     max_damage_hit = GREATEST(max_damage_hit, ?),
+                     last_updated = NOW()`,
+                    [userId, currentGold, currentMaxDamage, currentGold, currentMaxDamage]
+                );
+                
+                console.log(`User ${userId} logout: +${currentGold} gold added to total, max damage: ${currentMaxDamage}, run_number synced: ${currentRunNumber}`);
+            } else {
+                console.log(`User ${userId} logout: run_number synced: ${currentRunNumber} (no gold/damage to accumulate)`);
+            }
         }
 
         res.status(200).json({
@@ -227,7 +320,7 @@ app.post('/api/auth/logout', async (req, res) => {
 });
 
 // ===================================================
-// USER CONFIGURATIONS
+// CONFIGURATION ENDPOINTS
 // ===================================================
 
 // GET /api/users/:userId/settings
@@ -489,9 +582,11 @@ app.put('/api/runs/:runId/complete', async (req, res) => {
     let connection;
     try {
         const { runId } = req.params;
-        const { finalFloor, finalGold, causeOfDeath, totalKills, bossesKilled, durationSeconds } = req.body;
+        const { finalFloor, finalGold, causeOfDeath, totalKills, bossesKilled, durationSeconds, maxDamageHit } = req.body;
         
         connection = await createConnection();
+        
+        // Update run completion
         await connection.execute(
             `UPDATE run_history SET 
                 ended_at = NOW(), 
@@ -500,10 +595,15 @@ app.put('/api/runs/:runId/complete', async (req, res) => {
                 cause_of_death = ?, 
                 total_kills = ?, 
                 bosses_killed = ?, 
-                duration_seconds = ?
+                duration_seconds = ?,
+                max_damage_hit = ?
              WHERE run_id = ?`,
-            [finalFloor || 1, finalGold || 0, causeOfDeath || 'active', totalKills || 0, bossesKilled || 0, durationSeconds || 0, runId]
+            [finalFloor || 1, finalGold || 0, causeOfDeath || 'active', totalKills || 0, bossesKilled || 0, durationSeconds || 0, maxDamageHit || 0, runId]
         );
+        
+        // REMOVED: Manual player_stats update - the trigger tr_update_player_stats_after_run handles this automatically
+        // This prevents duplication when the run ends
+        console.log(`Run ${runId} completed - trigger will handle all stats updates automatically`);
         
         res.json({
             success: true,
@@ -515,6 +615,97 @@ app.put('/api/runs/:runId/complete', async (req, res) => {
         res.status(500).json({ 
             success: false,
             message: 'Database error' 
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// NEW: PUT /api/runs/:runId/stats - Update run statistics during gameplay (ENHANCED)
+app.put('/api/runs/:runId/stats', async (req, res) => {
+    let connection;
+    try {
+        const { runId } = req.params;
+        const { maxDamageHit, totalGoldEarned, totalKills } = req.body;
+        
+        connection = await createConnection();
+        
+        // Build dynamic update query for run_history
+        const updateFields = [];
+        const updateValues = [];
+        
+        if (maxDamageHit !== undefined) {
+            updateFields.push('max_damage_hit = GREATEST(max_damage_hit, ?)');
+            updateValues.push(maxDamageHit);
+        }
+        
+        if (totalGoldEarned !== undefined) {
+            updateFields.push('final_gold = ?');
+            updateValues.push(totalGoldEarned);
+        }
+        
+        if (totalKills !== undefined) {
+            updateFields.push('total_kills = ?');
+            updateValues.push(totalKills);
+        }
+        
+        if (updateFields.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No valid stats provided'
+            });
+        }
+        
+        updateValues.push(runId);
+        
+        // Update current run stats
+        await connection.execute(
+            `UPDATE run_history SET ${updateFields.join(', ')} WHERE run_id = ? AND ended_at IS NULL`,
+            updateValues
+        );
+        
+        // NEW: Also update historical player_stats with current run data
+        if (totalGoldEarned !== undefined || maxDamageHit !== undefined) {
+            // Get user_id for this run
+            const [runData] = await connection.execute(
+                'SELECT user_id FROM run_history WHERE run_id = ?',
+                [runId]
+            );
+            
+            if (runData.length > 0) {
+                const userId = runData[0].user_id;
+                
+                // SIMPLIFIED: Just update max values - total accumulation will happen on run completion
+                if (maxDamageHit !== undefined) {
+                    await connection.execute(
+                        `INSERT INTO player_stats (user_id, max_damage_hit, last_updated) 
+                         VALUES (?, ?, NOW()) 
+                         ON DUPLICATE KEY UPDATE 
+                         max_damage_hit = GREATEST(max_damage_hit, ?), 
+                         last_updated = NOW()`,
+                        [userId, maxDamageHit, maxDamageHit]
+                    );
+                    
+                    console.log(`Player max damage updated for user ${userId}: ${maxDamageHit}`);
+                }
+                
+                // NOTE: total_gold_earned will be updated when run completes to avoid double counting
+                if (totalGoldEarned !== undefined) {
+                    console.log(`Current run gold for user ${userId}: ${totalGoldEarned} (will be added to total on run completion)`);
+                }
+            }
+        }
+        
+        res.json({
+            success: true,
+            message: 'Run stats updated successfully'
+        });
+        
+    } catch (err) {
+        console.error('Update run stats error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
         });
     } finally {
         if (connection) await connection.end();
@@ -639,7 +830,7 @@ app.put('/api/users/:userId/weapon-upgrades/:runId', async (req, res) => {
             [userId]
         );
         
-        const currentRunNumber = runProgress.length > 0 ? runProgress[0].current_run_number - 1 : 1;
+        const currentRunNumber = runProgress.length > 0 ? runProgress[0].current_run_number : 1;
         
         // ENHANCED v3.0: Include run_number and is_active
         await connection.execute(
@@ -749,7 +940,7 @@ app.post('/api/users/:userId/save-state', async (req, res) => {
             [userId]
         );
         
-        const currentRunNumber = runProgress.length > 0 ? runProgress[0].current_run_number - 1 : 1;
+        const currentRunNumber = runProgress.length > 0 ? runProgress[0].current_run_number : 1;
         
         // Mark previous save states as inactive
         await connection.execute(
@@ -1297,22 +1488,39 @@ app.post('/api/admin/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         
+        console.log('Admin login attempt:', { username, hasPassword: !!password });
+        
         if (!username || !password) {
+            console.log('Missing credentials');
             return res.status(400).json({ 
                 success: false,
                 message: 'Missing username or password' 
             });
         }
         
+        console.log('Creating database connection...');
         connection = await createConnection();
+        console.log('Database connection established');
         
         // Find admin user by username (only role = 'admin')
+        console.log('Searching for admin user:', username);
         const [users] = await connection.execute(
             'SELECT user_id, password_hash, username FROM users WHERE username = ? AND role = "admin" AND is_active = TRUE',
             [username]
         );
         
+        console.log('Query result:', { 
+            usersFound: users.length, 
+            userExists: users.length > 0,
+            firstUserInfo: users.length > 0 ? { 
+                id: users[0].user_id, 
+                username: users[0].username,
+                hashPreview: users[0].password_hash?.substring(0, 10) + '...'
+            } : null
+        });
+        
         if (users.length === 0) {
+            console.log('No admin user found with username:', username);
             return res.status(401).json({ 
                 success: false,
                 message: 'Admin access denied: Invalid credentials' 
@@ -1320,14 +1528,19 @@ app.post('/api/admin/auth/login', async (req, res) => {
         }
         
         const user = users[0];
+        console.log('Comparing password hash...');
         const passwordMatch = await bcrypt.compare(password, user.password_hash);
+        console.log('Password match result:', passwordMatch);
         
         if (!passwordMatch) {
+            console.log('Password does not match');
             return res.status(401).json({ 
                 success: false,
                 message: 'Admin access denied: Invalid credentials' 
             });
         }
+        
+        console.log('Password verified, creating session...');
         
         // Create new admin session
         const sessionToken = require('crypto').randomUUID();
@@ -1343,6 +1556,8 @@ app.post('/api/admin/auth/login', async (req, res) => {
             'UPDATE users SET last_login = NOW() WHERE user_id = ?',
             [user.user_id]
         );
+        
+        console.log('Admin login successful for:', username);
         
         res.status(200).json({
             success: true,
@@ -1360,6 +1575,55 @@ app.post('/api/admin/auth/login', async (req, res) => {
         res.status(500).json({ 
             success: false,
             message: 'Authentication server error' 
+        });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// TEMPORARY DEBUG ENDPOINT - REMOVE AFTER FIXING ISSUE
+app.get('/api/admin/debug/users', async (req, res) => {
+    let connection;
+    try {
+        console.log('Checking admin users in database...');
+        connection = await createConnection();
+        
+        // Get all users
+        const [allUsers] = await connection.execute('SELECT user_id, username, role, is_active FROM users ORDER BY created_at DESC LIMIT 10');
+        
+        // Get specifically admin users  
+        const [adminUsers] = await connection.execute('SELECT user_id, username, email, role, is_active, password_hash FROM users WHERE role = "admin"');
+        
+        // Get users by username
+        const [specificUsers] = await connection.execute('SELECT user_id, username, email, role, is_active, password_hash FROM users WHERE username IN ("admin", "devteam")');
+        
+        console.log('Results:', {
+            totalUsers: allUsers.length,
+            adminUsers: adminUsers.length,
+            specificUsers: specificUsers.length
+        });
+        
+        res.json({
+            success: true,
+            debug: {
+                totalUsers: allUsers.length,
+                allUsers: allUsers,
+                adminUsers: adminUsers.map(u => ({
+                    ...u,
+                    password_hash: u.password_hash ? u.password_hash.substring(0, 20) + '...' : null
+                })),
+                specificUsers: specificUsers.map(u => ({
+                    ...u,
+                    password_hash: u.password_hash ? u.password_hash.substring(0, 20) + '...' : null
+                }))
+            }
+        });
+        
+    } catch (error) {
+        console.error('Endpoint error:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
         });
     } finally {
         if (connection) await connection.end();
@@ -1515,31 +1779,6 @@ app.get('/api/admin/status/current-games', verifyAdminAuth, async (req, res) => 
 // ===================================================
 // NEW USEFUL ADMIN ANALYTICS ENDPOINTS
 // ===================================================
-
-// GET /api/admin/analytics/first-run-masters (NEW - Very Useful)
-app.get('/api/admin/analytics/first-run-masters', verifyAdminAuth, async (req, res) => {
-    let connection;
-    try {
-        connection = await createConnection();
-        
-        const [masters] = await connection.execute(
-            'SELECT * FROM vw_all_bosses_first_run'
-        );
-        
-        res.json({
-            success: true,
-            data: masters
-        });
-    } catch (error) {
-        console.error('Error getting first run masters:', error);
-        res.status(500).json({ 
-            success: false,
-            message: 'Error fetching first run masters'
-        });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
 
 // GET /api/admin/analytics/permanent-upgrades-adoption (NEW - Very Useful)
 app.get('/api/admin/analytics/permanent-upgrades-adoption', verifyAdminAuth, async (req, res) => {
@@ -1769,7 +2008,6 @@ app.listen(PORT, () => {
     console.log(`\nOptimized Admin Analytics:`);
     console.log(`   GET /api/admin/leaderboards/playtime`);
     console.log(`   GET /api/admin/analytics/player-progression (simplified)`);
-    console.log(`   GET /api/admin/analytics/first-run-masters (NEW - Master players)`);
     console.log(`   GET /api/admin/analytics/permanent-upgrades-adoption (NEW - Feature adoption)`);
     console.log(`\nAdmin System Status:`);
     console.log(`   GET /api/admin/status/active-players`);

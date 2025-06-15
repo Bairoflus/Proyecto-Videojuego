@@ -15,30 +15,12 @@ body {
   background-position: center;
 }
 
-/* Regular pages (landing, login, register) */
-body:not(.game-page) {
+/* FIXED: Only apply centering flexbox to simple form pages (landing, login, register) */
+/* NOT to complex layout pages like game-intro or credits */
+body.simple-page {
   display: flex;
   justify-content: center;
   align-items: center;
-}
-
-/* Logo */
-.logo {
-  display: block;
-  max-width: 280px;
-  margin: 0 auto 30px;
-}
-
-/* Main content wrappers */
-.page-container {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-  padding: 40px;
-  border-radius: 16px;
-  text-align: center;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
-  max-width: 380px;
-  width: 90%;
 }
 
 /* Game page specific styles */
@@ -79,40 +61,59 @@ main {
   padding: 20px;
 }
 
-/* Forms */
-form {
+/* Logo - make more specific to avoid conflicts */
+.simple-page .logo {
+  display: block;
+  max-width: 280px;
+  margin: 0 auto 30px;
+}
+
+/* Main content wrappers - make specific to simple pages */
+.simple-page .page-container {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 40px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+  max-width: 380px;
+  width: 90%;
+}
+
+/* Forms - make specific to simple pages */
+.simple-page form {
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
 
-/* Common form elements */
-input, button {
+/* Common form elements - make specific to simple pages */
+.simple-page input, .simple-page button {
   padding: 12px 20px;
   border-radius: 8px;
   border: none;
   font-size: 16px;
 }
 
-input {
+.simple-page input {
   background: rgba(255, 255, 255, 0.1);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-input:focus {
+.simple-page input:focus {
   outline: none;
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-button {
+.simple-page button {
   background: #4a90e2;
   color: white;
   cursor: pointer;
   transition: background-color 0.3s;
 }
 
-button:hover {
+.simple-page button:hover {
   background: #357abd;
 }
 
@@ -152,23 +153,23 @@ button:hover {
   right: 5vw;
 }
 
-/* Headings */
-h2 {
+/* Headings - make specific to simple pages */
+.simple-page h2 {
   margin-bottom: 25px;
   font-size: 26px;
   color: #ffffff;
 }
 
-/* Landing page specific */
-.landing-buttons {
+/* Landing page specific - make more specific */
+.simple-page .landing-buttons {
   display: flex;
   flex-direction: column;
   gap: 15px;
   width: 100%;
 }
 
-/* Message styles */
-#error-message {
+/* Message styles - make specific to simple pages */
+.simple-page #error-message {
   background: rgba(255, 82, 82, 0.15);
   border: 1px solid #ff5252;
   color: #ff5252;
@@ -178,7 +179,7 @@ h2 {
   font-size: 14px;
 }
 
-#success-message {
+.simple-page #success-message {
   background: rgba(76, 175, 80, 0.15);
   border: 1px solid #4caf50;
   color: #4caf50;
@@ -189,7 +190,7 @@ h2 {
 }
 
 /* Login Status Indicator Styles - Issue #7 Enhancement */
-.status-indicator {
+.simple-page .status-indicator {
   padding: 10px 15px;
   border-radius: 8px;
   margin: 10px 0;
@@ -200,39 +201,39 @@ h2 {
   border: 1px solid transparent;
 }
 
-.status-indicator.idle {
+.simple-page .status-indicator.idle {
   display: none;
 }
 
-.status-indicator.clearing {
+.simple-page .status-indicator.clearing {
   background: rgba(156, 39, 176, 0.15);
   border-color: #9c27b0;
   color: #e1bee7;
   animation: statusPulse 2s infinite;
 }
 
-.status-indicator.authenticating {
+.simple-page .status-indicator.authenticating {
   background: rgba(33, 150, 243, 0.15);
   border-color: #2196f3;
   color: #bbdefb;
   animation: statusPulse 2s infinite;
 }
 
-.status-indicator.creating-run {
+.simple-page .status-indicator.creating-run {
   background: rgba(255, 152, 0, 0.15);
   border-color: #ff9800;
   color: #ffcc02;
   animation: statusPulse 2s infinite;
 }
 
-.status-indicator.success {
+.simple-page .status-indicator.success {
   background: rgba(76, 175, 80, 0.15);
   border-color: #4caf50;
   color: #c8e6c9;
   animation: statusGlow 1.5s ease-in-out;
 }
 
-.status-indicator.error {
+.simple-page .status-indicator.error {
   background: rgba(244, 67, 54, 0.15);
   border-color: #f44336;
   color: #ffcdd2;
@@ -275,26 +276,81 @@ h2 {
   }
 }
 
-/* Enhanced button states for better feedback */
-button:disabled {
+/* Enhanced button states for better feedback - make specific to simple pages */
+.simple-page button:disabled {
   background: #666;
   color: #999;
   cursor: not-allowed;
   opacity: 0.7;
 }
 
-button:disabled:hover {
+.simple-page button:disabled:hover {
   background: #666;
 }
 
-/* Responsive improvements */
+/* Form footer styles - for login/register pages */
+.simple-page .form-footer {
+  margin-top: 20px;
+  text-align: center;
+  color: #ccc;
+  font-size: 14px;
+}
+
+.simple-page .form-footer p {
+  margin: 10px 0;
+}
+
+.simple-page .form-footer a {
+  color: #4a90e2;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.simple-page .form-footer a:hover {
+  color: #357abd;
+  text-decoration: underline;
+}
+
+.simple-page .back-home {
+  display: inline-block;
+  margin-top: 15px;
+  color: #888;
+  font-size: 13px;
+}
+
+.simple-page .back-home:hover {
+  color: #4a90e2;
+}
+
+/* Message styles - generic message classes */
+.simple-page .message {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.simple-page .message.error {
+  background: rgba(255, 82, 82, 0.15);
+  border: 1px solid #ff5252;
+  color: #ff5252;
+}
+
+.simple-page .message.success {
+  background: rgba(76, 175, 80, 0.15);
+  border: 1px solid #4caf50;
+  color: #4caf50;
+}
+
+/* Responsive improvements - make specific to simple pages */
 @media (max-width: 480px) {
-  .page-container {
+  .simple-page .page-container {
     padding: 30px 20px;
     max-width: 95%;
   }
   
-  .status-indicator {
+  .simple-page .status-indicator {
     font-size: 13px;
     padding: 8px 12px;
   }

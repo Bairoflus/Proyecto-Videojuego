@@ -1,9 +1,8 @@
 // ===================================================
 // SAVE STATE MANAGER - SHATTERED TIMELINE
 // ===================================================
-// Objetivo: Manejar estados guardados de manera optimizada
-// Base de datos: dbshatteredtimeline
-// Version: 3.1 - Performance Optimized
+// Objective: Handle saved states
+// Database: dbshatteredtimeline
 // ===================================================
 
 import { saveGameState, getSaveState, clearSaveState } from "./api.js";
@@ -211,17 +210,13 @@ export class SaveStateManager {
         // Log the save with timing info
         if (isLogout || force) {
           console.log(
-            `💾 Game state saved successfully ${
-              isLogout ? "(logout)" : "(forced)"
+            `💾 Game state saved successfully ${isLogout ? "(logout)" : "(forced)"
             } in ${saveTime.toFixed(2)}ms`
           );
         } else {
           // Reduced logging for auto-saves - only show timing for slow saves
-          if (saveTime > 50) {
-            // Only log if save took more than 50ms
-            console.log(
-              `⚠️ Slow auto-save completed in ${saveTime.toFixed(2)}ms`
-            );
+          if (saveTime > 50) { // Only log if save took more than 50ms
+            console.log(`Slow auto-save completed in ${saveTime.toFixed(2)}ms`);
           }
         }
         return true;
@@ -350,8 +345,7 @@ export class SaveStateManager {
     }, this.adaptiveFrequency);
 
     console.log(
-      `Enhanced auto-save started (adaptive frequency: ${
-        this.adaptiveFrequency / 1000
+      `Enhanced auto-save started (adaptive frequency: ${this.adaptiveFrequency / 1000
       }s)`
     );
 
@@ -625,24 +619,16 @@ export class SaveStateManager {
         const roomMismatch = currentRoomId !== gameState.roomId;
 
         if (floorMismatch || roomMismatch) {
-          console.warn("🚨 SAVE STATE SYNC ISSUE DETECTED:");
-          console.warn(
-            `  Current FloorGenerator: Floor ${currentFloor}, Room ${
-              currentRoomIndex + 1
-            }, ID ${currentRoomId}`
-          );
-          console.warn(
-            `  Save State: Floor ${expectedFloor}, Room ID ${gameState.roomId}`
-          );
-          console.warn(
-            `  Mismatch: Floor=${floorMismatch}, Room=${roomMismatch}`
-          );
+          console.warn('SAVE STATE SYNC ISSUE DETECTED:');
+          console.warn(`  Current FloorGenerator: Floor ${currentFloor}, Room ${currentRoomIndex + 1}, ID ${currentRoomId}`);
+          console.warn(`  Save State: Floor ${expectedFloor}, Room ID ${gameState.roomId}`);
+          console.warn(`  Mismatch: Floor=${floorMismatch}, Room=${roomMismatch}`);
 
           // Return false to indicate sync issues
           return false;
         }
 
-        console.log("✅ Save state synchronized with FloorGenerator");
+        console.log('Save state synchronized with FloorGenerator');
         return true;
       }
 
@@ -656,7 +642,7 @@ export class SaveStateManager {
 }
 
 // ===================================================
-// INSTANCIA SINGLETON
+// SINGLETON INSTANCE
 // ===================================================
 
 export const saveStateManager = new SaveStateManager();

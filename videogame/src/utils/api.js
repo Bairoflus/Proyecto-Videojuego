@@ -113,22 +113,21 @@ export async function getCurrentRunStats(userId) {
 }
 
 /**
- * Get player settings (audio and game preferences)
- * @param {string|number} userId - User ID to get settings for
- * @returns {Promise<Object>} Player settings data
+ * Get player settings (audio, display, etc.)
+ * @param {number} userId - User ID
+ * @returns {Promise<Object>} Player settings
  */
 export async function getPlayerSettings(userId) {
   const response = await apiRequest(`/users/${userId}/settings`);
-  return response.data; // Extract data from {success: true, data: {...}}
+  return response.data; // Settings object with music_volume, sfx_volume, auto_save_enabled
 }
 
 /**
- * Update player settings (audio and game preferences)
- * @param {string|number} userId - User ID to update settings for
- * @param {Object} settingsData - Settings data to update
- * @param {number} [settingsData.musicVolume] - Music volume level (0-100)
- * @param {number} [settingsData.sfxVolume] - SFX volume level (0-100)
- * @param {boolean} [settingsData.showFps] - Show FPS counter
+ * Update player settings (audio, display, etc.)
+ * @param {number} userId - User ID
+ * @param {Object} settingsData - Settings to update
+ * @param {number} [settingsData.musicVolume] - Music volume (0-1)
+ * @param {number} [settingsData.sfxVolume] - SFX volume (0-1)
  * @param {boolean} [settingsData.autoSaveEnabled] - Auto-save enabled
  * @returns {Promise<Object>} Update confirmation
  */
@@ -163,6 +162,7 @@ export async function createRun(userId) {
  * @param {number} completionData.totalKills - Total kills during run
  * @param {number} completionData.bossesKilled - Bosses killed during run
  * @param {number} completionData.durationSeconds - Run duration in seconds
+ * @param {number} completionData.maxDamageHit - Maximum damage dealt in single hit
  * @returns {Promise<Object>} Completion confirmation
  */
 export async function completeRun(runId, completionData) {
@@ -652,21 +652,6 @@ export async function getAdminPlayerProgression(sessionToken) {
 }
 
 /**
- * Get first run masters (admin only)
- * @param {string} sessionToken - Admin session token
- * @returns {Promise<Array>} First run masters data
- */
-export async function getAdminFirstRunMasters(sessionToken) {
-  const response = await apiRequest("/admin/analytics/first-run-masters", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${sessionToken}`,
-    },
-  });
-  return response.data;
-}
-
-/**
  * Get permanent upgrades adoption (admin only)
  * @param {string} sessionToken - Admin session token
  * @returns {Promise<Array>} Permanent upgrades adoption data
@@ -829,18 +814,22 @@ export function isAdmin() {
  * Clear admin session data
  */
 export function clearAdminSession() {
-  console.log("🔐 Clearing admin session data...");
+  console.log('Clearing admin session data...');
 
-  const adminKeys = ["adminSessionToken", "userRole", "adminUser"];
+  const adminKeys = [
+    'adminSessionToken',
+    'userRole',
+    'adminUser'
+  ];
 
-  adminKeys.forEach((key) => {
+  adminKeys.forEach(key => {
     if (localStorage.getItem(key) !== null) {
       localStorage.removeItem(key);
       console.log(`  Cleared admin key: ${key}`);
     }
   });
 
-  console.log("✅ Admin session cleared");
+  console.log('Admin session cleared');
 }
 
 /**
@@ -849,30 +838,28 @@ export function clearAdminSession() {
  */
 export async function enhancedAdminLogout() {
   try {
-    console.log("🚪 Starting enhanced admin logout...");
+    console.log('Starting enhanced admin logout...');
 
-    const sessionToken = localStorage.getItem("adminSessionToken");
+    const sessionToken = localStorage.getItem('adminSessionToken');
 
     // Call backend admin logout if we have a token
     if (sessionToken) {
       try {
         await adminLogout(sessionToken);
-        console.log("✅ Admin backend logout successful");
+        console.log('Admin backend logout successful');
       } catch (error) {
-        console.warn(
-          "⚠️ Admin backend logout failed, but continuing with cleanup:",
-          error
-        );
+        console.warn('Admin backend logout failed, but continuing with cleanup:', error);
       }
     }
 
     // Clear admin session data
     clearAdminSession();
 
-    console.log("✅ Enhanced admin logout completed successfully");
+    console.log('Enhanced admin logout completed successfully');
     return true;
+
   } catch (error) {
-    console.error("❌ Enhanced admin logout error:", error);
+    console.error('Enhanced admin logout error:', error);
 
     // Emergency cleanup even on error
     clearAdminSession();
@@ -880,3 +867,20 @@ export async function enhancedAdminLogout() {
     return false;
   }
 }
+
+/**
+ * Update run statistics during gameplay
+ * @param {string|number} runId - Run ID to update
+ * @param {Object} statsData - Statistics data
+ * @param {number} [statsData.maxDamageHit] - Maximum damage dealt in single hit
+ * @param {number} [statsData.totalGoldEarned] - Total gold collected this run
+ * @param {number} [statsData.totalKills] - Total kills this run
+ * @returns {Promise<Object>} Update confirmation
+ */
+export async function updateRunStats(runId, statsData) {
+  const response = await apiRequest(`/runs/${runId}/stats`, {
+    method: 'PUT',
+    body: JSON.stringify(statsData)
+  });
+  return response; // {success: true, message: "Run stats updated successfully"}
+} 

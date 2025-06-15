@@ -15,14 +15,14 @@ export function main() {
   window.canvas = canvas;
 
   // Initialize logging system
-  log.setLevel(log.LEVELS.INFO); // Set to DEBUG for development, INFO for production
+  log.setLevel(log.LEVELS.INFO);
 
-  console.log("🎮 Creating game instance...");
+  console.log('Creating game instance...');
   const game = new Game();
 
-  // 🎮 FIXED: Wait for game to be ready before starting game loop
+  // Wait for game to be ready before starting game loop
   game.onReady(() => {
-    console.log("🚀 Game ready - starting game loop");
+    console.log('Game ready - starting game loop');
 
     let previousTime = 0;
     async function frame(currentTime) {

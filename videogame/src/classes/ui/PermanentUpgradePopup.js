@@ -3,7 +3,7 @@
 // ===================================================
 // Objective: Permanent upgrade popup
 // Trigger: After killing a boss
-// Options: Health (+15), Stamina (+20), MovementSpeed (+10%)
+// Options: Health (+15), Stamina (+20)
 // ===================================================
 
 import { PERMANENT_UPGRADES } from "../../constants/gameEnums.js";
@@ -63,8 +63,8 @@ export class PermanentUpgradePopup {
     `;
 
     // Title
-    const title = document.createElement("h1");
-    title.textContent = "🏆 BOSS DEFEATED! 🏆";
+    const title = document.createElement('h1');
+    title.textContent = 'BOSS DEFEATED!';
     title.style.cssText = `
       color: #d4af37;
       font-size: 2.5em;
@@ -98,9 +98,8 @@ export class PermanentUpgradePopup {
     this.createUpgradeButtons(optionsContainer);
 
     // Warning
-    const warning = document.createElement("p");
-    warning.textContent =
-      "⚠️ Choose wisely! This upgrade is permanent and cannot be changed.";
+    const warning = document.createElement('p');
+    warning.textContent = 'Choose wisely! This upgrade is permanent and cannot be changed.';
     warning.style.cssText = `
       color: #ff9800;
       font-size: 0.9em;
@@ -124,9 +123,9 @@ export class PermanentUpgradePopup {
    * Creates the upgrade selection buttons
    */
   createUpgradeButtons(container) {
-    const upgradeTypes = ["health_max", "stamina_max", "movement_speed"];
+    const upgradeTypes = ['health_max', 'stamina_max'];
 
-    upgradeTypes.forEach((upgradeType) => {
+    upgradeTypes.forEach(upgradeType => {
       const upgradeInfo = PERMANENT_UPGRADES[upgradeType];
 
       const button = document.createElement("button");
@@ -461,17 +460,6 @@ export class PermanentUpgradePopup {
         console.log(
           `Stamina upgraded: ${oldMaxStamina} → ${player.maxStamina} (${upgradeInfo.description})`
         );
-        break;
-
-      case "movement_speed":
-        // Movement speed upgrade would need to be applied in player movement logic
-        // For now, just log it - this would need more complex implementation
-        console.log(
-          `Movement speed upgraded by ${upgradeInfo.value * 100}% (${
-            upgradeInfo.description
-          })`
-        );
-        // TODO: Implement movement speed boost in player movement
         break;
 
       default:

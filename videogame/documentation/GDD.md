@@ -38,30 +38,33 @@
 
 ### 1.1 Summary
 
-**Shattered Timeline** is a top-down action roguelite where players fight through three temporal zones—past, present, and future—to restore order. Players traverse procedurally designed rooms, battle evolving enemies and bosses, and gain both temporary and permanent upgrades. Core systems include food-based stamina management, dual-weapon combat, and strategic base development.
+**Shattered Timeline** is a top-down action roguelite where players fight through three floors with escalating difficulty. Players traverse procedurally generated rooms, battle diverse enemies and bosses, and gain both temporary weapon upgrades and permanent character upgrades. The game features a comprehensive progression system with persistent run tracking, player statistics, and strategic upgrade choices.
 
 ### 1.2 Gameplay
 
-Each run consists of 3 floors with 6 rooms per floor: 4 combat rooms, 1 shop, and 1 boss room. Combat rooms spawn a golden chest (50 gold) after all enemies are defeated. Shops provide temporary weapon upgrades that last for the current run. The game features a persistent run counter that tracks total attempts across all sessions.
+Each run consists of 3 floors with 6 rooms per floor: 4 combat rooms, 1 shop, and 1 boss room. Combat rooms spawn a golden chest (50 gold) after all enemies are defeated. Shops provide temporary weapon upgrades that last for the current run. Boss rooms contain powerful enemies that must be defeated to advance to the next floor. After defeating a boss, players receive permanent upgrade options.
 
 **Current Gameplay Loop:**
 
 - Start in Room 1, Floor 1
 - Clear 4 combat rooms (collect gold from chests)
-- Visit shop room to purchase upgrades
-- Defeat floor boss (not yet implemented)
+- Visit shop room to purchase temporary upgrades
+- Defeat floor boss
+- Choose from permanent upgrade options
 - Progress to next floor
-- After death: Run counter increments, all progress resets
+- After completing all 3 floors or death: Run counter increments, temporary progress resets
 
-**Planned Features:**
-- Post-boss permanent upgrades
-- Food system affecting stamina regeneration
-- Base hub with persistent upgrades
-- Difficulty scaling per run
+**Implemented Features:**
+- Persistent run counter across sessions
+- Boss battles with Floor 1 (Dragon Boss) and Floor 2 (Supersoldier)
+- Permanent upgrade system (Health, Stamina, Movement Speed)
+- Player statistics tracking (total runs, kills, gold earned, etc.)
+- Save state system for session persistence
+- Database backend with user authentication
 
 ### 1.3 Mindset
 
-Shattered Timeline is built to reward mastery, adaptability, and persistence. Its loop emphasizes tension, progression, and surprise. Players are encouraged to experiment with builds and tactics across dynamic, escalating challenges.
+Shattered Timeline is built to reward mastery, adaptability, and persistence. Its loop emphasizes tension, progression, and surprise. Players are encouraged to experiment with builds and tactics across dynamic, escalating challenges while building permanent improvements to overcome increasing difficulty.
 
 ---
 
@@ -69,44 +72,49 @@ Shattered Timeline is built to reward mastery, adaptability, and persistence. It
 
 ### 2.1 Screens
 
-1. **Web Login Screens**
-   - Logo + color-themed background
-   - Buttons: Login, Create Account
-   - Form validation: usernames, emails, password checks
+1. **Web Authentication System**
+   - Landing page with game introduction
+   - Login and registration forms
+   - Session management with automatic logout
 
-2. **Main UI after login**
-   - Canvas with: "Welcome, *username*", Logout button
-   - Options: Start Game, Options, Player Statistics, Credits
+2. **Main Game Interface**
+   - Full-screen canvas gameplay
+   - HUD displaying: Health, Gold, Weapon levels, Run counter
+   - Transition zone indicators
 
-3. **Game Screens**
-   - Inventory
-   - HUD: Health, Stamina, Weapons, Gold, Permanent Upgrades
+3. **Shop Interface**
+   - Modal overlay during shop interactions
+   - Purchase options with cost and effect information
+   - Input validation for insufficient funds
 
-4. **Pause Menu**
-   - Resume, Options, Player Stats, Return to Main Menu
+4. **Permanent Upgrade Selection**
+   - Post-boss upgrade selection interface
+   - Three upgrade categories with clear descriptions
+   - Progressive enhancement system
 
-5. **Options Menu**
-   - Controls, Audio Sliders
-
-6. **Statistics Pop-up**
-   - Deaths, Enemies Killed, Runs Played/Completed, Time Played, Max Kills/Damage/Run, Gold Spent/Earned
+5. **Statistics Tracking**
+   - Comprehensive player metrics
+   - Run history and progression data
+   - Backend database storage
 
 ### 2.2 Controls
 
-- 8-direction movement (WASD)
-- Dash (Spacebar) – 1u movement
-- Actions: Attack, Interact
-- All controls are remappable
+- **Movement**: WASD or Arrow Keys (8-direction)
+- **Weapons**: Q (Primary/Melee), E (Secondary/Ranged)
+- **Attack**: Spacebar
+- **Dash**: Left Shift (enhanced movement speed)
+- **Shop Navigation**: WASD to navigate, Enter to purchase, ESC to exit
+- **Room Transition**: Move to right edge of room when transition zone is active
 
 ### 2.3 Mechanics
 
 **Current Combat System:**
 
-| Action            | Stamina Cost | Damage        | Range    |
-|-------------------|--------------|---------------|----------|
-| Melee Attack      | 0 (temp)     | 10 + upgrades | 75px     |
-| Ranged Attack     | 0 (temp)     | 15 + upgrades | Projectile |
-| Dash              | 0 (temp)     | -             | 3x speed |
+| Action            | Stamina Cost | Damage        | Range    | Notes |
+|-------------------|--------------|---------------|----------|--------|
+| Melee Attack      | 0            | 10 + upgrades | 75px     | Line of sight detection |
+| Ranged Attack     | 0            | 15 + upgrades | Projectile | Wall collision |
+| Dash              | 0            | -             | 3x speed | Movement enhancement |
 
 **Shop Upgrades (Per Run):**
 
@@ -114,40 +122,31 @@ Shattered Timeline is built to reward mastery, adaptability, and persistence. It
 |-------------------|-------|-------------|---------|
 | Melee Damage      | 35g   | +3 damage   | 15      |
 | Ranged Damage     | 40g   | +4 damage   | 15      |
-| Health Restore    | 50g   | Full HP     | ∞       |
+| Health Restore    | 50g   | Full HP     | Unlimited |
 
-**Planned Stamina System:**
+**Permanent Upgrades (Per Boss):**
 
-| Action            | Cost  |
-|-------------------|--------|
-| Melee Attack       | 8 pts |
-| Projectile Attack  | 12 pts |
-| Dash               | 10 pts |
+| Upgrade Type      | Cost  | Effect          | Notes |
+|-------------------|-------|-----------------|--------|
+| Max Health        | Boss  | +15 HP per level| Persistent across runs |
+| Max Stamina       | Boss  | +20 per level   | For future stamina system |
+| Movement Speed    | Boss  | +10% per level  | Enhanced mobility |
 
-**Stamina Regen by Food Level:**
+**Enemy Types by Floor:**
 
-| Food Level       | Regen Multiplier | Regen Rate | Penalty    |
-|------------------|------------------|------------|------------|
-| Satiated         | 1.5x             | 30 pts/s   | -          |
-| Well Fed         | 1x               | 20 pts/s   | -          |
-| Hungry           | 0.6x             | 12 pts/s   | -          |
-| Weak             | 0.3x             | 6 pts/s    | -          |
-| Malnourished     | 0.1x             | 2 pts/s    | -5 HP/s    |
+| Floor | Enemy Types |
+|-------|-------------|
+| 1     | Goblin Dagger, Sword Goblin, Goblin Archer, Mage Goblin, Great Bow Goblin |
+| 2     | Same enemy pool with increased difficulty |
+| 3     | Same enemy pool with maximum difficulty |
 
-**Food Types:**
+**Boss Types:**
 
-| Food                     | Effect  |
-|--------------------------|---------|
-| Watermelon, Meat         | +50%    |
-| Apple, Salad             | +25%    |
-| Grapes, Spicy Snacks     | +10%    |
-
-**Upgrades:**
-
-- Health: +15 HP (100 gold)
-- Stamina: +20 (100 gold)
-- Melee/Ranged Damage: +4 (100 gold)
-- Speed: +0.02u (100 gold)
+| Floor | Boss Type     | Special Abilities |
+|-------|---------------|-------------------|
+| 1     | Dragon Boss   | Enhanced combat stats |
+| 2     | Supersoldier  | Advanced AI patterns |
+| 3     | Dragon Boss   | Maximum difficulty scaling |
 
 ---
 
@@ -155,17 +154,18 @@ Shattered Timeline is built to reward mastery, adaptability, and persistence. It
 
 ### 3.1 Themes
 
-- **Past**: Swamp, Forest, Caves, Plains
-- **Present**: Destroyed City, Abandoned Factory, Schools, Park
-- **Future**: Metal Deck, Spaceship, Mars, Alien Landscape
+Currently implemented with consistent dark fantasy theme across all floors. Future expansion planned for:
+- **Floor 1**: Dungeon/Cave theme
+- **Floor 2**: Advanced dungeon theme  
+- **Floor 3**: Elite dungeon theme
 
 ### 3.2 Game Flow
 
-1. Base Hub
-2. Floor 1: 4 rooms + shop + boss → permanent upgrade
-3. Floor 2: 4 rooms + shop + boss → permanent upgrade
-4. Floor 3: 4 rooms + shop + boss → permanent upgrade
-5. Loop reset: Floors reshuffle, enemies buffed
+1. Authentication and session creation
+2. Floor 1: 4 combat rooms + shop + boss → permanent upgrade selection
+3. Floor 2: 4 combat rooms + shop + boss → permanent upgrade selection
+4. Floor 3: 4 combat rooms + shop + boss → permanent upgrade selection
+5. Run completion or death: Statistics updated, new run begins
 
 ---
 
@@ -173,21 +173,26 @@ Shattered Timeline is built to reward mastery, adaptability, and persistence. It
 
 ### 4.1 Abstract Classes
 
-- BaseEntity, BasePlayer, BaseEnemy, BaseWeapon, BaseItem, BaseRoom, BaseBoss
+- **AnimatedObject**: Base class for all game entities
+- **Enemy**: Base class for all enemy types
+- **Room**: Base class for all room types
 
 ### 4.2 Derived Classes
 
-- **Player**: Inventory, Movement, Dash, Combat, Stats
-- **Enemies** (per floor):
-  - Past: Goblin variants (dagger, archer, mage, sword)
-  - Present: Bandits, Snipers, Police, Mutants
-  - Future: Robots, Drones, Alien Slaves, Warriors
-- **Bosses** (per floor):
-  - Past: Dragon, Ogre
-  - Present: Supersoldier, Criminal
-  - Future: Alien, Mecha
-- **Items**: Bandages, Antidotes, Potions, Scrolls
-- **Weapons**: Dagger, Katana, Lightsaber, Bows, Recurve Bow
+- **Player**: Complete player controller with combat, movement, and upgrade tracking
+- **Enemies**: 
+  - GoblinDagger (melee)
+  - SwordGoblin (enhanced melee) 
+  - GoblinArcher (ranged)
+  - MageGoblin (magic ranged)
+  - GreatBowGoblin (heavy ranged)
+- **Bosses**:
+  - DragonBoss (Floor 1 & 3)
+  - Supersoldier (Floor 2)
+- **Systems**:
+  - FloorGenerator (procedural room generation)
+  - Shop (upgrade purchasing system)
+  - PermanentUpgradePopup (post-boss upgrades)
 
 ---
 
@@ -195,14 +200,18 @@ Shattered Timeline is built to reward mastery, adaptability, and persistence. It
 
 ### 5.1 Style Attributes
 
-- Pixel-art with dark base tones and vivid highlights
-- Visual clarity for feedback (hits, statuses)
+- Top-down pixel art style
+- Dark base tones with bright highlights for UI elements
+- Clear visual feedback for combat interactions
+- Transition zone indicators for room navigation
 
 ### 5.2 Graphics Needed
 
-- Characters (player, enemies, bosses)
-- Items, Weapons, UI, Tilesets (environment-specific)
-- Shop & Base Elements
+- Character sprites for player and enemies
+- Boss sprites with larger scale
+- UI elements and HUD components
+- Room backgrounds and environmental tiles
+- Visual effects for attacks and abilities
 
 ---
 
@@ -210,24 +219,28 @@ Shattered Timeline is built to reward mastery, adaptability, and persistence. It
 
 ### 6.1 Style Attributes
 
-- Floor 1: Nature sounds
-- Floor 2: Industrial ambiance
-- Floor 3: Sci-fi tones
-- Boss: Thematic variations
+Currently not implemented. Planned implementation:
+- Atmospheric background music
+- Combat sound effects
+- UI interaction sounds
 
 ### 6.2 Sounds Needed
 
-- Footsteps (terrain based), Combat SFX, UI, Environmental sounds
+- Combat effects (attacks, hits, deaths)
+- UI interaction sounds
+- Environmental audio
 
 ### 6.3 Music Needed
 
-- Themes for base + each floor + bosses + ending
+- Background tracks for different game states
+- Boss battle music
+- Ambient sound design
 
 ---
 
 ## 7. Background and Style
 
-The game world is fractured by time. The player, a lone warrior, must traverse divergent eras to stabilize the timeline. Progression is felt through environment, enemy types, and evolving music. Storytelling is embedded in the setting and design, not explicit narrative.
+Shattered Timeline presents a dark fantasy world where players must overcome increasingly difficult challenges. The visual design emphasizes clarity and readability while maintaining atmospheric depth. Progression is conveyed through numerical feedback and permanent character development.
 
 ---
 
@@ -235,29 +248,37 @@ The game world is fractured by time. The player, a lone warrior, must traverse d
 
 ### Graphical
 
-- Characters: 10+ enemy types, 6 bosses, player
-- Weapons: 6+ tiers (melee/ranged)
-- Items: Healing, Buffs, Status Cures
-- UI: HUD, Menus
-- Environments: Swamp, City, Mars, etc.
-- Structures: Base Hub, Shops
+- Player character sprite and animations
+- 5 enemy types with combat animations
+- 2 boss sprites with enhanced visuals
+- UI elements for HUD, shop, and upgrade systems
+- Room backgrounds and environmental assets
+- Visual effects for abilities and transitions
 
 ### Audio
 
-- 5+ music tracks (base, floors, bosses, end)
-- Full SFX suite (combat, UI, ambient)
+- Currently not implemented
+- Planned: Full audio suite for immersive experience
 
 ---
 
 ## 9. Schedule
 
-1. Week 1–2: Entity and Player Framework
-2. Week 3–4: Enemy AI + Movement
-3. Week 5: Room System + Procedural Logic
-4. Week 6–7: Combat, Weapons, Stats
-5. Week 8–9: Level Themes + Boss Design
-6. Week 10: UI/UX + Data Systems
-7. Week 11–12: Final Polish, Debug, Balance
+**Completed Phases:**
+1. ✓ Core entity and player framework
+2. ✓ Enemy AI and combat systems
+3. ✓ Room generation and progression
+4. ✓ Combat mechanics and weapons
+5. ✓ Boss implementation
+6. ✓ Database backend and user system
+7. ✓ Permanent upgrade system
+
+**Future Development:**
+1. Audio system implementation
+2. Enhanced visual effects
+3. Expanded enemy varieties
+4. Additional boss types
+5. Stamina system activation
 
 ---
 
@@ -266,16 +287,17 @@ The game world is fractured by time. The player, a lone warrior, must traverse d
 ### Core Systems Implemented
 
 #### Combat System
-- **Melee Combat (Dagger)**:
-  - Extended range: 75px (2.5x original design)
-  - Line-of-sight detection prevents attacks through walls
-  - Visual feedback: Red area (normal), Orange area (wall-limited)
-  - Base damage: 10 + shop upgrades
+- **Melee Combat (Primary Weapon)**:
+  - Range: 75px with line-of-sight detection
+  - Visual feedback with colored attack indicators
+  - Base damage: 10 + shop upgrades (max +45)
+  - Wall collision prevention
   
-- **Ranged Combat (Slingshot)**:
-  - Projectile-based with 15 base damage + shop upgrades
-  - Projectiles collide with walls and are destroyed
-  - Smooth projectile tracking towards enemies
+- **Ranged Combat (Secondary Weapon)**:
+  - Projectile-based system with physics
+  - Base damage: 15 + shop upgrades (max +60)
+  - Projectile collision with walls and enemies
+  - Smooth tracking and visual effects
 
 #### Shop System
 - **Purchase Options**:
@@ -283,69 +305,95 @@ The game world is fractured by time. The player, a lone warrior, must traverse d
   2. Secondary Weapon Upgrade: 40 gold, +4 damage, max 15/run  
   3. Full Health Restore: 50 gold, unlimited purchases
 - **Features**:
-  - Global upgrade tracking per run
-  - Visual activation zone in shop rooms
-  - WASD navigation, Enter to purchase, ESC to exit
-  - Prevents purchases without sufficient gold or at max upgrades
+  - Visual activation zones in shop rooms
+  - Real-time purchase validation
+  - Persistent upgrade tracking per run
+  - Intuitive navigation interface
+
+#### Boss System
+- **Dragon Boss (Floor 1 & 3)**:
+  - Enhanced health and damage
+  - Advanced AI patterns
+  - Triggers permanent upgrade selection on defeat
+  
+- **Supersoldier (Floor 2)**:
+  - Unique combat mechanics
+  - Progressive difficulty scaling
+  - Integration with progression system
+
+#### Permanent Upgrade System
+- **Three Categories**:
+  - Max Health: +15 HP per level
+  - Max Stamina: +20 per level (future system)
+  - Movement Speed: +10% per level
+- **Features**:
+  - Database persistence across sessions
+  - Calculated values for immediate application
+  - Visual selection interface post-boss
+
+#### Database Backend
+- **User Authentication**:
+  - Secure registration and login
+  - Session management with tokens
+  - Password hashing and validation
+  
+- **Statistics Tracking**:
+  - Comprehensive run history
+  - Player performance metrics
+  - Gold economy tracking
+  - Upgrade purchase history
+
+#### Save System
+- **Session Persistence**:
+  - Room state preservation
+  - Player position and status
+  - Weapon upgrade levels
+  - Run progress tracking
 
 #### Progression System
 - **Structure**: 
-  - 3 floors per run
-  - 6 rooms per floor (4 combat + 1 shop + 1 boss)
-  - Procedural combat room generation with 6-10 enemies
-- **Gold Economy**:
-  - Chest spawns after clearing combat rooms: 50 gold
-  - No gold drops from enemies
-  - Gold resets on death
-
-#### Death & Reset System
-- **Persistent Run Counter**: Stored in localStorage, never resets
-- **On Death**:
-  - 1-second delay before reset
-  - Returns to Run X+1, Floor 1, Room 1
-  - Resets: gold, weapon upgrades, player position
-  - Preserves: total run count
-
-#### Room Persistence
-- **State Management**:
-  - Room states preserved when transitioning
-  - Enemies remain dead when returning to cleared rooms
-  - Chest collection state maintained
-  - Event-driven updates (not per-frame)
+  - 3 floors per run, 6 rooms per floor
+  - Procedural combat room generation (6-10 enemies)
+  - Guaranteed shop and boss placement
+  - Progressive difficulty scaling
+  
+- **Run Counter**:
+  - Persistent across all sessions
+  - Database synchronization
+  - Increment on login, logout, and completion
 
 #### Performance Optimizations
-- **Raycast System**: 4px step increments for wall detection
-- **Event-driven Updates**: Room states only update on significant events
-- **Projectile Management**: Automatic cleanup of inactive projectiles
-- **Collision Detection**: Efficient hitbox-based system
+- **Efficient Collision Detection**: Optimized hitbox calculations
+- **Event-driven Updates**: Reduced unnecessary computations
+- **Memory Management**: Proper cleanup of game objects
+- **State Synchronization**: Database triggers for consistency
 
-### Current Enemy Types
-- **Goblin Dagger**: Melee enemy with tracking AI
-- **Goblin Archer**: Ranged enemy that fires projectiles
+### Current Enemy AI
+- **Melee Enemies**: Pathfinding with player tracking
+- **Ranged Enemies**: Line-of-sight attacks with projectile management
+- **Weighted Spawning**: Balanced distribution for engaging encounters
 
 ### Controls
-- Movement: WASD/Arrow keys
-- Attack: Spacebar  
-- Weapon Switch: Q (dagger), E (slingshot)
-- Dash: Left Shift
-- Shop: WASD navigate, Enter purchase, ESC exit
+- **Movement**: WASD/Arrow keys with smooth 8-direction movement
+- **Combat**: Spacebar for attacks, Q/E for weapon switching
+- **Mobility**: Left Shift for dash ability
+- **Interaction**: Context-sensitive shop and transition interactions
 
 ### Technical Stack
-- Pure JavaScript with ES6 modules
-- Canvas API for rendering
-- No external dependencies
-- Python HTTP server for development
+- **Frontend**: Pure JavaScript ES6 modules, Canvas API
+- **Backend**: Node.js with Express.js REST API
+- **Database**: MySQL with optimized views and triggers
+- **Architecture**: MVC pattern with modular component design
 
-### Known Limitations
-- Boss rooms not yet implemented
-- Food/stamina system not implemented
-- Permanent upgrades system not implemented
-- Save system limited to run counter only
-- No audio implementation yet
+### Current Limitations
+- Audio system not yet implemented
+- Stamina costs currently disabled (set to 0)
+- Limited visual themes (single environment style)
+- Basic enemy AI patterns
 
 ### Next Development Priorities
-1. Boss enemy implementation
-2. Food and stamina systems
-3. Permanent upgrade system between runs
-4. Full save/load functionality
-5. Audio system integration
+1. Audio system integration with context-appropriate sound design
+2. Enhanced visual effects and particle systems
+3. Stamina system activation with food mechanics
+4. Expanded enemy AI with advanced behaviors
+5. Additional boss types and floor themes

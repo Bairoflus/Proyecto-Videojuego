@@ -5,7 +5,6 @@
  */
 import { GameObject } from "./GameObject.js";
 import { Vec } from "../../utils/Vec.js";
-import { Rect } from "../../utils/Rect.js";
 import { variables } from "../../config.js";
 import {
   ROOM_CONSTANTS,
